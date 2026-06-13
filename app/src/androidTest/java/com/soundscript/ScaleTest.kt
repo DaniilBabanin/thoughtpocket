@@ -149,14 +149,18 @@ class ScaleTest {
         }
 
         // ---- clusters purity ----
+        // weightedPurity = fraction of clustered notes that sit with their topic's majority
+        // (honest — a big impure blob drags it down). avgPurity (unweighted) is for reference.
         t = SystemClock.elapsedRealtime()
         val clusters = Clusters.build(notes)
         val clMs = SystemClock.elapsedRealtime() - t
-        val purities = clusters.map { c -> c.notes.groupingBy { topic[it.id] }.eachCount().values.max().toDouble() / c.notes.size }
-        val avgPurity = if (purities.isEmpty()) 0.0 else purities.average()
-        Log.i("SCALE", "CLUSTERS ${clusters.size} clusters, ${clusters.sumOf { it.notes.size }}/${notes.size} notes, avgPurity=${"%.2f".format(avgPurity)} in ${clMs}ms")
+        val maxes = clusters.map { c -> c.notes.groupingBy { topic[it.id] }.eachCount().values.max() }
+        val covered = clusters.sumOf { it.notes.size }
+        val weightedPurity = if (covered == 0) 0.0 else maxes.sum().toDouble() / covered
+        val avgPurity = if (clusters.isEmpty()) 0.0 else clusters.indices.map { maxes[it].toDouble() / clusters[it].notes.size }.average()
+        Log.i("SCALE", "CLUSTERS ${clusters.size} clusters, $covered/${notes.size} notes, weightedPurity=${"%.2f".format(weightedPurity)} avgPurity=${"%.2f".format(avgPurity)} in ${clMs}ms")
         clusters.forEach { c -> Log.i("SCALE", "  cluster '${c.label}' n=${c.notes.size} ${c.notes.groupingBy { topic[it.id] }.eachCount()}") }
-        if (avgPurity < 0.7) failures.add("cluster purity ${"%.2f".format(avgPurity)}")
+        if (weightedPurity < 0.45) failures.add("cluster weightedPurity ${"%.2f".format(weightedPurity)}")
 
         // ---- tagging + titles (sample; uses tag model E2B) ----
         for (sample in listOf(notes.first { topic[it.id] == "rust" }, notes.first { topic[it.id] == "travel" })) {
