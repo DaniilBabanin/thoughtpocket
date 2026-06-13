@@ -55,6 +55,22 @@ object Embedder {
         val d = sqrt(na) * sqrt(nb)
         return if (d == 0f) 0f else dot / d
     }
+
+    /** Element-wise mean of vectors — the corpus "common component" to subtract for contrast. */
+    fun mean(vecs: List<FloatArray>): FloatArray? {
+        if (vecs.isEmpty()) return null
+        val m = FloatArray(vecs[0].size)
+        for (v in vecs) for (i in m.indices) m[i] += v[i]
+        for (i in m.indices) m[i] /= vecs.size
+        return m
+    }
+
+    /** Cosine after subtracting [mean] from both — sharpens USE's compressed similarity range. */
+    fun cosineCentered(a: FloatArray, b: FloatArray, mean: FloatArray): Float {
+        val ca = FloatArray(a.size) { a[it] - mean[it] }
+        val cb = FloatArray(b.size) { b[it] - mean[it] }
+        return cosine(ca, cb)
+    }
 }
 
 /** A topic cluster of semantically-similar notes, biggest first. */

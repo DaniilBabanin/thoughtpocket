@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -74,6 +75,7 @@ import com.soundscript.data.NotesDb
 import com.soundscript.service.RecordState
 import com.soundscript.service.RecordingService
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,9 +89,31 @@ fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit, onAnalyze: (
     val status by RecordState.status.collectAsState()
     val partial by RecordState.partial.collectAsState()
     var filter by remember { mutableStateOf<String?>(null) }
+    var query by remember { mutableStateOf("") }
+    var queryVec by remember { mutableStateOf<FloatArray?>(null) }
+    LaunchedEffect(query) {
+        if (query.isBlank()) { queryVec = null } else { delay(200); queryVec = Embedder.embed(context, query) }
+    }
 
     val allTags = notes.flatMap { it.tags }.distinct().sorted()
-    val shown = filter?.let { f -> notes.filter { f in it.tags } } ?: notes
+    // Corpus mean to subtract: USE cosines are compressed; centering restores contrast.
+    val noteMean = remember(notes) { Embedder.mean(notes.mapNotNull { it.embedding }) }
+    val q = query.trim()
+    val shown = if (q.isEmpty()) {
+        filter?.let { f -> notes.filter { f in it.tags } } ?: notes
+    } else {
+        // Semantic search: rank by centered query↔note cosine, keep lexical matches too. Ignores tag filter.
+        val qv = queryVec
+        notes.map { note ->
+            val sem = if (qv != null && note.embedding != null && noteMean != null)
+                Embedder.cosineCentered(qv, note.embedding, noteMean) else 0f
+            val lex = note.text.contains(q, true) || note.title.contains(q, true) ||
+                note.tags.any { it.contains(q, true) }
+            Triple(note, sem, lex)
+        }.filter { it.second >= 0.20f || it.third }
+            .sortedByDescending { it.second }
+            .map { it.first }
+    }
 
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -140,6 +164,19 @@ fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit, onAnalyze: (
         }
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = { Text("Search notes by meaning") },
+                leadingIcon = { Icon(Icons.Filled.Search, null) },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { query = "" }) { Icon(Icons.Filled.Close, "Clear") }
+                    }
+                },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+            )
             val s = status.state
             if (s == RecordState.State.RECORDING || s == RecordState.State.TRANSCRIBING) {
                 Card(Modifier.fillMaxWidth().padding(12.dp)) {
@@ -155,7 +192,7 @@ fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit, onAnalyze: (
                     }
                 }
             }
-            if (allTags.isNotEmpty()) {
+            if (allTags.isNotEmpty() && q.isEmpty()) {
                 LazyRow(
                     Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -174,7 +211,10 @@ fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit, onAnalyze: (
             }
             if (shown.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No notes yet. Tap Record.", color = MaterialTheme.colorScheme.outline)
+                    Text(
+                        if (q.isEmpty()) "No notes yet. Tap Record." else "No matches.",
+                        color = MaterialTheme.colorScheme.outline,
+                    )
                 }
             } else {
                 LazyColumn(Modifier.fillMaxSize()) {
