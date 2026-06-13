@@ -12,6 +12,8 @@ import androidx.core.app.ServiceCompat
 import com.soundscript.AppPreferences
 import com.soundscript.ModelManager
 import com.soundscript.WhisperEngine
+import com.soundscript.ai.LlmEngine
+import com.soundscript.ai.TaggingEngine
 import com.soundscript.audio.MicRecorder
 import com.soundscript.data.Note
 import com.soundscript.data.NotesDb
@@ -136,10 +138,19 @@ class RecordingService : Service() {
                         onSegment = { seg -> sb.append(seg); RecordState.setPartial(sb.toString()) },
                     )
                 }.getOrElse { Log.e(TAG, "transcription failed", it); "" }
-                NotesDb.get(this).notes().insert(
-                    Note(createdAt = System.currentTimeMillis(), text = text.ifBlank { "(no speech detected)" })
-                )
+                val body = text.ifBlank { "(no speech detected)" }
+                val dao = NotesDb.get(this).notes()
+                val note = Note(createdAt = System.currentTimeMillis(), text = body)
+                val id = dao.insert(note)
                 Notifications.done(this, "Note saved")
+
+                // Auto-tag with Gemma (E2B) in the background, then update the note in place.
+                if (prefs.autoTag && text.isNotBlank() && LlmEngine.isModelInstalled(this)) {
+                    getSystemService(NotificationManager::class.java)
+                        .notify(Notifications.ONGOING_ID, Notifications.ongoing(this, "Tagging…"))
+                    val tags = TaggingEngine.suggestTags(this, body).getOrNull().orEmpty()
+                    if (tags.isNotEmpty()) dao.update(note.copy(id = id, tags = tags))
+                }
             }
         }
     }

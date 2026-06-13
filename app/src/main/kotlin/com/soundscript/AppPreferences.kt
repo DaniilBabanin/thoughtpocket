@@ -50,6 +50,11 @@ class AppPreferences(context: Context) {
         get() = prefs.getString(KEY_LLM_MODEL, "")!!
         set(value) = prefs.edit { putString(KEY_LLM_MODEL, value) }
 
+    /** Auto-tag new notes with the LLM right after transcription. */
+    var autoTag: Boolean
+        get() = prefs.getBoolean(KEY_AUTO_TAG, true)
+        set(value) = prefs.edit { putBoolean(KEY_AUTO_TAG, value) }
+
     /** Optional HuggingFace token for downloading licence-gated Gemma models. */
     var hfToken: String
         get() = prefs.getString(KEY_HF_TOKEN, "")!!
@@ -88,6 +93,7 @@ class AppPreferences(context: Context) {
         private const val KEY_THREADS = "threads"
         private const val KEY_HIGH_QUALITY = "high_quality"
         private const val KEY_LLM_MODEL = "llm_model"
+        private const val KEY_AUTO_TAG = "auto_tag"
         private const val KEY_HF_TOKEN = "hf_token"
         private const val KEY_DEV_MODE = "developer_mode"
         private const val KEY_SKIP_VERIFY = "skip_model_verification"

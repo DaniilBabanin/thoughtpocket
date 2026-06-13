@@ -65,6 +65,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     var aiTick by remember { mutableStateOf(0) }
     var importingModel by remember { mutableStateOf(false) }
     var selectedLlm by remember { mutableStateOf(prefs.llmModelFilename) }
+    var autoTag by remember { mutableStateOf(prefs.autoTag) }
     var aiError by remember { mutableStateOf<String?>(null) }
     val pickGemma = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
@@ -182,6 +183,17 @@ fun SettingsScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
             )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Auto-tag new notes")
+                    Text(
+                        "Tag each note with Gemma right after transcription.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                }
+                Switch(checked = autoTag, onCheckedChange = { autoTag = it; prefs.autoTag = it })
+            }
 
             // Installed models (downloaded or imported) — select active / remove.
             val installedModels = remember(aiTick) { LlmEngine.installed(context) }

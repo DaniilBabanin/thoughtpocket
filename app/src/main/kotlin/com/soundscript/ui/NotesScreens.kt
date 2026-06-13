@@ -7,6 +7,8 @@ import android.text.format.DateUtils
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,6 +39,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
@@ -189,12 +192,19 @@ private fun NoteRow(note: Note, onClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun NoteDetailScreen(id: Long, onBack: () -> Unit) {
+fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
     val context = LocalContext.current
     val dao = remember { NotesDb.get(context).notes() }
     val note by dao.byId(id).collectAsState(initial = null)
+    val allNotes by dao.all().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     val n = note ?: return
+
+    // Related = other notes sharing at least one tag, most shared tags first.
+    val related = if (n.tags.isEmpty()) emptyList() else allNotes
+        .filter { it.id != n.id && it.tags.any { t -> t in n.tags } }
+        .sortedByDescending { it.tags.count { t -> t in n.tags } }
+        .take(5)
 
     var text by remember(n.id) { mutableStateOf(n.text) }
     var tags by remember(n.id) { mutableStateOf(n.tags) }
@@ -222,7 +232,7 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit) {
         }
     ) { pad ->
         Column(
-            Modifier.padding(pad).padding(16.dp).fillMaxSize(),
+            Modifier.padding(pad).padding(16.dp).fillMaxSize().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             OutlinedTextField(
@@ -283,6 +293,23 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit) {
                             label = { Text(s) },
                         )
                     }
+                }
+            }
+
+            if (related.isNotEmpty()) {
+                HorizontalDivider(Modifier.padding(top = 8.dp))
+                Text("Related notes", style = MaterialTheme.typography.titleSmall)
+                related.forEach { rn ->
+                    val shared = rn.tags.filter { it in n.tags }
+                    ListItem(
+                        modifier = Modifier.clickable { onOpen(rn.id) },
+                        headlineContent = {
+                            Text(rn.text.substringBefore('\n'), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        },
+                        supportingContent = {
+                            Text(shared.joinToString(" ") { "#$it" }, style = MaterialTheme.typography.bodySmall)
+                        },
+                    )
                 }
             }
         }

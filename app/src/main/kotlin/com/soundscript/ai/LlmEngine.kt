@@ -41,19 +41,25 @@ object LlmEngine {
                 (it.name.endsWith(".litertlm") || it.name.endsWith(".task"))
         }?.sortedBy { it.name } ?: emptyList()
 
-    /** The selected model (AppPreferences.llmModelFilename) or the first installed one. */
-    fun modelFile(context: Context): File? {
+    /**
+     * Pick a model: [prefer] (filename substring, e.g. "E2B") wins if installed,
+     * else the selected model (AppPreferences.llmModelFilename), else the first installed.
+     */
+    fun modelFile(context: Context, prefer: String? = null): File? {
         val files = installed(context)
+        if (prefer != null) {
+            files.firstOrNull { it.name.contains(prefer, ignoreCase = true) }?.let { return it }
+        }
         val selected = com.soundscript.AppPreferences(context).llmModelFilename
         return files.firstOrNull { it.name == selected } ?: files.firstOrNull()
     }
 
     fun isModelInstalled(context: Context): Boolean = modelFile(context) != null
 
-    /** Run the model on [prompt]; failure if no model is installed or inference errors. */
-    suspend fun generate(context: Context, prompt: String): Result<String> =
+    /** Run the model on [prompt]; [prefer] picks a specific model (see [modelFile]). */
+    suspend fun generate(context: Context, prompt: String, prefer: String? = null): Result<String> =
         withContext(Dispatchers.Default) {
-            val model = modelFile(context)
+            val model = modelFile(context, prefer)
                 ?: return@withContext Result.failure(IllegalStateException("No model — import one in Settings."))
             mutex.withLock {
                 runCatching {
@@ -103,9 +109,12 @@ object LlmEngine {
 
 /** Note tagging built on [LlmEngine]. More analyses (summaries, titles, Q&A) will follow. */
 object TaggingEngine {
+    // Tagging uses Gemma 4 E2B — fastest with excellent tag quality (see benchmark).
+    private const val TAG_MODEL = "E2B"
+
     suspend fun suggestTags(context: Context, text: String): Result<List<String>> {
         if (text.isBlank()) return Result.success(emptyList())
-        return LlmEngine.generate(context, buildPrompt(text)).map { parseTags(it) }
+        return LlmEngine.generate(context, buildPrompt(text), prefer = TAG_MODEL).map { parseTags(it) }
     }
 
     // Plain instruction — LiteRT-LM's Conversation applies the model's chat template itself.

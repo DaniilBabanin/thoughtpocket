@@ -31,7 +31,11 @@ private fun AppRoot() {
             onOpen = { route = Route.Detail(it) },
             onSettings = { route = Route.Settings },
         )
-        is Route.Detail -> NoteDetailScreen(id = r.id, onBack = { route = Route.List })
+        is Route.Detail -> NoteDetailScreen(
+            id = r.id,
+            onBack = { route = Route.List },
+            onOpen = { route = Route.Detail(it) },
+        )
         is Route.Settings -> SettingsScreen(onBack = { route = Route.List })
     }
 }
