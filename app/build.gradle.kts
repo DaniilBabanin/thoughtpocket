@@ -76,6 +76,11 @@ android {
         }
     }
 
+    androidResources {
+        // .tflite must stay uncompressed so MediaPipe can mmap it from assets.
+        noCompress += "tflite"
+    }
+
     packaging {
         resources {
             excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1")
@@ -118,6 +123,10 @@ dependencies {
     // On-device LLM (Gemma) for AI tagging — LiteRT-LM is the runtime .litertlm models
     // are built for (and what AI Edge Gallery uses), with a working GPU path.
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.13.1")
+
+    // On-device text embeddings (semantic relate + clustering) — MediaPipe TextEmbedder
+    // (Universal Sentence Encoder). tasks-text is the stable embedder path (not tasks-genai).
+    implementation("com.google.mediapipe:tasks-text:0.10.29")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

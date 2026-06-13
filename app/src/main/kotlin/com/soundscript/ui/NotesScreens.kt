@@ -65,6 +65,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.soundscript.ai.Embedder
 import com.soundscript.ai.LlmEngine
 import com.soundscript.ai.TaggingEngine
 import com.soundscript.ai.TitleEngine
@@ -72,6 +73,7 @@ import com.soundscript.data.Note
 import com.soundscript.data.NotesDb
 import com.soundscript.service.RecordState
 import com.soundscript.service.RecordingService
+import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,6 +82,8 @@ fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit, onAnalyze: (
     val context = LocalContext.current
     val dao = remember { NotesDb.get(context).notes() }
     val notes by dao.all().collectAsState(initial = emptyList())
+    // Embed any notes still missing a vector (one-time, cheap) so semantic relate works app-wide.
+    LaunchedEffect(Unit) { Embedder.backfillMissing(context, dao) }
     val status by RecordState.status.collectAsState()
     val partial by RecordState.partial.collectAsState()
     var filter by remember { mutableStateOf<String?>(null) }
@@ -209,11 +213,25 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
     val scope = rememberCoroutineScope()
     val n = note ?: return
 
-    // Related = other notes sharing at least one tag, most shared tags first.
-    val related = if (n.tags.isEmpty()) emptyList() else allNotes
-        .filter { it.id != n.id && it.tags.any { t -> t in n.tags } }
-        .sortedByDescending { it.tags.count { t -> t in n.tags } }
-        .take(5)
+    // Related = nearest notes by embedding cosine; falls back to shared tags until embedded.
+    val related: List<Pair<Note, Float>> = remember(n.id, allNotes) {
+        val mine = n.embedding
+        val semantic = if (mine != null) allNotes
+            .filter { it.id != n.id && it.embedding != null }
+            .map { it to Embedder.cosine(mine, it.embedding!!) }
+            .filter { it.second >= 0.35f }
+            .sortedByDescending { it.second }
+            .take(5)
+        else emptyList()
+        semantic.ifEmpty {
+            if (n.tags.isEmpty()) emptyList()
+            else allNotes
+                .filter { it.id != n.id && it.tags.any { t -> t in n.tags } }
+                .sortedByDescending { it.tags.count { t -> t in n.tags } }
+                .take(5)
+                .map { it to 0f }
+        }
+    }
 
     var text by remember(n.id) { mutableStateOf(n.text) }
     var title by remember(n.id) { mutableStateOf(n.title) }
@@ -224,15 +242,19 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
     var suggestions by remember(n.id) { mutableStateOf<List<String>>(emptyList()) }
     var aiError by remember(n.id) { mutableStateOf<String?>(null) }
 
-    // Auto-title any note that still lacks one (e.g. recorded before a model was installed).
+    // On open: embed the note if needed, and auto-title if still untitled. Single combined save.
     LaunchedEffect(n.id) {
-        if (n.title.isBlank() && text.isNotBlank() && LlmEngine.isModelInstalled(context)) {
+        var changed = n
+        if (changed.embedding == null && text.isNotBlank())
+            Embedder.embed(context, text)?.let { changed = changed.copy(embedding = it) }
+        if (changed.title.isBlank() && text.isNotBlank() && LlmEngine.isModelInstalled(context)) {
             titling = true
             TitleEngine.suggest(context, text).onSuccess {
-                if (it.isNotBlank()) { title = it; dao.update(n.copy(title = it)) }
+                if (it.isNotBlank()) { title = it; changed = changed.copy(title = it) }
             }
             titling = false
         }
+        if (changed !== n) dao.update(changed)
     }
 
     Scaffold(
@@ -341,8 +363,9 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
             if (related.isNotEmpty()) {
                 HorizontalDivider(Modifier.padding(top = 8.dp))
                 Text("Related notes", style = MaterialTheme.typography.titleSmall)
-                related.forEach { rn ->
-                    val shared = rn.tags.filter { it in n.tags }
+                related.forEach { (rn, score) ->
+                    val sub = if (score > 0f) "${(score * 100).roundToInt()}% match"
+                    else rn.tags.filter { it in n.tags }.joinToString(" ") { "#$it" }
                     ListItem(
                         modifier = Modifier.clickable { onOpen(rn.id) },
                         headlineContent = {
@@ -352,7 +375,7 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
                             )
                         },
                         supportingContent = {
-                            Text(shared.joinToString(" ") { "#$it" }, style = MaterialTheme.typography.bodySmall)
+                            Text(sub, style = MaterialTheme.typography.bodySmall)
                         },
                     )
                 }

@@ -15,6 +15,8 @@ import androidx.room.TypeConverters
 import androidx.room.Update
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "notes")
@@ -24,15 +26,32 @@ data class Note(
     val text: String,
     val title: String = "",
     val tags: List<String> = emptyList(),
+    // Semantic embedding (Universal Sentence Encoder); null until computed.
+    val embedding: FloatArray? = null,
 )
 
-/** Tags stored as a single delimited column — simple and enough for LIKE filtering. */
+/** Tags stored as a single delimited column; embedding as a little-endian float BLOB. */
 class Converters {
     @TypeConverter
     fun fromTags(tags: List<String>): String = tags.joinToString(SEP)
 
     @TypeConverter
     fun toTags(raw: String): List<String> = if (raw.isEmpty()) emptyList() else raw.split(SEP)
+
+    @TypeConverter
+    fun fromVec(v: FloatArray?): ByteArray? {
+        if (v == null) return null
+        val bb = ByteBuffer.allocate(v.size * 4).order(ByteOrder.LITTLE_ENDIAN)
+        v.forEach { bb.putFloat(it) }
+        return bb.array()
+    }
+
+    @TypeConverter
+    fun toVec(b: ByteArray?): FloatArray? {
+        if (b == null) return null
+        val bb = ByteBuffer.wrap(b).order(ByteOrder.LITTLE_ENDIAN)
+        return FloatArray(b.size / 4) { bb.float }
+    }
 
     companion object {
         // Unit separator — never appears in user-typed tags.
@@ -58,7 +77,7 @@ interface NoteDao {
     suspend fun delete(note: Note)
 }
 
-@Database(entities = [Note::class], version = 2, exportSchema = false)
+@Database(entities = [Note::class], version = 3, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class NotesDb : RoomDatabase() {
     abstract fun notes(): NoteDao
@@ -72,10 +91,16 @@ abstract class NotesDb : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE notes ADD COLUMN embedding BLOB")
+            }
+        }
+
         fun get(context: Context): NotesDb = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(
                 context.applicationContext, NotesDb::class.java, "notes.db"
-            ).addMigrations(MIGRATION_1_2).build().also { instance = it }
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { instance = it }
         }
     }
 }

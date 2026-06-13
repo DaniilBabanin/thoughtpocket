@@ -12,6 +12,7 @@ import androidx.core.app.ServiceCompat
 import com.soundscript.AppPreferences
 import com.soundscript.ModelManager
 import com.soundscript.WhisperEngine
+import com.soundscript.ai.Embedder
 import com.soundscript.ai.LlmEngine
 import com.soundscript.ai.TaggingEngine
 import com.soundscript.ai.TitleEngine
@@ -145,16 +146,19 @@ class RecordingService : Service() {
                 val id = dao.insert(note)
                 Notifications.done(this, "Note saved")
 
-                // Title + auto-tag with Gemma (E2B) in the background, then update the note.
+                // Embed (semantic relate) + title + auto-tag in the background, then update.
+                val emb = Embedder.embed(this, body)
+                var title = ""
+                var tags = emptyList<String>()
                 if (text.isNotBlank() && LlmEngine.isModelInstalled(this)) {
                     getSystemService(NotificationManager::class.java)
                         .notify(Notifications.ONGOING_ID, Notifications.ongoing(this, "Summarising…"))
-                    val title = TitleEngine.suggest(this, body).getOrNull().orEmpty()
-                    val tags = if (prefs.autoTag)
-                        TaggingEngine.suggestTags(this, body).getOrNull().orEmpty() else emptyList()
-                    if (title.isNotEmpty() || tags.isNotEmpty())
-                        dao.update(note.copy(id = id, title = title, tags = tags))
+                    title = TitleEngine.suggest(this, body).getOrNull().orEmpty()
+                    if (prefs.autoTag)
+                        tags = TaggingEngine.suggestTags(this, body).getOrNull().orEmpty()
                 }
+                if (emb != null || title.isNotEmpty() || tags.isNotEmpty())
+                    dao.update(note.copy(id = id, title = title, tags = tags, embedding = emb))
             }
         }
     }
