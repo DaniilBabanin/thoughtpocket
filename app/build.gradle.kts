@@ -10,6 +10,14 @@ plugins {
 
 val useVulkan = project.findProperty("whispershare.vulkan")?.toString()?.toBoolean() ?: false
 
+// The AI Edge RAG SDK (Gecko spike) needs Guava >= 28 (Futures.submit), but a transitive
+// dep pins guava strictly to 27.0.1. Force a modern Guava so the SDK resolves at runtime.
+configurations.all {
+    resolutionStrategy {
+        force("com.google.guava:guava:33.3.1-android")
+    }
+}
+
 android {
     namespace = "com.soundscript"
     compileSdk = 35
@@ -131,6 +139,8 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
+    // Spike (test-only): Gecko embedder via AI Edge RAG SDK — kept out of the app until validated.
+    androidTestImplementation("com.google.ai.edge.localagents:localagents-rag:0.3.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
