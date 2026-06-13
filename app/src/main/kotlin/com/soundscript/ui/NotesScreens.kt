@@ -53,6 +53,7 @@ import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,6 +65,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.soundscript.ai.LlmEngine
 import com.soundscript.ai.TaggingEngine
 import com.soundscript.ai.TitleEngine
 import com.soundscript.data.Note
@@ -221,6 +223,17 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
     var suggesting by remember(n.id) { mutableStateOf(false) }
     var suggestions by remember(n.id) { mutableStateOf<List<String>>(emptyList()) }
     var aiError by remember(n.id) { mutableStateOf<String?>(null) }
+
+    // Auto-title any note that still lacks one (e.g. recorded before a model was installed).
+    LaunchedEffect(n.id) {
+        if (n.title.isBlank() && text.isNotBlank() && LlmEngine.isModelInstalled(context)) {
+            titling = true
+            TitleEngine.suggest(context, text).onSuccess {
+                if (it.isNotBlank()) { title = it; dao.update(n.copy(title = it)) }
+            }
+            titling = false
+        }
+    }
 
     Scaffold(
         topBar = {
