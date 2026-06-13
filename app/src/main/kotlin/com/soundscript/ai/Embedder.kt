@@ -78,13 +78,17 @@ data class Cluster(val label: String, val notes: List<Note>)
 
 /** Group notes into topic clusters by embedding similarity (single-linkage union-find). */
 object Clusters {
-    // USE cosines run high; this separates topics without splitting near-duplicates.
-    private const val THRESHOLD = 0.55f
+    // Centered cosine (raw USE cosines are too compressed and merge everything into one blob).
+    // 0.40 gave ~0.90 cluster purity on the 300-note scale test; see ScaleTest.
+    private const val THRESHOLD = 0.40f
 
     fun build(notes: List<Note>): List<Cluster> {
         val v = notes.filter { it.embedding != null }
         val n = v.size
         if (n < 2) return emptyList()
+
+        val mean = Embedder.mean(v.mapNotNull { it.embedding }) ?: return emptyList()
+        val cen = v.map { note -> FloatArray(mean.size) { note.embedding!![it] - mean[it] } }
 
         val parent = IntArray(n) { it }
         fun find(x: Int): Int {
@@ -95,7 +99,7 @@ object Clusters {
             return r
         }
         for (i in 0 until n) for (j in i + 1 until n)
-            if (Embedder.cosine(v[i].embedding!!, v[j].embedding!!) >= THRESHOLD)
+            if (Embedder.cosine(cen[i], cen[j]) >= THRESHOLD)
                 parent[find(i)] = find(j)
 
         return (0 until n).groupBy { find(it) }.values

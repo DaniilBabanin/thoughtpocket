@@ -1,0 +1,2664 @@
+[
+{
+"daysAgo": 180,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Moved the emergency fund into a high-yield account."
+},
+{
+"daysAgo": 179,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Decided to move the Atlas API to gRPC next quarter. Need to spike load testing."
+},
+{
+"daysAgo": 178,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer."
+},
+{
+"daysAgo": 178,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Road trip route: coast highway, stop at the redwoods overnight."
+},
+{
+"daysAgo": 178,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Monthly budget: rent, groceries, transit, savings. Stay under target."
+},
+{
+"daysAgo": 177,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Moved the emergency fund into a high-yield account."
+},
+{
+"daysAgo": 176,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Clean the gutters before the rainy season."
+},
+{
+"daysAgo": 175,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Code review backlog is growing. Propose a rotation in the team sync."
+},
+{
+"daysAgo": 174,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Code review backlog is growing. Propose a rotation in the team sync."
+},
+{
+"daysAgo": 171,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Electricity bill spiked this month, check the heating schedule."
+},
+{
+"daysAgo": 170,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Decided to move the Atlas API to gRPC next quarter. Need to spike load testing."
+},
+{
+"daysAgo": 169,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Flu shot done at the pharmacy."
+},
+{
+"daysAgo": 169,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "The dryer is squeaking; probably the belt. Order the part."
+},
+{
+"daysAgo": 167,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Started running again, 5k three times this week. Knee held up."
+},
+{
+"daysAgo": 167,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Renew passport before the Japan trip, it expires soon."
+},
+{
+"daysAgo": 166,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got onions, got potatoes, need salmon, got cheese."
+},
+{
+"daysAgo": 165,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Hung the shelves in the hallway, finally."
+},
+{
+"daysAgo": 164,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Atlas: customer asked for SSO. Scope SAML for next month."
+},
+{
+"daysAgo": 163,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Pack list for the hiking trip: boots, rain jacket, water filter."
+},
+{
+"daysAgo": 163,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Family dinner on Sunday, call everyone to confirm."
+},
+{
+"daysAgo": 162,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got oranges, need rice, got apples, got tea, got spinach."
+},
+{
+"daysAgo": 162,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Physio for the shoulder, do the band exercises daily."
+},
+{
+"daysAgo": 161,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "Should learn more about vector databases for the notes idea."
+},
+{
+"daysAgo": 160,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Moved the emergency fund into a high-yield account."
+},
+{
+"daysAgo": 160,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "Idea: a CLI that summarizes my git history into a changelog."
+},
+{
+"daysAgo": 159,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Started running again, 5k three times this week. Knee held up."
+},
+{
+"daysAgo": 158,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "Idea: a CLI that summarizes my git history into a changelog."
+},
+{
+"daysAgo": 157,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need rice, need eggs, need bread, need oranges, need yogurt, need tea, need sugar."
+},
+{
+"daysAgo": 156,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Found cheap flights to Reykjavik for the northern lights week."
+},
+{
+"daysAgo": 156,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Hung the shelves in the hallway, finally."
+},
+{
+"daysAgo": 155,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Atlas: customer asked for SSO. Scope SAML for next month."
+},
+{
+"daysAgo": 155,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "Idea: a tiny e-ink dashboard for the week's tasks."
+},
+{
+"daysAgo": 154,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Moved the emergency fund into a high-yield account."
+},
+{
+"daysAgo": 152,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Pack list for the hiking trip: boots, rain jacket, water filter."
+},
+{
+"daysAgo": 152,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Hung the shelves in the hallway, finally."
+},
+{
+"daysAgo": 152,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Pick up a birthday present for my niece."
+},
+{
+"daysAgo": 151,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need butter, got tea, got salmon, need cheese, got rice, got pasta."
+},
+{
+"daysAgo": 151,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Assembled the IKEA shelves, missing two dowels, ordered replacements."
+},
+{
+"daysAgo": 150,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Help Dad set up his new phone."
+},
+{
+"daysAgo": 148,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Physio for the shoulder, do the band exercises daily."
+},
+{
+"daysAgo": 147,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Code review backlog is growing. Propose a rotation in the team sync."
+},
+{
+"daysAgo": 147,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Portugal itinerary: Lisbon three days, then train to Porto."
+},
+{
+"daysAgo": 147,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Electricity bill spiked this month, check the heating schedule."
+},
+{
+"daysAgo": 146,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Pick up a birthday present for my niece."
+},
+{
+"daysAgo": 145,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got onions, got pasta, got apples, got spinach, got salmon."
+},
+{
+"daysAgo": 145,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Started running again, 5k three times this week. Knee held up."
+},
+{
+"daysAgo": 145,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "Idea: a tiny e-ink dashboard for the week's tasks."
+},
+{
+"daysAgo": 143,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need bread, got salmon, need bananas, got olive oil."
+},
+{
+"daysAgo": 142,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Portugal itinerary: Lisbon three days, then train to Porto."
+},
+{
+"daysAgo": 142,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Painted the spare room. Two coats of the off-white."
+},
+{
+"daysAgo": 142,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "Musing: I focus better in the morning; protect that block."
+},
+{
+"daysAgo": 141,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Help Dad set up his new phone."
+},
+{
+"daysAgo": 141,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "App idea: a privacy-first voice notes app that transcribes on-device."
+},
+{
+"daysAgo": 140,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer."
+},
+{
+"daysAgo": 140,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Pick up a birthday present for my niece."
+},
+{
+"daysAgo": 138,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Monthly budget: rent, groceries, transit, savings. Stay under target."
+},
+{
+"daysAgo": 138,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Electricity bill spiked this month, check the heating schedule."
+},
+{
+"daysAgo": 137,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Rebalanced the index fund allocation, more bonds."
+},
+{
+"daysAgo": 137,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Clean the gutters before the rainy season."
+},
+{
+"daysAgo": 137,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Kids' parent-teacher conference next Thursday."
+},
+{
+"daysAgo": 136,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got coffee, need cheese, need flour, need oranges, need pasta, got spinach."
+},
+{
+"daysAgo": 136,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Kids' parent-teacher conference next Thursday."
+},
+{
+"daysAgo": 135,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Road trip route: coast highway, stop at the redwoods overnight."
+},
+{
+"daysAgo": 133,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Atlas: customer asked for SSO. Scope SAML for next month."
+},
+{
+"daysAgo": 133,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer."
+},
+{
+"daysAgo": 133,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "Musing: I focus better in the morning; protect that block."
+},
+{
+"daysAgo": 131,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got carrots, got bread, got yogurt, got flour."
+},
+{
+"daysAgo": 131,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Slept badly all week. Cut coffee after 2pm and it helped."
+},
+{
+"daysAgo": 129,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer."
+},
+{
+"daysAgo": 126,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer."
+},
+{
+"daysAgo": 125,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need bread, need carrots, need flour, need chicken, need coffee."
+},
+{
+"daysAgo": 125,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Clean the gutters before the rainy season."
+},
+{
+"daysAgo": 124,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Moved the emergency fund into a high-yield account."
+},
+{
+"daysAgo": 124,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Monthly budget: rent, groceries, transit, savings. Stay under target."
+},
+{
+"daysAgo": 124,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Painted the spare room. Two coats of the off-white."
+},
+{
+"daysAgo": 123,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Pick up a birthday present for my niece."
+},
+{
+"daysAgo": 122,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Monthly budget: rent, groceries, transit, savings. Stay under target."
+},
+{
+"daysAgo": 121,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Flu shot done at the pharmacy."
+},
+{
+"daysAgo": 121,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer."
+},
+{
+"daysAgo": 120,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got eggs, need tea, need potatoes, need cereal, need olive oil, need carrots."
+},
+{
+"daysAgo": 120,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Code review backlog is growing. Propose a rotation in the team sync."
+},
+{
+"daysAgo": 120,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Ownership and moves in Rust: values have one owner, borrows are references."
+},
+{
+"daysAgo": 120,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>."
+},
+{
+"daysAgo": 120,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Family dinner on Sunday, call everyone to confirm."
+},
+{
+"daysAgo": 119,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Need to refill the allergy prescription before it runs out."
+},
+{
+"daysAgo": 119,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Clean the gutters before the rainy season."
+},
+{
+"daysAgo": 118,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Trip to Lisbon: book flights, find an apartment in Alfama."
+},
+{
+"daysAgo": 118,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Renew passport before the Japan trip, it expires soon."
+},
+{
+"daysAgo": 118,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Pattern matching with match and enums is so clean in Rust."
+},
+{
+"daysAgo": 118,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>."
+},
+{
+"daysAgo": 118,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "The dryer is squeaking; probably the belt. Order the part."
+},
+{
+"daysAgo": 117,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Cargo and crates.io make the Rust toolchain pleasant."
+},
+{
+"daysAgo": 116,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Cargo and crates.io make the Rust toolchain pleasant."
+},
+{
+"daysAgo": 116,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>."
+},
+{
+"daysAgo": 115,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got rice, got spinach, got pasta, need yogurt, need salmon, need cereal, need cheese."
+},
+{
+"daysAgo": 115,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Painted the spare room. Two coats of the off-white."
+},
+{
+"daysAgo": 115,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "Musing: I focus better in the morning; protect that block."
+},
+{
+"daysAgo": 114,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Rust traits are like interfaces; impl blocks add methods."
+},
+{
+"daysAgo": 113,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Slept badly all week. Cut coffee after 2pm and it helped."
+},
+{
+"daysAgo": 113,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Road trip route: coast highway, stop at the redwoods overnight."
+},
+{
+"daysAgo": 113,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Cargo and crates.io make the Rust toolchain pleasant."
+},
+{
+"daysAgo": 112,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Cargo and crates.io make the Rust toolchain pleasant."
+},
+{
+"daysAgo": 112,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "What if notes could auto-link by topic? Embeddings could do it."
+},
+{
+"daysAgo": 111,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need yogurt, need cereal, need bananas, got coffee, need eggs."
+},
+{
+"daysAgo": 111,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Postmortem for the Atlas outage: root cause was a missing index on events."
+},
+{
+"daysAgo": 111,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Standup: finished the auth refactor, blocked on the staging deploy."
+},
+{
+"daysAgo": 111,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Rust: the borrow checker is strict but the errors are teaching me ownership."
+},
+{
+"daysAgo": 110,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Flu shot done at the pharmacy."
+},
+{
+"daysAgo": 109,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Cargo and crates.io make the Rust toolchain pleasant."
+},
+{
+"daysAgo": 109,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "What if notes could auto-link by topic? Embeddings could do it."
+},
+{
+"daysAgo": 108,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Portugal itinerary: Lisbon three days, then train to Porto."
+},
+{
+"daysAgo": 107,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Slept badly all week. Cut coffee after 2pm and it helped."
+},
+{
+"daysAgo": 107,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Lifetimes finally clicked \u2014 they annotate how long references stay valid."
+},
+{
+"daysAgo": 106,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got cheese, got yogurt, got apples, got rice, got spinach, got chicken, got bread."
+},
+{
+"daysAgo": 106,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Renew passport before the Japan trip, it expires soon."
+},
+{
+"daysAgo": 106,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Monthly budget: rent, groceries, transit, savings. Stay under target."
+},
+{
+"daysAgo": 106,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>."
+},
+{
+"daysAgo": 105,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Standup: finished the auth refactor, blocked on the staging deploy."
+},
+{
+"daysAgo": 105,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Code review backlog is growing. Propose a rotation in the team sync."
+},
+{
+"daysAgo": 104,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Refactor the Atlas ingestion pipeline; the queue keeps backing up."
+},
+{
+"daysAgo": 104,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Started running again, 5k three times this week. Knee held up."
+},
+{
+"daysAgo": 104,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Quarterly taxes due soon, set aside the estimate."
+},
+{
+"daysAgo": 104,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Rust traits are like interfaces; impl blocks add methods."
+},
+{
+"daysAgo": 104,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Clean the gutters before the rainy season."
+},
+{
+"daysAgo": 103,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Slept badly all week. Cut coffee after 2pm and it helped."
+},
+{
+"daysAgo": 103,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Physio for the shoulder, do the band exercises daily."
+},
+{
+"daysAgo": 103,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Ownership and moves in Rust: values have one owner, borrows are references."
+},
+{
+"daysAgo": 103,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Rust: the borrow checker is strict but the errors are teaching me ownership."
+},
+{
+"daysAgo": 103,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Hung the shelves in the hallway, finally."
+},
+{
+"daysAgo": 102,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Postmortem for the Atlas outage: root cause was a missing index on events."
+},
+{
+"daysAgo": 102,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Atlas: customer asked for SSO. Scope SAML for next month."
+},
+{
+"daysAgo": 102,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "Musing: I focus better in the morning; protect that block."
+},
+{
+"daysAgo": 101,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Rust: the borrow checker is strict but the errors are teaching me ownership."
+},
+{
+"daysAgo": 100,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need coffee, got tea, need tomatoes, need butter."
+},
+{
+"daysAgo": 99,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Rebalanced the index fund allocation, more bonds."
+},
+{
+"daysAgo": 99,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Electricity bill spiked this month, check the heating schedule."
+},
+{
+"daysAgo": 99,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Quarterly taxes due soon, set aside the estimate."
+},
+{
+"daysAgo": 99,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>."
+},
+{
+"daysAgo": 97,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Standup: finished the auth refactor, blocked on the staging deploy."
+},
+{
+"daysAgo": 97,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Slept badly all week. Cut coffee after 2pm and it helped."
+},
+{
+"daysAgo": 97,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Assembled the IKEA shelves, missing two dowels, ordered replacements."
+},
+{
+"daysAgo": 96,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got butter, got flour, need yogurt, got onions."
+},
+{
+"daysAgo": 96,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>."
+},
+{
+"daysAgo": 94,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Family dinner on Sunday, call everyone to confirm."
+},
+{
+"daysAgo": 93,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Standup: finished the auth refactor, blocked on the staging deploy."
+},
+{
+"daysAgo": 93,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Sprint planning: pull the analytics dashboard into this cycle."
+},
+{
+"daysAgo": 93,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Rust traits are like interfaces; impl blocks add methods."
+},
+{
+"daysAgo": 92,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Rust: the borrow checker is strict but the errors are teaching me ownership."
+},
+{
+"daysAgo": 92,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Kids' parent-teacher conference next Thursday."
+},
+{
+"daysAgo": 91,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need flour, got cereal, need bananas, got salmon, got cheese, got potatoes."
+},
+{
+"daysAgo": 91,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Code review backlog is growing. Propose a rotation in the team sync."
+},
+{
+"daysAgo": 91,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Cargo and crates.io make the Rust toolchain pleasant."
+},
+{
+"daysAgo": 90,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Atlas: customer asked for SSO. Scope SAML for next month."
+},
+{
+"daysAgo": 90,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Quarterly taxes due soon, set aside the estimate."
+},
+{
+"daysAgo": 90,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Lifetimes finally clicked \u2014 they annotate how long references stay valid."
+},
+{
+"daysAgo": 90,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Assembled the IKEA shelves, missing two dowels, ordered replacements."
+},
+{
+"daysAgo": 90,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Family dinner on Sunday, call everyone to confirm."
+},
+{
+"daysAgo": 89,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Atlas roadmap: ship search v2, then the billing migration."
+},
+{
+"daysAgo": 89,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Rust traits are like interfaces; impl blocks add methods."
+},
+{
+"daysAgo": 88,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Family dinner on Sunday, call everyone to confirm."
+},
+{
+"daysAgo": 87,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Pattern matching with match and enums is so clean in Rust."
+},
+{
+"daysAgo": 87,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>."
+},
+{
+"daysAgo": 87,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>."
+},
+{
+"daysAgo": 87,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Assembled the IKEA shelves, missing two dowels, ordered replacements."
+},
+{
+"daysAgo": 86,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Pattern matching with match and enums is so clean in Rust."
+},
+{
+"daysAgo": 86,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Cargo and crates.io make the Rust toolchain pleasant."
+},
+{
+"daysAgo": 85,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need chicken, need bread, need eggs, need tomatoes."
+},
+{
+"daysAgo": 85,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Gym: leg day. Squats felt strong, added 5kg."
+},
+{
+"daysAgo": 85,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Quarterly taxes due soon, set aside the estimate."
+},
+{
+"daysAgo": 84,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Standup: finished the auth refactor, blocked on the staging deploy."
+},
+{
+"daysAgo": 83,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got butter, got chicken, need sugar, need bread, got tomatoes, need milk, need salmon."
+},
+{
+"daysAgo": 83,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Painted the spare room. Two coats of the off-white."
+},
+{
+"daysAgo": 82,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Lifetimes finally clicked \u2014 they annotate how long references stay valid."
+},
+{
+"daysAgo": 82,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Painted the spare room. Two coats of the off-white."
+},
+{
+"daysAgo": 81,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Lifetimes finally clicked \u2014 they annotate how long references stay valid."
+},
+{
+"daysAgo": 80,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Sprint planning: pull the analytics dashboard into this cycle."
+},
+{
+"daysAgo": 80,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Call grandma this weekend."
+},
+{
+"daysAgo": 79,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Slept badly all week. Cut coffee after 2pm and it helped."
+},
+{
+"daysAgo": 79,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Doctor said the bloodwork looks fine, recheck in six months."
+},
+{
+"daysAgo": 78,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need rice, got olive oil, got carrots, got yogurt, got bananas."
+},
+{
+"daysAgo": 77,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Call grandma this weekend."
+},
+{
+"daysAgo": 77,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "App idea: a privacy-first voice notes app that transcribes on-device."
+},
+{
+"daysAgo": 76,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Physio for the shoulder, do the band exercises daily."
+},
+{
+"daysAgo": 76,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "Idea: a tiny e-ink dashboard for the week's tasks."
+},
+{
+"daysAgo": 75,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Physio for the shoulder, do the band exercises daily."
+},
+{
+"daysAgo": 75,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Painted the spare room. Two coats of the off-white."
+},
+{
+"daysAgo": 75,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Kids' parent-teacher conference next Thursday."
+},
+{
+"daysAgo": 74,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Kids' parent-teacher conference next Thursday."
+},
+{
+"daysAgo": 73,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Doctor said the bloodwork looks fine, recheck in six months."
+},
+{
+"daysAgo": 72,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got eggs, got chicken, need potatoes, need bread, got tea."
+},
+{
+"daysAgo": 71,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Decided to move the Atlas API to gRPC next quarter. Need to spike load testing."
+},
+{
+"daysAgo": 71,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Postmortem for the Atlas outage: root cause was a missing index on events."
+},
+{
+"daysAgo": 70,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Electricity bill spiked this month, check the heating schedule."
+},
+{
+"daysAgo": 70,
+"topic": "home",
+"tags": [
+"home",
+"diy"
+],
+"text": "Set up the new mesh router. The wifi password is bluefox42. Coverage is great now."
+},
+{
+"daysAgo": 70,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "The dryer is squeaking; probably the belt. Order the part."
+},
+{
+"daysAgo": 70,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Call grandma this weekend."
+},
+{
+"daysAgo": 69,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Electricity bill spiked this month, check the heating schedule."
+},
+{
+"daysAgo": 69,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "The dryer is squeaking; probably the belt. Order the part."
+},
+{
+"daysAgo": 69,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Pick up a birthday present for my niece."
+},
+{
+"daysAgo": 68,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Atlas bug: the export job times out on large tenants. Add pagination."
+},
+{
+"daysAgo": 67,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Standup: finished the auth refactor, blocked on the staging deploy."
+},
+{
+"daysAgo": 67,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "Should learn more about vector databases for the notes idea."
+},
+{
+"daysAgo": 66,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got apples, need salmon, got olive oil, need milk, need carrots, got tomatoes."
+},
+{
+"daysAgo": 66,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Found cheap flights to Reykjavik for the northern lights week."
+},
+{
+"daysAgo": 65,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Standup: finished the auth refactor, blocked on the staging deploy."
+},
+{
+"daysAgo": 64,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Kids' parent-teacher conference next Thursday."
+},
+{
+"daysAgo": 64,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "Musing: I focus better in the morning; protect that block."
+},
+{
+"daysAgo": 63,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got tea, got rice, got olive oil, got apples."
+},
+{
+"daysAgo": 63,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Found cheap flights to Reykjavik for the northern lights week."
+},
+{
+"daysAgo": 63,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "App idea: a privacy-first voice notes app that transcribes on-device."
+},
+{
+"daysAgo": 62,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer."
+},
+{
+"daysAgo": 62,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Portugal itinerary: Lisbon three days, then train to Porto."
+},
+{
+"daysAgo": 62,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Assembled the IKEA shelves, missing two dowels, ordered replacements."
+},
+{
+"daysAgo": 61,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Hung the shelves in the hallway, finally."
+},
+{
+"daysAgo": 61,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "Idea: a CLI that summarizes my git history into a changelog."
+},
+{
+"daysAgo": 60,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Slept badly all week. Cut coffee after 2pm and it helped."
+},
+{
+"daysAgo": 60,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Quarterly taxes due soon, set aside the estimate."
+},
+{
+"daysAgo": 60,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Python packaging is still a mess; settled on uv + pyproject.toml."
+},
+{
+"daysAgo": 60,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "dataclasses vs namedtuple vs pydantic \u2014 pydantic for validation."
+},
+{
+"daysAgo": 59,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Electricity bill spiked this month, check the heating schedule."
+},
+{
+"daysAgo": 59,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "asyncio notes: await yields control to the event loop; gather runs coroutines concurrently."
+},
+{
+"daysAgo": 58,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got salmon, got milk, got flour, got butter, got tea, got rice."
+},
+{
+"daysAgo": 58,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Code review backlog is growing. Propose a rotation in the team sync."
+},
+{
+"daysAgo": 58,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Type hints + mypy caught a real bug today. Worth the friction."
+},
+{
+"daysAgo": 57,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Type hints + mypy caught a real bug today. Worth the friction."
+},
+{
+"daysAgo": 56,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Type hints + mypy caught a real bug today. Worth the friction."
+},
+{
+"daysAgo": 56,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Python: decorators are just functions returning functions. Wrote a timing decorator."
+},
+{
+"daysAgo": 54,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Physio for the shoulder, do the band exercises daily."
+},
+{
+"daysAgo": 53,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "asyncio notes: await yields control to the event loop; gather runs coroutines concurrently."
+},
+{
+"daysAgo": 53,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Context managers with __enter__/__exit__, and contextlib.contextmanager."
+},
+{
+"daysAgo": 52,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Electricity bill spiked this month, check the heating schedule."
+},
+{
+"daysAgo": 51,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Pairing with Sam on the Atlas cache layer. Redis vs in-memory still open."
+},
+{
+"daysAgo": 51,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Python: decorators are just functions returning functions. Wrote a timing decorator."
+},
+{
+"daysAgo": 50,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got cheese, got oranges, got apples, need flour."
+},
+{
+"daysAgo": 50,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Doctor said the bloodwork looks fine, recheck in six months."
+},
+{
+"daysAgo": 49,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Context managers with __enter__/__exit__, and contextlib.contextmanager."
+},
+{
+"daysAgo": 49,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Kids' parent-teacher conference next Thursday."
+},
+{
+"daysAgo": 48,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Context managers with __enter__/__exit__, and contextlib.contextmanager."
+},
+{
+"daysAgo": 48,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Fix the leaky kitchen sink \u2014 replace the washer, get the right size."
+},
+{
+"daysAgo": 47,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need potatoes, need coffee, need onions, need chicken, need cheese, need olive oil, got cereal."
+},
+{
+"daysAgo": 47,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "App idea: a privacy-first voice notes app that transcribes on-device."
+},
+{
+"daysAgo": 45,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Postmortem for the Atlas outage: root cause was a missing index on events."
+},
+{
+"daysAgo": 45,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Refactor the Atlas ingestion pipeline; the queue keeps backing up."
+},
+{
+"daysAgo": 45,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Found cheap flights to Reykjavik for the northern lights week."
+},
+{
+"daysAgo": 45,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Python: decorators are just functions returning functions. Wrote a timing decorator."
+},
+{
+"daysAgo": 44,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Physio for the shoulder, do the band exercises daily."
+},
+{
+"daysAgo": 44,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Learned about Python generators and lazy evaluation with yield."
+},
+{
+"daysAgo": 43,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Slept badly all week. Cut coffee after 2pm and it helped."
+},
+{
+"daysAgo": 43,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "asyncio notes: await yields control to the event loop; gather runs coroutines concurrently."
+},
+{
+"daysAgo": 43,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Learned about Python generators and lazy evaluation with yield."
+},
+{
+"daysAgo": 42,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got rice, got bread, got bananas, got potatoes, need tomatoes, got flour, got cereal."
+},
+{
+"daysAgo": 41,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Atlas bug: the export job times out on large tenants. Add pagination."
+},
+{
+"daysAgo": 40,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Renew passport before the Japan trip, it expires soon."
+},
+{
+"daysAgo": 40,
+"topic": "finance",
+"tags": [
+"finance",
+"subscriptions"
+],
+"text": "Audited subscriptions: Netflix is 15.99 a month, Spotify 9.99. Cancel the unused gym app."
+},
+{
+"daysAgo": 40,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "asyncio notes: await yields control to the event loop; gather runs coroutines concurrently."
+},
+{
+"daysAgo": 40,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Python packaging is still a mess; settled on uv + pyproject.toml."
+},
+{
+"daysAgo": 39,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Code review backlog is growing. Propose a rotation in the team sync."
+},
+{
+"daysAgo": 38,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got oranges, need sugar, need salmon, need chicken, need tomatoes, need eggs."
+},
+{
+"daysAgo": 38,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Type hints + mypy caught a real bug today. Worth the friction."
+},
+{
+"daysAgo": 38,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Python packaging is still a mess; settled on uv + pyproject.toml."
+},
+{
+"daysAgo": 38,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "Idea: a tiny e-ink dashboard for the week's tasks."
+},
+{
+"daysAgo": 37,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "dataclasses vs namedtuple vs pydantic \u2014 pydantic for validation."
+},
+{
+"daysAgo": 36,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Python packaging is still a mess; settled on uv + pyproject.toml."
+},
+{
+"daysAgo": 35,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Moved the emergency fund into a high-yield account."
+},
+{
+"daysAgo": 35,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Python: decorators are just functions returning functions. Wrote a timing decorator."
+},
+{
+"daysAgo": 34,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Found cheap flights to Reykjavik for the northern lights week."
+},
+{
+"daysAgo": 34,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "asyncio notes: await yields control to the event loop; gather runs coroutines concurrently."
+},
+{
+"daysAgo": 34,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Type hints + mypy caught a real bug today. Worth the friction."
+},
+{
+"daysAgo": 32,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Doctor said the bloodwork looks fine, recheck in six months."
+},
+{
+"daysAgo": 32,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "dataclasses vs namedtuple vs pydantic \u2014 pydantic for validation."
+},
+{
+"daysAgo": 32,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Python packaging is still a mess; settled on uv + pyproject.toml."
+},
+{
+"daysAgo": 31,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need onions, got bananas, need flour, got rice, got bread, got apples."
+},
+{
+"daysAgo": 31,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Slept badly all week. Cut coffee after 2pm and it helped."
+},
+{
+"daysAgo": 31,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer."
+},
+{
+"daysAgo": 31,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Learned about Python generators and lazy evaluation with yield."
+},
+{
+"daysAgo": 31,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Python packaging is still a mess; settled on uv + pyproject.toml."
+},
+{
+"daysAgo": 30,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Type hints + mypy caught a real bug today. Worth the friction."
+},
+{
+"daysAgo": 30,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "asyncio notes: await yields control to the event loop; gather runs coroutines concurrently."
+},
+{
+"daysAgo": 30,
+"topic": "python",
+"tags": [
+"learning",
+"python"
+],
+"text": "Context managers with __enter__/__exit__, and contextlib.contextmanager."
+},
+{
+"daysAgo": 30,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Kids' parent-teacher conference next Thursday."
+},
+{
+"daysAgo": 29,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Atlas roadmap: ship search v2, then the billing migration."
+},
+{
+"daysAgo": 29,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Sprint planning: pull the analytics dashboard into this cycle."
+},
+{
+"daysAgo": 29,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "App idea: a privacy-first voice notes app that transcribes on-device."
+},
+{
+"daysAgo": 27,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Refactor the Atlas ingestion pipeline; the queue keeps backing up."
+},
+{
+"daysAgo": 27,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Found cheap flights to Reykjavik for the northern lights week."
+},
+{
+"daysAgo": 26,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Call grandma this weekend."
+},
+{
+"daysAgo": 25,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need pasta, need bread, got chicken, got butter, need coffee."
+},
+{
+"daysAgo": 25,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Kids' parent-teacher conference next Thursday."
+},
+{
+"daysAgo": 25,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "Idea: a CLI that summarizes my git history into a changelog."
+},
+{
+"daysAgo": 23,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got coffee, got bread, got salmon, got pasta."
+},
+{
+"daysAgo": 22,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Assembled the IKEA shelves, missing two dowels, ordered replacements."
+},
+{
+"daysAgo": 21,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Started running again, 5k three times this week. Knee held up."
+},
+{
+"daysAgo": 20,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Mom's birthday is April 12. Plan a dinner and get her the gardening book."
+},
+{
+"daysAgo": 20,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "Idea: a CLI that summarizes my git history into a changelog."
+},
+{
+"daysAgo": 19,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Quarterly taxes due soon, set aside the estimate."
+},
+{
+"daysAgo": 18,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer."
+},
+{
+"daysAgo": 18,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "Idea: a tiny e-ink dashboard for the week's tasks."
+},
+{
+"daysAgo": 17,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got bread, need coffee, got butter, need onions."
+},
+{
+"daysAgo": 17,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Postmortem for the Atlas outage: root cause was a missing index on events."
+},
+{
+"daysAgo": 16,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Electricity bill spiked this month, check the heating schedule."
+},
+{
+"daysAgo": 15,
+"topic": "ideas",
+"tags": [
+"ideas",
+"books"
+],
+"text": "Reading 'The Pragmatic Programmer'. The bit on DRY and orthogonality is gold."
+},
+{
+"daysAgo": 15,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "Idea: a tiny e-ink dashboard for the week's tasks."
+},
+{
+"daysAgo": 13,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got spinach, got potatoes, got rice, got milk, got apples."
+},
+{
+"daysAgo": 13,
+"topic": "family",
+"tags": [
+"family"
+],
+"text": "Help Dad set up his new phone."
+},
+{
+"daysAgo": 13,
+"topic": "ideas",
+"tags": [
+"ideas"
+],
+"text": "Idea: a CLI that summarizes my git history into a changelog."
+},
+{
+"daysAgo": 12,
+"topic": "health",
+"tags": [
+"health",
+"dentist"
+],
+"text": "Dentist appointment booked for March 3 at 9am. Cleaning plus that filling."
+},
+{
+"daysAgo": 7,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Clean the gutters before the rainy season."
+},
+{
+"daysAgo": 6,
+"topic": "work",
+"tags": [
+"work",
+"atlas"
+],
+"text": "Code review backlog is growing. Propose a rotation in the team sync."
+},
+{
+"daysAgo": 6,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Gym: leg day. Squats felt strong, added 5kg."
+},
+{
+"daysAgo": 5,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need eggs, need milk, need bread, need bananas, got chicken, got olive oil, got sugar."
+},
+{
+"daysAgo": 4,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Fix the leaky kitchen sink \u2014 replace the washer, get the right size."
+},
+{
+"daysAgo": 2,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "The dryer is squeaking; probably the belt. Order the part."
+},
+{
+"daysAgo": 1,
+"topic": "travel",
+"tags": [
+"travel"
+],
+"text": "Found cheap flights to Reykjavik for the northern lights week."
+},
+{
+"daysAgo": 0,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need tea, need rice, need chicken, need cheese."
+},
+{
+"daysAgo": 0,
+"topic": "health",
+"tags": [
+"health"
+],
+"text": "Started running again, 5k three times this week. Knee held up."
+}
+]

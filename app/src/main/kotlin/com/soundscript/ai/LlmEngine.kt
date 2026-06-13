@@ -182,18 +182,50 @@ object TitleEngine {
  */
 object NotesAnalysis {
     // Default analysis model = Gemma 4 E4B (deeper reasoning). User-overridable.
-    private const val MAX_CHARS = 16000
+    private const val MAX_CHARS = 16000   // context budget for the notes block
+    private const val MAX_NOTES = 50      // keep retrieval focused even when more would fit
     private val df = SimpleDateFormat("MMM d", Locale.getDefault())
 
     suspend fun ask(context: Context, notes: List<Note>, question: String): Result<String> {
         if (notes.isEmpty()) return Result.success("No notes in this scope.")
         if (question.isBlank()) return Result.success("")
-        val joined = notes.joinToString("\n\n") { "- (${df.format(Date(it.createdAt))}) ${it.text}" }
-            .take(MAX_CHARS)
+        val selected = select(context, notes, question)
+        val joined = selected.joinToString("\n\n") { "- (${df.format(Date(it.createdAt))}) ${it.text}" }
+        val coverage = if (selected.size < notes.size)
+            "\n\n(These are the ${selected.size} most relevant of ${notes.size} notes in scope.)" else ""
         val prompt = "You are analysing the user's personal voice notes. ${question.trim()}\n\n" +
-            "Notes:\n\"\"\"\n$joined\n\"\"\""
+            "Notes:\n\"\"\"\n$joined\n\"\"\"$coverage"
         val model = LlmEngine.resolve(context, AppPreferences(context).analysisModelFilename, "4b")
         return LlmEngine.generate(context, prompt, model).map { strip(it) }
+    }
+
+    /**
+     * Pick which notes go into the prompt. If the whole scope fits the budget, use it all;
+     * otherwise retrieve (RAG) the notes most relevant to [question] by centered embedding
+     * cosine, up to the char budget / note cap. Returned in chronological order.
+     */
+    private suspend fun select(context: Context, notes: List<Note>, question: String): List<Note> {
+        val totalChars = notes.sumOf { it.text.length + 24 }
+        if (notes.size <= MAX_NOTES && totalChars <= MAX_CHARS) return notes
+
+        val qv = Embedder.embed(context, question)
+        val withVec = notes.filter { it.embedding != null }
+        if (qv == null || withVec.isEmpty()) return notes.sortedByDescending { it.createdAt }.take(MAX_NOTES)
+
+        val mean = Embedder.mean(withVec.mapNotNull { it.embedding })
+        val ranked = withVec.sortedByDescending {
+            val e = it.embedding!!
+            if (mean != null) Embedder.cosineCentered(qv, e, mean) else Embedder.cosine(qv, e)
+        }
+        val out = ArrayList<Note>()
+        var chars = 0
+        for (n in ranked) {
+            if (out.size >= MAX_NOTES) break
+            val len = n.text.length + 24
+            if (chars + len > MAX_CHARS && out.isNotEmpty()) break
+            out.add(n); chars += len
+        }
+        return out.sortedByDescending { it.createdAt }
     }
 
     private fun strip(s: String): String =

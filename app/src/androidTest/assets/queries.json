@@ -1,0 +1,74 @@
+{
+  "factual": [
+    {
+      "q": "What is my wifi password?",
+      "expectContains": [
+        "bluefox42"
+      ]
+    },
+    {
+      "q": "When is my dentist appointment?",
+      "expectContains": [
+        "March 3",
+        "march 3"
+      ]
+    },
+    {
+      "q": "When is mom's birthday?",
+      "expectContains": [
+        "April 12",
+        "april 12"
+      ]
+    },
+    {
+      "q": "How much is my Netflix subscription?",
+      "expectContains": [
+        "15.99"
+      ]
+    },
+    {
+      "q": "What book am I reading?",
+      "expectContains": [
+        "Pragmatic Programmer"
+      ]
+    }
+  ],
+  "topic": [
+    {
+      "q": "things to buy at the store",
+      "topic": "groceries",
+      "k": 5,
+      "minPrecision": 0.6
+    },
+    {
+      "q": "rust borrow checker and ownership",
+      "topic": "rust",
+      "k": 5,
+      "minPrecision": 0.6
+    },
+    {
+      "q": "python async and decorators",
+      "topic": "python",
+      "k": 5,
+      "minPrecision": 0.6
+    },
+    {
+      "q": "home repairs and fixing things",
+      "topic": "home",
+      "k": 5,
+      "minPrecision": 0.5
+    },
+    {
+      "q": "planning a vacation trip",
+      "topic": "travel",
+      "k": 5,
+      "minPrecision": 0.6
+    },
+    {
+      "q": "the Atlas project at work",
+      "topic": "work",
+      "k": 5,
+      "minPrecision": 0.6
+    }
+  ]
+}
