@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import android.provider.OpenableColumns
 import com.soundscript.AppPreferences
 import com.soundscript.ModelManager
+import com.soundscript.ai.Embedder
 import com.soundscript.ai.LlmEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -71,6 +72,8 @@ fun SettingsScreen(onBack: () -> Unit) {
     var analysisModel by remember { mutableStateOf(prefs.analysisModelFilename) }
     var autoTag by remember { mutableStateOf(prefs.autoTag) }
     var aiError by remember { mutableStateOf<String?>(null) }
+    var geckoTick by remember { mutableStateOf(0) }
+    var geckoPct by remember { mutableStateOf<Int?>(null) }
     val pickGemma = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
             importingModel = true; aiError = null
@@ -187,6 +190,33 @@ fun SettingsScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
             )
+            // Semantic search/relate/cluster model (Gecko) — downloads once, then offline.
+            val geckoReady = remember(geckoTick) { Embedder.isReady(context) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Search model (Gecko)")
+                    Text(
+                        "Powers semantic relate, search & clusters. ${Embedder.SIZE_MB} MB, on-device.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                }
+                when {
+                    geckoPct != null -> CircularProgressIndicator(
+                        progress = { geckoPct!! / 100f }, modifier = Modifier.size(24.dp)
+                    )
+                    geckoReady -> Icon(Icons.Filled.CheckCircle, "Installed", tint = MaterialTheme.colorScheme.primary)
+                    else -> IconButton(onClick = {
+                        scope.launch {
+                            geckoPct = 0
+                            Embedder.download(context).collect { p ->
+                                if (p in 0..99) geckoPct = p else if (p < 0) { geckoPct = null; geckoTick++ }
+                            }
+                        }
+                    }) { Icon(Icons.Filled.Download, "Download") }
+                }
+            }
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("Auto-tag new notes")

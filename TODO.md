@@ -1,5 +1,13 @@
 # SoundScript — deferred TODOs
 
+## Fully-bundled build variant (Gecko model in-APK)
+Gecko embedder model (~110MB) currently downloads on first run. Add an offline build
+flavor that bundles `Gecko_256_quant.tflite` + `sentencepiece.model` in assets so the app
+works with zero network on first launch (at the cost of a big APK). Also: try Gecko on GPU
+(currently CPU, ~315ms/note) for faster backfill.
+
+
+
 ## 16 KB page-size native alignment (Play Store blocker, eventually)
 Debug dialog flags these `.so` libs as not 16 KB-aligned:
 `libLiteRt.so`, `liblitertlm_jni.so`, `libLiteRtClGlAccelerator.so`,

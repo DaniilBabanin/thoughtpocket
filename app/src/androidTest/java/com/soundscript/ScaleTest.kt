@@ -126,7 +126,7 @@ class ScaleTest {
         for (i in 0 until topicQ.length()) {
             val tq = topicQ.getJSONObject(i)
             val query = tq.getString("q"); val want = tq.getString("topic"); val k = tq.getInt("k")
-            val qv = Embedder.embed(target, query)!!
+            val qv = Embedder.embed(target, query, query = true)!!
             t = SystemClock.elapsedRealtime()
             val top = notes.sortedByDescending { Embedder.cosineCentered(qv, it.embedding!!, mean) }.take(k)
             val ms = SystemClock.elapsedRealtime() - t
@@ -135,8 +135,8 @@ class ScaleTest {
             Log.i("SCALE", "SEARCH q='$query' want=$want p@$k=${"%.2f".format(prec)} ${ms}ms -> ${top.map { topic[it.id] }}")
         }
         val meanPrec = precs.average()
-        Log.i("SCALE", "SEARCH meanPrecision=${"%.2f".format(meanPrec)} (USE baseline; raise after EmbeddingGemma)")
-        if (meanPrec < 0.4) failures.add("search meanPrecision ${"%.2f".format(meanPrec)}")
+        Log.i("SCALE", "SEARCH meanPrecision=${"%.2f".format(meanPrec)} (Gecko)")
+        if (meanPrec < 0.75) failures.add("search meanPrecision ${"%.2f".format(meanPrec)}")
 
         // ---- relate (raw cosine, mirrors detail screen) ----
         for (want in listOf("groceries", "rust", "travel")) {
@@ -160,7 +160,7 @@ class ScaleTest {
         val avgPurity = if (clusters.isEmpty()) 0.0 else clusters.indices.map { maxes[it].toDouble() / clusters[it].notes.size }.average()
         Log.i("SCALE", "CLUSTERS ${clusters.size} clusters, $covered/${notes.size} notes, weightedPurity=${"%.2f".format(weightedPurity)} avgPurity=${"%.2f".format(avgPurity)} in ${clMs}ms")
         clusters.forEach { c -> Log.i("SCALE", "  cluster '${c.label}' n=${c.notes.size} ${c.notes.groupingBy { topic[it.id] }.eachCount()}") }
-        if (weightedPurity < 0.45) failures.add("cluster weightedPurity ${"%.2f".format(weightedPurity)}")
+        if (weightedPurity < 0.85) failures.add("cluster weightedPurity ${"%.2f".format(weightedPurity)}")
 
         // ---- tagging + titles (sample; uses tag model E2B) ----
         for (sample in listOf(notes.first { topic[it.id] == "rust" }, notes.first { topic[it.id] == "travel" })) {

@@ -132,15 +132,16 @@ dependencies {
     // are built for (and what AI Edge Gallery uses), with a working GPU path.
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.13.1")
 
-    // On-device text embeddings (semantic relate + clustering) — MediaPipe TextEmbedder
-    // (Universal Sentence Encoder). tasks-text is the stable embedder path (not tasks-genai).
-    implementation("com.google.mediapipe:tasks-text:0.10.29")
+    // On-device text embeddings (semantic relate / search / clustering) — Gecko 110m via the
+    // AI Edge RAG SDK. Validated to beat MediaPipe USE (see ScaleTest). Needs the Guava force above.
+    implementation("com.google.ai.edge.localagents:localagents-rag:0.3.0")
+    // The RAG SDK's generated protos need the protobuf-lite runtime (previously supplied
+    // transitively by MediaPipe, now removed) — provide it explicitly.
+    implementation("com.google.protobuf:protobuf-javalite:3.25.5")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
-    // Spike (test-only): Gecko embedder via AI Edge RAG SDK — kept out of the app until validated.
-    androidTestImplementation("com.google.ai.edge.localagents:localagents-rag:0.3.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

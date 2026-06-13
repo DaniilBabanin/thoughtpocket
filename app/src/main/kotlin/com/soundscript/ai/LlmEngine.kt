@@ -208,7 +208,7 @@ object NotesAnalysis {
         val totalChars = notes.sumOf { it.text.length + 24 }
         if (notes.size <= MAX_NOTES && totalChars <= MAX_CHARS) return notes
 
-        val qv = Embedder.embed(context, question)
+        val qv = Embedder.embed(context, question, query = true)
         val withVec = notes.filter { it.embedding != null }
         if (qv == null || withVec.isEmpty()) return notes.sortedByDescending { it.createdAt }.take(MAX_NOTES)
 

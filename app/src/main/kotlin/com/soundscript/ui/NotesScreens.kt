@@ -92,7 +92,7 @@ fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit, onAnalyze: (
     var query by remember { mutableStateOf("") }
     var queryVec by remember { mutableStateOf<FloatArray?>(null) }
     LaunchedEffect(query) {
-        if (query.isBlank()) { queryVec = null } else { delay(200); queryVec = Embedder.embed(context, query) }
+        if (query.isBlank()) { queryVec = null } else { delay(200); queryVec = Embedder.embed(context, query, query = true) }
     }
 
     val allTags = notes.flatMap { it.tags }.distinct().sorted()
