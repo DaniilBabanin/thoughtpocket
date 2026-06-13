@@ -155,6 +155,27 @@ object TaggingEngine {
     }
 }
 
+/** One-line note title via [LlmEngine]. Uses the fast tag model (Gemma 4 E2B). */
+object TitleEngine {
+    suspend fun suggest(context: Context, text: String): Result<String> {
+        if (text.isBlank()) return Result.success("")
+        val model = LlmEngine.resolve(context, AppPreferences(context).tagModelFilename, "E2B")
+        return LlmEngine.generate(context, buildPrompt(text), model).map { clean(it) }
+    }
+
+    private fun buildPrompt(text: String): String =
+        "Write a short title for this voice note: 3 to 6 words, no quotes, no trailing " +
+            "punctuation. Reply with ONLY the title.\n\nNote:\n\"\"\"\n${text.take(2000)}\n\"\"\""
+
+    private fun clean(raw: String): String =
+        raw.replace(Regex("(?is)<think.*?</think>"), " ")
+            .replace(Regex("<[^>]*>"), " ")
+            .substringAfterLast("Title:")
+            .lineSequence().map { it.trim() }.firstOrNull { it.isNotBlank() }.orEmpty()
+            .trim('"', '\'', '.', '#', '*', '`', ' ')
+            .take(80)
+}
+
 /**
  * Ask / analyse a set of notes (a scope: all, a tag, a timeframe, later a cluster) with a
  * free-form or preset question. Uses Gemma 4 E4B for deeper reasoning.

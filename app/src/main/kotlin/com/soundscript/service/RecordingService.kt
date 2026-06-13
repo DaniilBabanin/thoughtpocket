@@ -14,6 +14,7 @@ import com.soundscript.ModelManager
 import com.soundscript.WhisperEngine
 import com.soundscript.ai.LlmEngine
 import com.soundscript.ai.TaggingEngine
+import com.soundscript.ai.TitleEngine
 import com.soundscript.audio.MicRecorder
 import com.soundscript.data.Note
 import com.soundscript.data.NotesDb
@@ -144,12 +145,15 @@ class RecordingService : Service() {
                 val id = dao.insert(note)
                 Notifications.done(this, "Note saved")
 
-                // Auto-tag with Gemma (E2B) in the background, then update the note in place.
-                if (prefs.autoTag && text.isNotBlank() && LlmEngine.isModelInstalled(this)) {
+                // Title + auto-tag with Gemma (E2B) in the background, then update the note.
+                if (text.isNotBlank() && LlmEngine.isModelInstalled(this)) {
                     getSystemService(NotificationManager::class.java)
-                        .notify(Notifications.ONGOING_ID, Notifications.ongoing(this, "Tagging…"))
-                    val tags = TaggingEngine.suggestTags(this, body).getOrNull().orEmpty()
-                    if (tags.isNotEmpty()) dao.update(note.copy(id = id, tags = tags))
+                        .notify(Notifications.ONGOING_ID, Notifications.ongoing(this, "Summarising…"))
+                    val title = TitleEngine.suggest(this, body).getOrNull().orEmpty()
+                    val tags = if (prefs.autoTag)
+                        TaggingEngine.suggestTags(this, body).getOrNull().orEmpty() else emptyList()
+                    if (title.isNotEmpty() || tags.isNotEmpty())
+                        dao.update(note.copy(id = id, title = title, tags = tags))
                 }
             }
         }

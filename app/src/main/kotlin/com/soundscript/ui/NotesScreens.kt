@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -64,6 +65,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.soundscript.ai.TaggingEngine
+import com.soundscript.ai.TitleEngine
 import com.soundscript.data.Note
 import com.soundscript.data.NotesDb
 import com.soundscript.service.RecordState
@@ -186,7 +188,10 @@ private fun NoteRow(note: Note, onClick: () -> Unit) {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
         headlineContent = {
-            Text(note.text.substringBefore('\n'), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                note.title.ifBlank { note.text.substringBefore('\n') },
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
+            )
         },
         supportingContent = { Text(tagLine, style = MaterialTheme.typography.bodySmall) },
     )
@@ -209,6 +214,8 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
         .take(5)
 
     var text by remember(n.id) { mutableStateOf(n.text) }
+    var title by remember(n.id) { mutableStateOf(n.title) }
+    var titling by remember(n.id) { mutableStateOf(false) }
     var tags by remember(n.id) { mutableStateOf(n.tags) }
     var newTag by remember(n.id) { mutableStateOf("") }
     var suggesting by remember(n.id) { mutableStateOf(false) }
@@ -224,7 +231,7 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
                 title = { Text("Note") },
                 actions = {
                     IconButton(onClick = {
-                        scope.launch { dao.update(n.copy(text = text, tags = tags)); onBack() }
+                        scope.launch { dao.update(n.copy(text = text, title = title, tags = tags)); onBack() }
                     }) { Icon(Icons.Filled.Check, "Save") }
                     IconButton(onClick = {
                         scope.launch { dao.delete(n); onBack() }
@@ -237,6 +244,26 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
             Modifier.padding(pad).padding(16.dp).fillMaxSize().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            OutlinedTextField(
+                value = title,
+                onValueChange = { title = it },
+                label = { Text("Title") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                trailingIcon = {
+                    if (titling) {
+                        CircularProgressIndicator(Modifier.size(20.dp))
+                    } else {
+                        IconButton(onClick = {
+                            scope.launch {
+                                titling = true
+                                TitleEngine.suggest(context, text).onSuccess { if (it.isNotBlank()) title = it }
+                                titling = false
+                            }
+                        }) { Icon(Icons.Filled.AutoAwesome, "Suggest title (AI)") }
+                    }
+                },
+            )
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
@@ -306,7 +333,10 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
                     ListItem(
                         modifier = Modifier.clickable { onOpen(rn.id) },
                         headlineContent = {
-                            Text(rn.text.substringBefore('\n'), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                rn.title.ifBlank { rn.text.substringBefore('\n') },
+                                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            )
                         },
                         supportingContent = {
                             Text(shared.joinToString(" ") { "#$it" }, style = MaterialTheme.typography.bodySmall)

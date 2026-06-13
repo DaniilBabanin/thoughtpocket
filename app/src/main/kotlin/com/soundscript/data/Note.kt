@@ -13,6 +13,8 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
 import androidx.room.Update
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "notes")
@@ -20,6 +22,7 @@ data class Note(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val createdAt: Long,
     val text: String,
+    val title: String = "",
     val tags: List<String> = emptyList(),
 )
 
@@ -55,7 +58,7 @@ interface NoteDao {
     suspend fun delete(note: Note)
 }
 
-@Database(entities = [Note::class], version = 1, exportSchema = false)
+@Database(entities = [Note::class], version = 2, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class NotesDb : RoomDatabase() {
     abstract fun notes(): NoteDao
@@ -63,10 +66,16 @@ abstract class NotesDb : RoomDatabase() {
     companion object {
         @Volatile private var instance: NotesDb? = null
 
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE notes ADD COLUMN title TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun get(context: Context): NotesDb = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(
                 context.applicationContext, NotesDb::class.java, "notes.db"
-            ).build().also { instance = it }
+            ).addMigrations(MIGRATION_1_2).build().also { instance = it }
         }
     }
 }
