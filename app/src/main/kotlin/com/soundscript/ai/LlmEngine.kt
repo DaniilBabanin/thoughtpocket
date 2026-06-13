@@ -7,6 +7,7 @@ import com.google.ai.edge.litertlm.Content
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Message
+import com.soundscript.AppPreferences
 import com.soundscript.data.Note
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -45,25 +46,38 @@ object LlmEngine {
                 (it.name.endsWith(".litertlm") || it.name.endsWith(".task"))
         }?.sortedBy { it.name } ?: emptyList()
 
+    /** Default model = first installed (used when a task has no explicit pick). */
+    fun modelFile(context: Context): File? = installed(context).firstOrNull()
+
     /**
-     * Pick a model: [prefer] (filename substring, e.g. "E2B") wins if installed,
-     * else the selected model (AppPreferences.llmModelFilename), else the first installed.
+     * Resolve a task's model: the [explicitFilename] the user picked if installed,
+     * else a smart default (filename contains [fallbackContains], e.g. "E2B"/"4b"),
+     * else any installed model.
      */
-    fun modelFile(context: Context, prefer: String? = null): File? {
+    fun resolve(context: Context, explicitFilename: String, fallbackContains: String): File? {
         val files = installed(context)
-        if (prefer != null) {
-            files.firstOrNull { it.name.contains(prefer, ignoreCase = true) }?.let { return it }
+        files.firstOrNull { it.name == explicitFilename }?.let { return it }
+        files.firstOrNull { it.name.contains(fallbackContains, ignoreCase = true) }?.let { return it }
+        return files.firstOrNull()
+    }
+
+    /** Friendly label for a model filename, e.g. "Gemma 4 E2B". */
+    fun prettyName(filename: String): String {
+        val n = filename.lowercase()
+        return when {
+            "e2b" in n -> "Gemma 4 E2B"
+            "e4b" in n || "4b" in n -> "Gemma 4 E4B"
+            "1b" in n -> "Gemma 3 1B"
+            else -> filename.removeSuffix(".litertlm").removeSuffix(".task")
         }
-        val selected = com.soundscript.AppPreferences(context).llmModelFilename
-        return files.firstOrNull { it.name == selected } ?: files.firstOrNull()
     }
 
     fun isModelInstalled(context: Context): Boolean = modelFile(context) != null
 
-    /** Run the model on [prompt]; [prefer] picks a specific model (see [modelFile]). */
-    suspend fun generate(context: Context, prompt: String, prefer: String? = null): Result<String> =
+    /** Run the model on [prompt]; [model] picks a specific bundle (else the default). */
+    suspend fun generate(context: Context, prompt: String, model: File? = null): Result<String> =
         withContext(Dispatchers.Default) {
-            val model = modelFile(context, prefer)
+            val model = model ?: modelFile(context)
                 ?: return@withContext Result.failure(IllegalStateException("No model — import one in Settings."))
             mutex.withLock {
                 runCatching {
@@ -113,12 +127,11 @@ object LlmEngine {
 
 /** Note tagging built on [LlmEngine]. More analyses (summaries, titles, Q&A) will follow. */
 object TaggingEngine {
-    // Tagging uses Gemma 4 E2B — fastest with excellent tag quality (see benchmark).
-    private const val TAG_MODEL = "E2B"
-
+    // Default tagging model = Gemma 4 E2B (fast, excellent tags; see benchmark). User-overridable.
     suspend fun suggestTags(context: Context, text: String): Result<List<String>> {
         if (text.isBlank()) return Result.success(emptyList())
-        return LlmEngine.generate(context, buildPrompt(text), prefer = TAG_MODEL).map { parseTags(it) }
+        val model = LlmEngine.resolve(context, AppPreferences(context).tagModelFilename, "E2B")
+        return LlmEngine.generate(context, buildPrompt(text), model).map { parseTags(it) }
     }
 
     // Plain instruction — LiteRT-LM's Conversation applies the model's chat template itself.
@@ -147,8 +160,7 @@ object TaggingEngine {
  * free-form or preset question. Uses Gemma 4 E4B for deeper reasoning.
  */
 object NotesAnalysis {
-    // Gemma 4 E4B file is "gemma4_4b_*.litertlm" → match "4b". Per-task picker will replace this.
-    private const val MODEL = "4b"
+    // Default analysis model = Gemma 4 E4B (deeper reasoning). User-overridable.
     private const val MAX_CHARS = 16000
     private val df = SimpleDateFormat("MMM d", Locale.getDefault())
 
@@ -159,7 +171,8 @@ object NotesAnalysis {
             .take(MAX_CHARS)
         val prompt = "You are analysing the user's personal voice notes. ${question.trim()}\n\n" +
             "Notes:\n\"\"\"\n$joined\n\"\"\""
-        return LlmEngine.generate(context, prompt, prefer = MODEL).map { strip(it) }
+        val model = LlmEngine.resolve(context, AppPreferences(context).analysisModelFilename, "4b")
+        return LlmEngine.generate(context, prompt, model).map { strip(it) }
     }
 
     private fun strip(s: String): String =

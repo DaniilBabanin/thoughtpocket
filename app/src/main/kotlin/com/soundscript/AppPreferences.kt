@@ -55,6 +55,15 @@ class AppPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_AUTO_TAG, true)
         set(value) = prefs.edit { putBoolean(KEY_AUTO_TAG, value) }
 
+    /** Per-task model overrides (filename in llm/ dir); "" = smart default. */
+    var tagModelFilename: String
+        get() = prefs.getString(KEY_TAG_MODEL, "")!!
+        set(value) = prefs.edit { putString(KEY_TAG_MODEL, value) }
+
+    var analysisModelFilename: String
+        get() = prefs.getString(KEY_ANALYSIS_MODEL, "")!!
+        set(value) = prefs.edit { putString(KEY_ANALYSIS_MODEL, value) }
+
     /** Optional HuggingFace token for downloading licence-gated Gemma models. */
     var hfToken: String
         get() = prefs.getString(KEY_HF_TOKEN, "")!!
@@ -94,6 +103,8 @@ class AppPreferences(context: Context) {
         private const val KEY_HIGH_QUALITY = "high_quality"
         private const val KEY_LLM_MODEL = "llm_model"
         private const val KEY_AUTO_TAG = "auto_tag"
+        private const val KEY_TAG_MODEL = "tag_model"
+        private const val KEY_ANALYSIS_MODEL = "analysis_model"
         private const val KEY_HF_TOKEN = "hf_token"
         private const val KEY_DEV_MODE = "developer_mode"
         private const val KEY_SKIP_VERIFY = "skip_model_verification"

@@ -2,6 +2,8 @@ package com.soundscript.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -17,6 +19,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,7 +51,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
@@ -64,7 +67,8 @@ fun SettingsScreen(onBack: () -> Unit) {
 
     var aiTick by remember { mutableStateOf(0) }
     var importingModel by remember { mutableStateOf(false) }
-    var selectedLlm by remember { mutableStateOf(prefs.llmModelFilename) }
+    var tagModel by remember { mutableStateOf(prefs.tagModelFilename) }
+    var analysisModel by remember { mutableStateOf(prefs.analysisModelFilename) }
     var autoTag by remember { mutableStateOf(prefs.autoTag) }
     var aiError by remember { mutableStateOf<String?>(null) }
     val pickGemma = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -85,7 +89,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }.getOrElse { aiError = it.message; null }
             }
             if (imported != null) {
-                prefs.llmModelFilename = imported; selectedLlm = imported; LlmEngine.release()
+                prefs.llmModelFilename = imported; LlmEngine.release()
             }
             importingModel = false; aiTick++
         }
@@ -195,27 +199,48 @@ fun SettingsScreen(onBack: () -> Unit) {
                 Switch(checked = autoTag, onCheckedChange = { autoTag = it; prefs.autoTag = it })
             }
 
-            // Installed models (downloaded or imported) — select active / remove.
             val installedModels = remember(aiTick) { LlmEngine.installed(context) }
+
+            if (installedModels.size > 1) {
+                val tagResolved = LlmEngine.resolve(context, tagModel, "E2B")?.name
+                val analysisResolved = LlmEngine.resolve(context, analysisModel, "4b")?.name
+                Text("Tagging model", style = MaterialTheme.typography.titleSmall)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    installedModels.forEach { f ->
+                        FilterChip(
+                            selected = tagResolved == f.name,
+                            onClick = { tagModel = f.name; prefs.tagModelFilename = f.name; LlmEngine.release() },
+                            label = { Text(LlmEngine.prettyName(f.name)) },
+                        )
+                    }
+                }
+                Text("Analysis model", style = MaterialTheme.typography.titleSmall)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    installedModels.forEach { f ->
+                        FilterChip(
+                            selected = analysisResolved == f.name,
+                            onClick = { analysisModel = f.name; prefs.analysisModelFilename = f.name; LlmEngine.release() },
+                            label = { Text(LlmEngine.prettyName(f.name)) },
+                        )
+                    }
+                }
+            }
+
+            // Installed models — sizes + remove.
+            if (installedModels.isNotEmpty()) {
+                Text("Installed models", style = MaterialTheme.typography.titleSmall)
+            }
             installedModels.forEach { f ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
-                        selected = selectedLlm.ifEmpty { installedModels.first().name } == f.name,
-                        onClick = { selectedLlm = f.name; prefs.llmModelFilename = f.name; LlmEngine.release() },
-                    )
                     Column(Modifier.weight(1f)) {
-                        Text(f.name, style = MaterialTheme.typography.bodyMedium)
+                        Text(LlmEngine.prettyName(f.name), style = MaterialTheme.typography.bodyMedium)
                         Text(
-                            "${f.length() / 1_000_000} MB",
+                            "${f.length() / 1_000_000} MB · ${f.name.takeLast(40)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.outline,
                         )
                     }
-                    TextButton(onClick = {
-                        LlmEngine.release(); f.delete()
-                        if (selectedLlm == f.name) { selectedLlm = ""; prefs.llmModelFilename = "" }
-                        aiTick++
-                    }) { Text("Remove") }
+                    TextButton(onClick = { LlmEngine.release(); f.delete(); aiTick++ }) { Text("Remove") }
                 }
             }
 
