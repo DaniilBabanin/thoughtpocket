@@ -7,6 +7,10 @@ import com.google.ai.edge.litertlm.Content
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Message
+import com.soundscript.data.Note
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -136,4 +140,28 @@ object TaggingEngine {
             .distinct()
             .take(5)
     }
+}
+
+/**
+ * Ask / analyse a set of notes (a scope: all, a tag, a timeframe, later a cluster) with a
+ * free-form or preset question. Uses Gemma 4 E4B for deeper reasoning.
+ */
+object NotesAnalysis {
+    // Gemma 4 E4B file is "gemma4_4b_*.litertlm" → match "4b". Per-task picker will replace this.
+    private const val MODEL = "4b"
+    private const val MAX_CHARS = 16000
+    private val df = SimpleDateFormat("MMM d", Locale.getDefault())
+
+    suspend fun ask(context: Context, notes: List<Note>, question: String): Result<String> {
+        if (notes.isEmpty()) return Result.success("No notes in this scope.")
+        if (question.isBlank()) return Result.success("")
+        val joined = notes.joinToString("\n\n") { "- (${df.format(Date(it.createdAt))}) ${it.text}" }
+            .take(MAX_CHARS)
+        val prompt = "You are analysing the user's personal voice notes. ${question.trim()}\n\n" +
+            "Notes:\n\"\"\"\n$joined\n\"\"\""
+        return LlmEngine.generate(context, prompt, prefer = MODEL).map { strip(it) }
+    }
+
+    private fun strip(s: String): String =
+        s.replace(Regex("(?is)<think.*?</think>"), " ").replace(Regex("<[^>]*>"), " ").trim()
 }

@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
@@ -71,7 +72,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit) {
+fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit, onAnalyze: () -> Unit) {
     val context = LocalContext.current
     val dao = remember { NotesDb.get(context).notes() }
     val notes by dao.all().collectAsState(initial = emptyList())
@@ -115,6 +116,7 @@ fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit) {
             TopAppBar(
                 title = { Text("SoundScript") },
                 actions = {
+                    IconButton(onClick = onAnalyze) { Icon(Icons.Filled.Insights, "Ask your notes") }
                     IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, "Settings") }
                 }
             )
