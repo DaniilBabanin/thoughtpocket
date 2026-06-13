@@ -8,15 +8,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -35,9 +39,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import android.provider.OpenableColumns
 import com.soundscript.AppPreferences
 import com.soundscript.ModelManager
+import com.soundscript.ai.LlmEngine
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,6 +61,34 @@ fun SettingsScreen(onBack: () -> Unit) {
     var translate by remember { mutableStateOf(prefs.translateToEnglish) }
     val progress = remember { mutableStateMapOf<String, Int>() }
     var installedTick by remember { mutableStateOf(0) }
+
+    var aiTick by remember { mutableStateOf(0) }
+    var importingModel by remember { mutableStateOf(false) }
+    var selectedLlm by remember { mutableStateOf(prefs.llmModelFilename) }
+    var aiError by remember { mutableStateOf<String?>(null) }
+    val pickGemma = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch {
+            importingModel = true; aiError = null
+            val imported = withContext(Dispatchers.IO) {
+                runCatching {
+                    val name = context.contentResolver
+                        .query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+                        ?.use { if (it.moveToFirst()) it.getString(0) else null }
+                        ?.takeIf { it.endsWith(".litertlm") || it.endsWith(".task") }
+                        ?: "imported.task"
+                    val target = File(LlmEngine.llmDir(context), name)
+                    context.contentResolver.openInputStream(uri)!!.use { input ->
+                        target.outputStream().use { out -> input.copyTo(out) }
+                    }
+                    target.name
+                }.getOrElse { aiError = it.message; null }
+            }
+            if (imported != null) {
+                prefs.llmModelFilename = imported; selectedLlm = imported; LlmEngine.release()
+            }
+            importingModel = false; aiTick++
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -136,6 +173,53 @@ fun SettingsScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
             )
+
+            HorizontalDivider()
+
+            Text("AI model (Gemma)", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "On-device LLM (LiteRT-LM) for AI tagging — more features later. Import a Gemma .litertlm model, e.g. one downloaded in AI Edge Gallery. Runs on GPU.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+            )
+
+            // Installed models (downloaded or imported) — select active / remove.
+            val installedModels = remember(aiTick) { LlmEngine.installed(context) }
+            installedModels.forEach { f ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = selectedLlm.ifEmpty { installedModels.first().name } == f.name,
+                        onClick = { selectedLlm = f.name; prefs.llmModelFilename = f.name; LlmEngine.release() },
+                    )
+                    Column(Modifier.weight(1f)) {
+                        Text(f.name, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "${f.length() / 1_000_000} MB",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline,
+                        )
+                    }
+                    TextButton(onClick = {
+                        LlmEngine.release(); f.delete()
+                        if (selectedLlm == f.name) { selectedLlm = ""; prefs.llmModelFilename = "" }
+                        aiTick++
+                    }) { Text("Remove") }
+                }
+            }
+
+            if (importingModel) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(Modifier.size(20.dp))
+                    Text("  Importing…")
+                }
+            } else {
+                Button(onClick = { pickGemma.launch(arrayOf("*/*")) }) {
+                    Text("Import .litertlm / .task file")
+                }
+            }
+            aiError?.let {
+                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }

@@ -13,16 +13,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -30,6 +33,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
@@ -40,6 +44,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -54,6 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.soundscript.ai.TaggingEngine
 import com.soundscript.data.Note
 import com.soundscript.data.NotesDb
 import com.soundscript.service.RecordState
@@ -193,6 +199,9 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit) {
     var text by remember(n.id) { mutableStateOf(n.text) }
     var tags by remember(n.id) { mutableStateOf(n.tags) }
     var newTag by remember(n.id) { mutableStateOf("") }
+    var suggesting by remember(n.id) { mutableStateOf(false) }
+    var suggestions by remember(n.id) { mutableStateOf<List<String>>(emptyList()) }
+    var aiError by remember(n.id) { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -245,6 +254,36 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit) {
                     val t = newTag.trim()
                     if (t.isNotEmpty() && t !in tags) { tags = tags + t; newTag = "" }
                 }) { Icon(Icons.Filled.Add, "Add tag") }
+            }
+
+            Button(
+                onClick = {
+                    scope.launch {
+                        suggesting = true; aiError = null
+                        TaggingEngine.suggestTags(context, text)
+                            .onSuccess { suggestions = it.filter { tag -> tag !in tags } }
+                            .onFailure { aiError = it.message ?: "AI tagging failed" }
+                        suggesting = false
+                    }
+                },
+                enabled = !suggesting,
+            ) {
+                Icon(Icons.Filled.AutoAwesome, null)
+                Spacer(Modifier.width(8.dp))
+                Text(if (suggesting) "Analyzing…" else "Suggest tags (AI)")
+            }
+            aiError?.let {
+                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+            if (suggestions.isNotEmpty()) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    suggestions.forEach { s ->
+                        SuggestionChip(
+                            onClick = { tags = tags + s; suggestions = suggestions - s },
+                            label = { Text(s) },
+                        )
+                    }
+                }
             }
         }
     }

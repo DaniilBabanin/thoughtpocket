@@ -45,6 +45,16 @@ class AppPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_HIGH_QUALITY, false)
         set(value) = prefs.edit { putBoolean(KEY_HIGH_QUALITY, value) }
 
+    /** Filename of the selected on-device LLM (Gemma) model in the llm/ dir; "" = first found. */
+    var llmModelFilename: String
+        get() = prefs.getString(KEY_LLM_MODEL, "")!!
+        set(value) = prefs.edit { putString(KEY_LLM_MODEL, value) }
+
+    /** Optional HuggingFace token for downloading licence-gated Gemma models. */
+    var hfToken: String
+        get() = prefs.getString(KEY_HF_TOKEN, "")!!
+        set(value) = prefs.edit { putString(KEY_HF_TOKEN, value.trim()) }
+
     /** Reveals advanced controls (thread slider, benchmark). Toggled by tapping the home tip. */
     var developerMode: Boolean
         get() = prefs.getBoolean(KEY_DEV_MODE, false)
@@ -77,6 +87,8 @@ class AppPreferences(context: Context) {
         private const val KEY_GPU = "use_gpu"
         private const val KEY_THREADS = "threads"
         private const val KEY_HIGH_QUALITY = "high_quality"
+        private const val KEY_LLM_MODEL = "llm_model"
+        private const val KEY_HF_TOKEN = "hf_token"
         private const val KEY_DEV_MODE = "developer_mode"
         private const val KEY_SKIP_VERIFY = "skip_model_verification"
         private const val KEY_GPU_CRASHED = "gpu_crashed_notice"

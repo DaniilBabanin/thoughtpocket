@@ -1,4 +1,5 @@
 import org.gradle.api.JavaVersion
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id("com.android.application")
@@ -68,10 +69,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     sourceSets {
         getByName("main") {
             java.srcDirs("src/main/kotlin")
@@ -84,7 +81,15 @@ android {
         }
         jniLibs {
             useLegacyPackaging = false
+            // whisper.cpp and MediaPipe both ship libc++_shared.so — keep one.
+            pickFirsts += "**/libc++_shared.so"
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 
@@ -105,9 +110,13 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    ksp("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-runtime:2.8.4")
+    implementation("androidx.room:room-ktx:2.8.4")
+    ksp("androidx.room:room-compiler:2.8.4")
+
+    // On-device LLM (Gemma) for AI tagging — LiteRT-LM is the runtime .litertlm models
+    // are built for (and what AI Edge Gallery uses), with a working GPU path.
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.13.1")
 
     testImplementation("junit:junit:4.13.2")
 
