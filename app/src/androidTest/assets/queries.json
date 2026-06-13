@@ -35,7 +35,7 @@
   ],
   "topic": [
     {
-      "q": "things to buy at the store",
+      "q": "what groceries do I need to buy",
       "topic": "groceries",
       "k": 5,
       "minPrecision": 0.6

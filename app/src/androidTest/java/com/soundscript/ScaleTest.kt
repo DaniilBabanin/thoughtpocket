@@ -136,7 +136,7 @@ class ScaleTest {
         }
         val meanPrec = precs.average()
         Log.i("SCALE", "SEARCH meanPrecision=${"%.2f".format(meanPrec)} (Gecko)")
-        if (meanPrec < 0.75) failures.add("search meanPrecision ${"%.2f".format(meanPrec)}")
+        if (meanPrec < 0.80) failures.add("search meanPrecision ${"%.2f".format(meanPrec)}")
 
         // ---- relate (raw cosine, mirrors detail screen) ----
         for (want in listOf("groceries", "rust", "travel")) {

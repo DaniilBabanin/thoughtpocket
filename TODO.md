@@ -3,8 +3,8 @@
 ## Fully-bundled build variant (Gecko model in-APK)
 Gecko embedder model (~110MB) currently downloads on first run. Add an offline build
 flavor that bundles `Gecko_256_quant.tflite` + `sentencepiece.model` in assets so the app
-works with zero network on first launch (at the cost of a big APK). Also: try Gecko on GPU
-(currently CPU, ~315ms/note) for faster backfill.
+works with zero network on first launch (at the cost of a big APK).
+(Gecko-on-GPU tested 2026-06-14: 307ms/note vs 321 CPU — no meaningful speedup, staying on CPU.)
 
 
 

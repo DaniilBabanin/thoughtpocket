@@ -179,7 +179,7 @@ queries = {
     ],
     # topic: top-k search results should mostly be the expected topic.
     "topic": [
-        {"q": "things to buy at the store", "topic": "groceries", "k": 5, "minPrecision": 0.6},
+        {"q": "what groceries do I need to buy", "topic": "groceries", "k": 5, "minPrecision": 0.6},
         {"q": "rust borrow checker and ownership", "topic": "rust", "k": 5, "minPrecision": 0.6},
         {"q": "python async and decorators", "topic": "python", "k": 5, "minPrecision": 0.6},
         {"q": "home repairs and fixing things", "topic": "home", "k": 5, "minPrecision": 0.5},

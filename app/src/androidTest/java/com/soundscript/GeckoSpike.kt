@@ -108,4 +108,54 @@ class GeckoSpike {
         }
         model = null
     }
+
+    /** GPU throughput + a deep dive into why the grocery query mis-ranks. */
+    @Test
+    fun gpuGrocery() = runBlocking<Unit> {
+        val now = System.currentTimeMillis()
+        val arr = JSONArray(asset("corpus.json"))
+        val raw = ArrayList<Note>(arr.length())
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i); val id = (i + 1).toLong()
+            raw.add(Note(id = id, createdAt = now - o.getInt("daysAgo") * day,
+                text = o.getString("text"), tags = o.getJSONArray("tags").strings()))
+            topic[id] = o.getString("topic")
+        }
+        val base = target.getExternalFilesDir("gecko")!!.absolutePath
+
+        // ---- GPU attempt ----
+        model = runCatching { GeckoEmbeddingModel("$base/gecko.tflite", Optional.of("$base/sentencepiece.model"), true) }
+            .onFailure { Log.w("SCALE", "GPU GECKO ctor failed: ${it.message}") }.getOrNull()
+        var t = SystemClock.elapsedRealtime()
+        val warm = if (model != null) embed("warm up the model", false) else null
+        val gpuOk = warm != null
+        Log.i("SCALE", "GPU GECKO warmupOk=$gpuOk ${SystemClock.elapsedRealtime() - t}ms dim=${warm?.size}")
+        if (gpuOk) {
+            t = SystemClock.elapsedRealtime()
+            raw.take(30).forEach { embed(it.text, false) }
+            Log.i("SCALE", "GPU GECKO throughput=${(SystemClock.elapsedRealtime() - t) / 30}ms/note  [CPU ~321ms]")
+        } else {
+            Log.i("SCALE", "GPU unusable — using CPU for grocery probe")
+            model = GeckoEmbeddingModel("$base/gecko.tflite", Optional.of("$base/sentencepiece.model"), false)
+        }
+
+        // ---- embed all docs, probe grocery queries ----
+        val notes = raw.map { it.copy(embedding = embed(it.text, false)) }.filter { it.embedding != null }
+        val mean = Embedder.mean(notes.mapNotNull { it.embedding })!!
+        val queries = listOf(
+            "things to buy at the store", "groceries", "milk and eggs",
+            "grocery shopping list", "food to buy this week", "what to buy at the supermarket"
+        )
+        for (q in queries) {
+            val qv = embed(q, true)!!
+            val top = notes.sortedByDescending { Embedder.cosineCentered(qv, it.embedding!!, mean) }.take(5)
+            Log.i("SCALE", "GROCERY q='$q' p@5=${"%.2f".format(precision(top, "groceries"))} -> ${top.map { topic[it.id] }}")
+        }
+        // top-10 breakdown for the failing query
+        val qv = embed("things to buy at the store", true)!!
+        notes.map { it to Embedder.cosineCentered(qv, it.embedding!!, mean) }
+            .sortedByDescending { it.second }.take(10)
+            .forEach { (n, s) -> Log.i("SCALE", "  TOP ${"%.3f".format(s)} ${topic[n.id]} :: ${n.text.take(48)}") }
+        model = null
+    }
 }
