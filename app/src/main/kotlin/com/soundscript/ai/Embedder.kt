@@ -3,6 +3,7 @@ package com.soundscript.ai
 import android.content.Context
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.text.textembedder.TextEmbedder
+import com.soundscript.data.Note
 import com.soundscript.data.NoteDao
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -53,5 +54,46 @@ object Embedder {
         for (i in a.indices) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i] }
         val d = sqrt(na) * sqrt(nb)
         return if (d == 0f) 0f else dot / d
+    }
+}
+
+/** A topic cluster of semantically-similar notes, biggest first. */
+data class Cluster(val label: String, val notes: List<Note>)
+
+/** Group notes into topic clusters by embedding similarity (single-linkage union-find). */
+object Clusters {
+    // USE cosines run high; this separates topics without splitting near-duplicates.
+    private const val THRESHOLD = 0.55f
+
+    fun build(notes: List<Note>): List<Cluster> {
+        val v = notes.filter { it.embedding != null }
+        val n = v.size
+        if (n < 2) return emptyList()
+
+        val parent = IntArray(n) { it }
+        fun find(x: Int): Int {
+            var r = x
+            while (parent[r] != r) r = parent[r]
+            var c = x
+            while (parent[c] != c) { val next = parent[c]; parent[c] = r; c = next }
+            return r
+        }
+        for (i in 0 until n) for (j in i + 1 until n)
+            if (Embedder.cosine(v[i].embedding!!, v[j].embedding!!) >= THRESHOLD)
+                parent[find(i)] = find(j)
+
+        return (0 until n).groupBy { find(it) }.values
+            .map { idxs -> idxs.map { v[it] } }
+            .filter { it.size >= 2 } // singletons aren't a cluster
+            .sortedByDescending { it.size }
+            .map { Cluster(label(it), it) }
+    }
+
+    /** Label a cluster by its most common tag, else the first note's title/text. */
+    private fun label(notes: List<Note>): String {
+        notes.flatMap { it.tags }.groupingBy { it }.eachCount()
+            .maxByOrNull { it.value }?.key?.let { return it }
+        val first = notes.first()
+        return first.title.ifBlank { first.text.take(24) }
     }
 }

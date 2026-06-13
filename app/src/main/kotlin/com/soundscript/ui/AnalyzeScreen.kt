@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.soundscript.ai.Clusters
 import com.soundscript.ai.NotesAnalysis
 import com.soundscript.data.NotesDb
 import kotlinx.coroutines.launch
@@ -47,8 +48,9 @@ fun AnalyzeScreen(onBack: () -> Unit) {
     val notes by dao.all().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     val allTags = notes.flatMap { it.tags }.distinct().sorted()
+    val clusters = remember(notes) { Clusters.build(notes) }
 
-    var sel by remember { mutableStateOf("All") } // All | week | month | tag:<t>
+    var sel by remember { mutableStateOf("All") } // All | week | month | tag:<t> | cluster:<i>
     var prompt by remember { mutableStateOf("") }
     var running by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<String?>(null) }
@@ -58,6 +60,7 @@ fun AnalyzeScreen(onBack: () -> Unit) {
         sel == "week" -> notes.filter { it.createdAt >= now - 7 * DAY }
         sel == "month" -> notes.filter { it.createdAt >= now - 30 * DAY }
         sel.startsWith("tag:") -> notes.filter { sel.removePrefix("tag:") in it.tags }
+        sel.startsWith("cluster:") -> clusters.getOrNull(sel.removePrefix("cluster:").toInt())?.notes.orEmpty()
         else -> notes
     }
 
@@ -91,6 +94,9 @@ fun AnalyzeScreen(onBack: () -> Unit) {
                 FilterChip(sel == "month", { sel = "month" }, { Text("Last month") })
                 allTags.forEach { t ->
                     FilterChip(sel == "tag:$t", { sel = "tag:$t" }, { Text("#$t") })
+                }
+                clusters.forEachIndexed { i, c ->
+                    FilterChip(sel == "cluster:$i", { sel = "cluster:$i" }, { Text("◆ ${c.label} (${c.notes.size})") })
                 }
             }
             Text(
