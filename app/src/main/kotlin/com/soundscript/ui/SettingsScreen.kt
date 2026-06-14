@@ -71,6 +71,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     var tagModel by remember { mutableStateOf(prefs.tagModelFilename) }
     var analysisModel by remember { mutableStateOf(prefs.analysisModelFilename) }
     var autoTag by remember { mutableStateOf(prefs.autoTag) }
+    var autoMarkdown by remember { mutableStateOf(prefs.autoMarkdown) }
     var aiError by remember { mutableStateOf<String?>(null) }
     var geckoTick by remember { mutableStateOf(0) }
     var geckoPct by remember { mutableStateOf<Int?>(null) }
@@ -227,6 +228,18 @@ fun SettingsScreen(onBack: () -> Unit) {
                     )
                 }
                 Switch(checked = autoTag, onCheckedChange = { autoTag = it; prefs.autoTag = it })
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Auto-format as Markdown")
+                    Text(
+                        "Rewrite each note as Markdown (lists, tickable checklists) with Gemma E4B after transcription.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                }
+                Switch(checked = autoMarkdown, onCheckedChange = { autoMarkdown = it; prefs.autoMarkdown = it })
             }
 
             val installedModels = remember(aiTick) { LlmEngine.installed(context) }

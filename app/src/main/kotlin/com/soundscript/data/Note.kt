@@ -25,6 +25,8 @@ data class Note(
     val createdAt: Long,
     val text: String,
     val title: String = "",
+    // LLM-formatted Markdown (lists/checklists/prose); "" until generated. [text] stays the raw transcript.
+    val markdown: String = "",
     val tags: List<String> = emptyList(),
     // Semantic embedding (Universal Sentence Encoder); null until computed.
     val embedding: FloatArray? = null,
@@ -77,7 +79,7 @@ interface NoteDao {
     suspend fun delete(note: Note)
 }
 
-@Database(entities = [Note::class], version = 3, exportSchema = false)
+@Database(entities = [Note::class], version = 4, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class NotesDb : RoomDatabase() {
     abstract fun notes(): NoteDao
@@ -97,10 +99,16 @@ abstract class NotesDb : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE notes ADD COLUMN markdown TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun get(context: Context): NotesDb = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(
                 context.applicationContext, NotesDb::class.java, "notes.db"
-            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { instance = it }
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { instance = it }
         }
     }
 }

@@ -52,6 +52,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -68,6 +69,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.soundscript.ai.Embedder
 import com.soundscript.ai.LlmEngine
+import com.soundscript.ai.MarkdownEngine
 import com.soundscript.ai.TaggingEngine
 import com.soundscript.ai.TitleEngine
 import com.soundscript.data.Note
@@ -274,6 +276,9 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
     }
 
     var text by remember(n.id) { mutableStateOf(n.text) }
+    var markdown by remember(n.id) { mutableStateOf(n.markdown) }
+    var formatting by remember(n.id) { mutableStateOf(false) }
+    var showRaw by remember(n.id) { mutableStateOf(n.markdown.isBlank()) }
     var title by remember(n.id) { mutableStateOf(n.title) }
     var titling by remember(n.id) { mutableStateOf(false) }
     var tags by remember(n.id) { mutableStateOf(n.tags) }
@@ -306,7 +311,7 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
                 title = { Text("Note") },
                 actions = {
                     IconButton(onClick = {
-                        scope.launch { dao.update(n.copy(text = text, title = title, tags = tags)); onBack() }
+                        scope.launch { dao.update(n.copy(text = text, title = title, tags = tags, markdown = markdown)); onBack() }
                     }) { Icon(Icons.Filled.Check, "Save") }
                     IconButton(onClick = {
                         scope.launch { dao.delete(n); onBack() }
@@ -339,13 +344,48 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
                     }
                 },
             )
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                label = { Text("Transcript") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 4,
-            )
+            // Formatted Markdown (interactive checklist) — primary view once generated.
+            if (markdown.isNotBlank()) {
+                MarkdownView(
+                    markdown = markdown,
+                    modifier = Modifier.fillMaxWidth(),
+                    onToggle = { md ->
+                        markdown = md
+                        scope.launch { dao.update(n.copy(markdown = md)) }
+                    },
+                )
+                TextButton(onClick = { showRaw = !showRaw }) {
+                    Text(if (showRaw) "Hide transcript" else "Show transcript")
+                }
+            }
+            if (showRaw) {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = { Text("Transcript") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 4,
+                )
+            }
+            Button(
+                onClick = {
+                    scope.launch {
+                        formatting = true; aiError = null
+                        MarkdownEngine.toMarkdown(context, text)
+                            .onSuccess { markdown = it; dao.update(n.copy(markdown = it)) }
+                            .onFailure { aiError = it.message ?: "Formatting failed" }
+                        formatting = false
+                    }
+                },
+                enabled = !formatting,
+            ) {
+                Icon(Icons.Filled.AutoAwesome, null)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (formatting) "Formatting…"
+                    else if (markdown.isBlank()) "Format as Markdown (AI)" else "Reformat (AI)"
+                )
+            }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 tags.forEach { tag ->
                     InputChip(

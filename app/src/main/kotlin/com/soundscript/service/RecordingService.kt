@@ -14,6 +14,7 @@ import com.soundscript.ModelManager
 import com.soundscript.WhisperEngine
 import com.soundscript.ai.Embedder
 import com.soundscript.ai.LlmEngine
+import com.soundscript.ai.MarkdownEngine
 import com.soundscript.ai.TaggingEngine
 import com.soundscript.ai.TitleEngine
 import com.soundscript.audio.MicRecorder
@@ -146,19 +147,22 @@ class RecordingService : Service() {
                 val id = dao.insert(note)
                 Notifications.done(this, "Note saved")
 
-                // Embed (semantic relate) + title + auto-tag in the background, then update.
+                // Embed (semantic relate) + title + auto-tag + auto-markdown in the background, then update.
                 val emb = Embedder.embed(this, body)
                 var title = ""
                 var tags = emptyList<String>()
+                var markdown = ""
                 if (text.isNotBlank() && LlmEngine.isModelInstalled(this)) {
                     getSystemService(NotificationManager::class.java)
                         .notify(Notifications.ONGOING_ID, Notifications.ongoing(this, "Summarising…"))
                     title = TitleEngine.suggest(this, body).getOrNull().orEmpty()
                     if (prefs.autoTag)
                         tags = TaggingEngine.suggestTags(this, body).getOrNull().orEmpty()
+                    if (prefs.autoMarkdown)
+                        markdown = MarkdownEngine.toMarkdown(this, body).getOrNull().orEmpty()
                 }
-                if (emb != null || title.isNotEmpty() || tags.isNotEmpty())
-                    dao.update(note.copy(id = id, title = title, tags = tags, embedding = emb))
+                if (emb != null || title.isNotEmpty() || tags.isNotEmpty() || markdown.isNotEmpty())
+                    dao.update(note.copy(id = id, title = title, tags = tags, embedding = emb, markdown = markdown))
             }
         }
     }

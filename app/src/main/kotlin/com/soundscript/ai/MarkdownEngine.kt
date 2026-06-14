@@ -12,7 +12,8 @@ import java.io.File
 object MarkdownEngine {
     suspend fun toMarkdown(context: Context, text: String, model: File? = null): Result<String> {
         if (text.isBlank()) return Result.success("")
-        val m = model ?: LlmEngine.resolve(context, AppPreferences(context).tagModelFilename, "E2B")
+        // E4B reformats prose vs. checklists correctly; E2B over-structures (validated MarkdownSpike).
+        val m = model ?: LlmEngine.resolve(context, AppPreferences(context).analysisModelFilename, "4b")
         return LlmEngine.generate(context, buildPrompt(text), m).map { clean(it) }
     }
 
