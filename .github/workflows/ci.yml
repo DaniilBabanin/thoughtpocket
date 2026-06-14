@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      # whisper.cpp is built from source via CMake/NDK (FetchContent pulls
+      # whisper.cpp v1.8.4 at configure time), so the exact NDK + CMake the
+      # project pins must be installed alongside the SDK platform.
+      - name: Install Android SDK + NDK + CMake
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "ndk;27.0.12077973" \
+            "cmake;3.22.1" > /dev/null 2>&1
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build debug APK
+        run: |
+          ./gradlew assembleDebug --stacktrace 2>&1 | tee /tmp/build.log
+          build_exit=${PIPESTATUS[0]}
+          if [ $build_exit -ne 0 ]; then
+            echo ""
+            echo "══════════════════════════════════════════"
+            echo "  BUILD FAILED — KOTLIN/GRADLE ERRORS"
+            echo "══════════════════════════════════════════"
+            echo "--- Kotlin compiler errors (e:) ---"
+            grep -E "^e: " /tmp/build.log || echo "(none)"
+            echo "--- Failed tasks ---"
+            grep -E "^FAILURE:|> Task .*FAILED|What went wrong" /tmp/build.log || echo "(none)"
+            echo "--- Last 40 lines ---"
+            tail -40 /tmp/build.log
+            exit $build_exit
+          fi
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: soundscript-debug-${{ github.sha }}
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+
+  unit-tests:
+    name: Unit tests (JVM)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Install Android SDK + NDK + CMake
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "ndk;27.0.12077973" \
+            "cmake;3.22.1" > /dev/null 2>&1
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # Pure-JVM tests only (Pcm, Markdown ops, Export, ReminderEngine).
+      # The androidTest suites (Scale/ComplexQuery/Interact/Tag spikes) need an
+      # on-device GPU + multi-GB models and are run manually on hardware.
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest --stacktrace

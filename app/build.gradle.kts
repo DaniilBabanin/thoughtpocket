@@ -48,10 +48,28 @@ android {
         }
     }
 
+    // Public release keystore committed in-repo (password documented in .gitignore) so CI
+    // and local builds sign identically with no secrets. Guarded so a stripped checkout
+    // without it still builds (falls back to debug signing).
+    val releaseKeystore = file("release.keystore")
+    signingConfigs {
+        if (releaseKeystore.exists()) {
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = "whispershare"
+                keyAlias = "soundscript"
+                keyPassword = "whispershare"
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            if (releaseKeystore.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
