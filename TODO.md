@@ -7,13 +7,18 @@ Settings grouping, theming/typography, accessibility (content descriptions, touc
 animations/transitions. Collect concrete nits here as they come up.
 
 
-## Fully-bundled / offline build (Gecko in-APK; Gemma stays download-only)
-Investigated 2026-06-14: Gemma 3n E2B/E4B **cannot** be bundled — each model (>2 GB) blows past
-Play Asset Delivery's 2 GB total-asset-pack cap, and the weights are gated under the custom Gemma
-Terms (redistribution carries NOTICE/EULA duties). Keep Gemma download-on-first-run.
-Gecko (`Gecko_256_quant.tflite` ~109 MB + `sentencepiece.model`, non-gated) **can** be bundled —
-install-time asset pack or `assets/` + `noCompress`. Gives a true offline search + transcription
-build; AI tagging still needs the one-time Gemma download. (Gecko-on-GPU tested: no speedup, CPU.)
+## Model delivery (in-app download from Nextcloud) — DONE 2026-06-14
+Gemma 4 E2B/E4B (`.litertlm`) + Gecko + whisper are downloaded in-app from the project's Nextcloud
+(direct, no-auth public DAV links; `LlmEngine.Downloadable` + repointed `Embedder`). No more
+adb-only. Download UI lives in Settings, incl. a one-tap **"Download all models"** button
+(Base-English whisper 60 MB + Gemma E2B 2.59 GB + Gemma E4B 3.66 GB + Gecko 115 MB ≈ 6.4 GB; skips
+any already installed). A missing model shows a toast pointing to Settings (`llmReadyOrToast`).
+No resume (Settings-initiated, user-watched). License:
+**Gemma 4 is Apache 2.0** (the gated custom Gemma Terms were Gemma 3n, not 4).
+
+**Offline bundling: dropped.** Now that models are hosted on Nextcloud, we keep the APK small and
+download everything on demand — no asset-pack bundling of Gecko/Gemma. (Gecko-on-GPU tested earlier:
+no speedup, CPU.)
 
 ## 16 KB page-size native alignment (Play Store blocker) — RESOLVED 2026-06-14
 Only `libsoundscript.so` (our whisper build) was misaligned (4 KB LOAD segments); every dependency

@@ -35,9 +35,10 @@ object Embedder {
     const val DIM = 768
     private const val TFLITE = "gecko.tflite"
     private const val TOKENIZER = "sentencepiece.model"
-    private const val HF = "https://huggingface.co/litert-community/Gecko-110m-en/resolve/main"
-    private const val TFLITE_URL = "$HF/Gecko_256_quant.tflite"
-    private const val TOKENIZER_URL = "$HF/$TOKENIZER"
+    // Hosted on the project's Nextcloud (direct, no-auth public links) alongside the Gemma models.
+    private const val BASE = "https://next.babanin.de/public.php/dav/files/cQz6gaz6H4tGyRP/gecko"
+    private const val TFLITE_URL = "$BASE/$TFLITE"
+    private const val TOKENIZER_URL = "$BASE/$TOKENIZER"
     const val SIZE_MB = 110
 
     private val mutex = Mutex()

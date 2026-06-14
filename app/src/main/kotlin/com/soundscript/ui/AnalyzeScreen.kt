@@ -66,6 +66,7 @@ fun AnalyzeScreen(onBack: () -> Unit) {
 
     fun run(q: String) {
         if (q.isBlank() || running) return
+        if (!llmReadyOrToast(context)) return
         scope.launch {
             running = true; result = null
             result = NotesAnalysis.ask(context, scoped, q).getOrElse { "Error: ${it.message}" }

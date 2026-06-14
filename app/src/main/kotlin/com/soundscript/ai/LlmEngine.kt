@@ -13,10 +13,16 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 
 /**
  * Generic on-device LLM (Gemma) runner via LiteRT-LM — the runtime the .litertlm models
@@ -74,11 +80,62 @@ object LlmEngine {
 
     fun isModelInstalled(context: Context): Boolean = modelFile(context) != null
 
+    // ---------- download ----------
+
+    /**
+     * Apache-2.0 Gemma 4 .litertlm bundles, hosted on the project's Nextcloud as direct,
+     * no-auth public links. Swap [NEXTCLOUD] if the host changes.
+     */
+    private const val NEXTCLOUD = "https://next.babanin.de/public.php/dav/files/cQz6gaz6H4tGyRP/llm"
+
+    enum class Downloadable(val filename: String, val url: String, val approxSizeMb: Int) {
+        E2B("gemma-4-E2B-it.litertlm", "$NEXTCLOUD/gemma-4-E2B-it.litertlm", 2588),
+        E4B("gemma-4-E4B-it.litertlm", "$NEXTCLOUD/gemma-4-E4B-it.litertlm", 3660),
+    }
+
+    fun isInstalled(context: Context, d: Downloadable): Boolean =
+        File(llmDir(context), d.filename).let { it.exists() && it.length() > 10_000_000L }
+
+    /**
+     * Download [d] into the llm/ dir. Emits 0..99 progress, then 100, then -1.
+     * No resume — a dropped connection restarts; fine for a Settings-initiated download.
+     */
+    fun download(context: Context, d: Downloadable): Flow<Int> = flow {
+        val target = File(llmDir(context), d.filename)
+        val tmp = File(target.absolutePath + ".part")
+        val conn = (URL(d.url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 15_000; readTimeout = 60_000; instanceFollowRedirects = true
+        }
+        try {
+            conn.connect()
+            val total = conn.contentLengthLong
+            var done = 0L; var last = -1
+            conn.inputStream.use { input ->
+                FileOutputStream(tmp).use { out ->
+                    val buf = ByteArray(64 * 1024)
+                    while (true) {
+                        val n = input.read(buf); if (n <= 0) break
+                        out.write(buf, 0, n); done += n
+                        if (total > 0) {
+                            val p = ((done * 100) / total).toInt().coerceIn(0, 99)
+                            if (p != last) { last = p; emit(p) }
+                        }
+                    }
+                }
+            }
+            if (total > 0 && done != total) { tmp.delete(); throw IllegalStateException("Incomplete download: $done/$total") }
+            if (!tmp.renameTo(target)) { tmp.copyTo(target, overwrite = true); tmp.delete() }
+            emit(100); emit(-1)
+        } finally {
+            conn.disconnect(); if (tmp.exists()) tmp.delete()
+        }
+    }.flowOn(Dispatchers.IO)
+
     /** Run the model on [prompt]; [model] picks a specific bundle (else the default). */
     suspend fun generate(context: Context, prompt: String, model: File? = null): Result<String> =
         withContext(Dispatchers.Default) {
             val model = model ?: modelFile(context)
-                ?: return@withContext Result.failure(IllegalStateException("No model — import one in Settings."))
+                ?: return@withContext Result.failure(IllegalStateException("No AI model — download one in Settings."))
             mutex.withLock {
                 runCatching {
                     val eng = ensureLoaded(context, model)

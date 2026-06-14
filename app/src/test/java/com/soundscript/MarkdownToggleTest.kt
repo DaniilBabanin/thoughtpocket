@@ -2,6 +2,7 @@ package com.soundscript
 
 import com.soundscript.ai.addItem
 import com.soundscript.ai.checklistItems
+import com.soundscript.ai.openTasks
 import com.soundscript.ai.removeItem
 import com.soundscript.ai.setItemChecked
 import com.soundscript.ai.toggleCheckbox
@@ -87,5 +88,39 @@ class MarkdownToggleTest {
         )
         assertEquals(listOf("milk", "coffee"), checklistItems(notes, checked = true).map { it.second })
         assertEquals(listOf("eggs", "bread"), checklistItems(notes, checked = false).map { it.second })
+    }
+
+    // ---- open tasks (action-items screen source) ----
+    @Test
+    fun openTasksReturnsOnlyUncheckedAcrossNotesInOrder() {
+        val notes = listOf(
+            Note(id = 1, createdAt = 0, text = "", title = "A", markdown = "A\n- [ ] one\n- [x] done\n- [ ] two"),
+            Note(id = 2, createdAt = 0, text = "", title = "B", markdown = "B\n- [ ] three"),
+        )
+        val tasks = openTasks(notes)
+        assertEquals(listOf("one", "two", "three"), tasks.map { it.second })
+        assertEquals(listOf(1L, 1L, 2L), tasks.map { it.first.id })   // carries the source note
+    }
+
+    @Test
+    fun openTasksUppercaseXCountsAsDone() {
+        val notes = listOf(Note(id = 1, createdAt = 0, text = "", markdown = "- [X] bought\n- [ ] todo"))
+        assertEquals(listOf("todo"), openTasks(notes).map { it.second })
+    }
+
+    @Test
+    fun openTasksHandlesIndentedItems() {
+        val notes = listOf(Note(id = 1, createdAt = 0, text = "", markdown = "Parent\n  - [ ] sub task"))
+        assertEquals(listOf("sub task"), openTasks(notes).map { it.second })
+    }
+
+    @Test
+    fun openTasksIgnoresPlainBulletsAndProse() {
+        // Bullets without checkboxes and plain paragraphs are not tasks; notes with no markdown contribute nothing.
+        val notes = listOf(
+            Note(id = 1, createdAt = 0, text = "raw only", markdown = ""),
+            Note(id = 2, createdAt = 0, text = "", markdown = "Notes\n- a bullet\njust prose"),
+        )
+        assertEquals(emptyList<String>(), openTasks(notes).map { it.second })
     }
 }

@@ -122,7 +122,7 @@ class AppPreferences(context: Context) {
         private const val KEY_SKIP_VERIFY = "skip_model_verification"
         private const val KEY_GPU_CRASHED = "gpu_crashed_notice"
 
-        private const val DEFAULT_MODEL_ID = "builtin:BASE_Q5"
+        private const val DEFAULT_MODEL_ID = "builtin:BASE_EN_Q5"
 
         // Off by default — Vulkan support varies by GPU (Mali on Pixel 9 has been
         // known to abort mid-inference). Power users can enable it from settings.

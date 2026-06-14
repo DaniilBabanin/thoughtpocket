@@ -22,6 +22,7 @@ private sealed interface Route {
     data class Detail(val id: Long) : Route
     data object Settings : Route
     data object Analyze : Route
+    data object Tasks : Route
 }
 
 @Composable
@@ -32,6 +33,7 @@ private fun AppRoot() {
             onOpen = { route = Route.Detail(it) },
             onSettings = { route = Route.Settings },
             onAnalyze = { route = Route.Analyze },
+            onTasks = { route = Route.Tasks },
         )
         is Route.Detail -> NoteDetailScreen(
             id = r.id,
@@ -40,5 +42,9 @@ private fun AppRoot() {
         )
         is Route.Settings -> SettingsScreen(onBack = { route = Route.List })
         is Route.Analyze -> AnalyzeScreen(onBack = { route = Route.List })
+        is Route.Tasks -> ActionItemsScreen(
+            onBack = { route = Route.List },
+            onOpen = { route = Route.Detail(it) },
+        )
     }
 }

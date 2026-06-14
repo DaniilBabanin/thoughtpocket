@@ -1,9 +1,13 @@
 package com.soundscript.ui
 
 import android.Manifest
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.provider.CalendarContract
 import android.text.format.DateUtils
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -32,8 +36,10 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Search
@@ -44,6 +50,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
@@ -53,6 +60,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
@@ -80,6 +88,7 @@ import com.soundscript.ai.InteractEngine
 import com.soundscript.ai.InteractOp
 import com.soundscript.ai.LlmEngine
 import com.soundscript.ai.MarkdownEngine
+import com.soundscript.ai.ReminderEngine
 import com.soundscript.ai.TaggingEngine
 import com.soundscript.ai.TitleEngine
 import com.soundscript.ai.addItem
@@ -97,9 +106,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** True if a Gemma model is installed; otherwise shows a toast pointing the user to Settings. */
+internal fun llmReadyOrToast(context: Context): Boolean {
+    if (LlmEngine.isModelInstalled(context)) return true
+    Toast.makeText(context, "Download the AI model in Settings first", Toast.LENGTH_LONG).show()
+    return false
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit, onAnalyze: () -> Unit) {
+fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit, onAnalyze: () -> Unit, onTasks: () -> Unit) {
     val context = LocalContext.current
     val dao = remember { NotesDb.get(context).notes() }
     val notes by dao.all().collectAsState(initial = emptyList())
@@ -177,6 +193,7 @@ fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit, onAnalyze: (
             TopAppBar(
                 title = { Text("SoundScript") },
                 actions = {
+                    IconButton(onClick = onTasks) { Icon(Icons.Filled.Checklist, "Action items") }
                     IconButton(onClick = { pickTask() }) { Icon(Icons.Filled.Casino, "Random task") }
                     IconButton(onClick = onAnalyze) { Icon(Icons.Filled.Insights, "Ask your notes") }
                     IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, "Settings") }
@@ -296,6 +313,74 @@ fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit, onAnalyze: (
     }
 }
 
+/** Every open "- [ ]" item across all notes, one tap to mark done or jump to its note. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ActionItemsScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
+    val context = LocalContext.current
+    val dao = remember { NotesDb.get(context).notes() }
+    val notes by dao.all().collectAsState(initial = emptyList())
+    val scope = rememberCoroutineScope()
+    // Recent notes first; openTasks() flattens every unchecked checklist item to (note, label).
+    val tasks = remember(notes) { openTasks(notes.sortedByDescending { it.createdAt }) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+                },
+                title = { Text("Action items") },
+            )
+        }
+    ) { pad ->
+        if (tasks.isEmpty()) {
+            Box(Modifier.padding(pad).fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Nothing open 🎉", color = MaterialTheme.colorScheme.outline)
+            }
+        } else {
+            LazyColumn(Modifier.padding(pad).fillMaxSize()) {
+                items(tasks) { (note, label) ->
+                    ListItem(
+                        modifier = Modifier.clickable { onOpen(note.id) },
+                        leadingContent = {
+                            Checkbox(
+                                checked = false,
+                                onCheckedChange = {
+                                    scope.launch {
+                                        dao.update(note.copy(markdown = setItemChecked(note.markdown, label, true)))
+                                    }
+                                },
+                            )
+                        },
+                        headlineContent = { Text(label) },
+                        supportingContent = {
+                            Text(
+                                note.title.ifBlank { note.text.substringBefore('\n') },
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Native calendar "new event" intent — opens the user's calendar app pre-filled; no permissions. */
+private fun calendarInsertIntent(title: String, description: String, startMillis: Long?, allDay: Boolean): Intent =
+    Intent(Intent.ACTION_INSERT).apply {
+        data = CalendarContract.Events.CONTENT_URI
+        putExtra(CalendarContract.Events.TITLE, title)
+        putExtra(CalendarContract.Events.DESCRIPTION, description.take(2000))
+        if (startMillis != null) {
+            putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, startMillis)
+            putExtra(CalendarContract.EXTRA_EVENT_END_TIME, startMillis + 3_600_000L)
+            putExtra(CalendarContract.EXTRA_EVENT_ALL_DAY, allDay)
+        }
+    }
+
 @Composable
 private fun NoteRow(note: Note, onClick: () -> Unit) {
     val when_ = DateUtils.getRelativeTimeSpanString(note.createdAt).toString()
@@ -353,6 +438,7 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
     var suggesting by remember(n.id) { mutableStateOf(false) }
     var suggestions by remember(n.id) { mutableStateOf<List<String>>(emptyList()) }
     var aiError by remember(n.id) { mutableStateOf<String?>(null) }
+    var calBusy by remember(n.id) { mutableStateOf(false) }
 
     // Interact (AI commands on the checklist) + single-level undo for AI changes.
     val prefs = remember { AppPreferences(context) }
@@ -381,6 +467,7 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
     fun runCommand() {
         val cmd = command.trim()
         if (cmd.isBlank() || interacting) return
+        if (!llmReadyOrToast(context)) return
         scope.launch {
             interacting = true; aiError = null
             InteractEngine.interpret(context, markdown, cmd).onSuccess { op ->
@@ -396,6 +483,28 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
                 }
             }.onFailure { aiError = it.message }
             interacting = false
+        }
+    }
+
+    // One-click "Add to calendar": the LLM pre-fills the time if the note names one ("remind me
+    // Tuesday at 3"); either way we open the native calendar editor for the user to confirm.
+    fun addToCalendar() {
+        if (calBusy) return
+        val src = text.ifBlank { markdown }
+        if (src.isBlank()) return
+        scope.launch {
+            calBusy = true; aiError = null
+            val r = if (LlmEngine.isModelInstalled(context))
+                ReminderEngine.extract(context, src, System.currentTimeMillis()).getOrNull() else null
+            val intent = calendarInsertIntent(
+                title = r?.title?.takeIf { it.isNotBlank() } ?: title.ifBlank { src.substringBefore('\n') },
+                description = src,
+                startMillis = r?.startMillis,
+                allDay = r?.allDay ?: false,
+            )
+            runCatching { context.startActivity(intent) }
+                .onFailure { aiError = "No calendar app found" }
+            calBusy = false
         }
     }
 
@@ -521,6 +630,7 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
             }
             Button(
                 onClick = {
+                    if (!llmReadyOrToast(context)) return@Button
                     scope.launch {
                         formatting = true; aiError = null
                         MarkdownEngine.toMarkdown(context, text)
@@ -537,6 +647,12 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
                     if (formatting) "Formatting…"
                     else if (markdown.isBlank()) "Format as Markdown (AI)" else "Reformat (AI)"
                 )
+            }
+            OutlinedButton(onClick = { addToCalendar() }, enabled = !calBusy) {
+                if (calBusy) CircularProgressIndicator(Modifier.size(18.dp))
+                else Icon(Icons.Filled.Event, null)
+                Spacer(Modifier.width(8.dp))
+                Text(if (calBusy) "Reading time…" else "Add to calendar")
             }
 
             HorizontalDivider()
@@ -567,6 +683,7 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
             }
             Button(
                 onClick = {
+                    if (!llmReadyOrToast(context)) return@Button
                     scope.launch {
                         interacting = true; aiError = null
                         InteractEngine.suggestAdditions(context, markdown.ifBlank { text })
