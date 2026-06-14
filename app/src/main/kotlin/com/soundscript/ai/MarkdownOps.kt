@@ -63,11 +63,15 @@ fun removeItem(markdown: String, item: String): String {
     return lines.joinToString("\n")
 }
 
-/** Every unchecked ("- [ ]") checklist item across [notes], as (note, label). */
-fun openTasks(notes: List<Note>): List<Pair<Note, String>> =
+/** Every checklist item across [notes] with the given [checked] state, as (note, label). */
+fun checklistItems(notes: List<Note>, checked: Boolean): List<Pair<Note, String>> =
     notes.flatMap { n ->
         n.markdown.split("\n").mapNotNull { line ->
-            val m = CHECKBOX.find(line)
-            if (m != null && m.destructured.component2() == " ") n to m.destructured.component3().trim() else null
+            val m = CHECKBOX.find(line) ?: return@mapNotNull null
+            val isChecked = m.destructured.component2().equals("x", ignoreCase = true)
+            if (isChecked == checked) n to m.destructured.component3().trim() else null
         }
     }
+
+/** Every unchecked ("- [ ]") checklist item across [notes], as (note, label). */
+fun openTasks(notes: List<Note>): List<Pair<Note, String>> = checklistItems(notes, checked = false)

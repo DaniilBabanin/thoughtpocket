@@ -89,13 +89,17 @@
     },
     {
       "q": "Which groceries do I still need to buy this week?",
-      "kind": "contains_all",
+      "kind": "all_and_none",
       "expect": [
         "bread",
         "chicken",
         "coffee",
         "rice",
         "spinach"
+      ],
+      "absent": [
+        "olive oil",
+        "salmon"
       ],
       "note": "unchecked (- [ ]) items in recent grocery notes"
     },

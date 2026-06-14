@@ -1,9 +1,11 @@
 package com.soundscript
 
 import com.soundscript.ai.addItem
+import com.soundscript.ai.checklistItems
 import com.soundscript.ai.removeItem
 import com.soundscript.ai.setItemChecked
 import com.soundscript.ai.toggleCheckbox
+import com.soundscript.data.Note
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -74,5 +76,16 @@ class MarkdownToggleTest {
     fun unknownItemUnchanged() {
         assertEquals(list, setItemChecked(list, "pineapple", true))
         assertEquals(list, removeItem(list, "pineapple"))
+    }
+
+    // ---- checklist aggregation (structured query path) ----
+    @Test
+    fun checklistItemsSplitsByState() {
+        val notes = listOf(
+            Note(id = 1, createdAt = 0, text = "", markdown = "Run\n- [x] milk\n- [ ] eggs"),
+            Note(id = 2, createdAt = 0, text = "", markdown = "Run\n- [x] coffee\n- [ ] bread"),
+        )
+        assertEquals(listOf("milk", "coffee"), checklistItems(notes, checked = true).map { it.second })
+        assertEquals(listOf("eggs", "bread"), checklistItems(notes, checked = false).map { it.second })
     }
 }

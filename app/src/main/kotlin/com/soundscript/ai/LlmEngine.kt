@@ -189,6 +189,11 @@ object NotesAnalysis {
     suspend fun ask(context: Context, notes: List<Note>, question: String): Result<String> {
         if (notes.isEmpty()) return Result.success("No notes in this scope.")
         if (question.isBlank()) return Result.success("")
+        // Checklist-aggregation questions ("what did I buy last week", "what's still open") are
+        // answered deterministically from the Markdown checkboxes — the LLM only classifies them.
+        ChecklistQuery.tryAnswer(context, notes, question, System.currentTimeMillis())?.let {
+            return Result.success(it)
+        }
         val selected = select(context, notes, question)
         // Feed the Markdown when present so checklist state ("- [x]" done / "- [ ]" still to do) is visible.
         val joined = selected.joinToString("\n\n") {

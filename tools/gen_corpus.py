@@ -224,8 +224,9 @@ queries = {
         },
         {
             "q": "Which groceries do I still need to buy this week?",
-            "kind": "contains_all",
+            "kind": "all_and_none",
             "expect": sorted({x for _, needed in grocery_recent for x in needed}),
+            "absent": ["olive oil", "salmon"],  # bought (- [x]) long ago — never "still need"
             "note": "unchecked (- [ ]) items in recent grocery notes",
         },
         {
