@@ -26,7 +26,7 @@ object Notifications {
     /** [text] is the status line; [body], when set, shows the live transcript (expandable in the shade). */
     fun ongoing(ctx: Context, text: String, body: String? = null) =
         NotificationCompat.Builder(ctx, CHANNEL)
-            .setSmallIcon(R.drawable.ic_mic)
+            .setSmallIcon(R.drawable.ic_notify)
             .setContentTitle("SoundScript")
             .setContentText(if (body.isNullOrBlank()) text else body)
             .apply {
@@ -45,7 +45,7 @@ object Notifications {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val n = NotificationCompat.Builder(ctx, CHANNEL)
-            .setSmallIcon(R.drawable.ic_mic)
+            .setSmallIcon(R.drawable.ic_notify)
             .setContentTitle("SoundScript")
             .setContentText(text)
             .setContentIntent(pi)

@@ -6,7 +6,7 @@
     android:targetCellHeight="1"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_record"
-    android:previewImage="@drawable/ic_mic"
+    android:previewImage="@drawable/ic_notify"
     android:resizeMode="none"
     android:widgetCategory="home_screen"
     android:description="@string/widget_description" />

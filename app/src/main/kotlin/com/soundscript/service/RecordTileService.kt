@@ -81,13 +81,13 @@ class RecordTileService : TileService() {
             RecordState.State.TRANSCRIBING -> {
                 timerJob?.cancel(); timerJob = null
                 tile.state = Tile.STATE_ACTIVE
-                tile.icon = Icon.createWithResource(this, R.drawable.ic_mic)
+                tile.icon = Icon.createWithResource(this, R.drawable.ic_notify)
                 tile.label = "Transcribing…"
             }
             RecordState.State.IDLE -> {
                 timerJob?.cancel(); timerJob = null
                 tile.state = Tile.STATE_INACTIVE
-                tile.icon = Icon.createWithResource(this, R.drawable.ic_mic)
+                tile.icon = Icon.createWithResource(this, R.drawable.ic_notify)
                 tile.label = "SoundScript"
             }
         }

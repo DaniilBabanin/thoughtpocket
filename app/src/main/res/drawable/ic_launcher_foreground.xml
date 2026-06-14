@@ -4,28 +4,20 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,30
-            C49,30 45,34 45,39
-            L45,57
-            C45,62 49,66 54,66
-            C59,66 63,62 63,57
-            L63,39
-            C63,34 59,30 54,30 Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M40,55
-            L40,57
-            C40,65 46,71 54,71
-            C62,71 68,65 68,57
-            L68,55
-            L72,55
-            L72,57
-            C72,66 65,73 56,74
-            L56,80
-            L52,80
-            L52,74
-            C43,73 36,66 36,57
-            L36,55 Z" />
+    <!-- note + overlaid mic (gap knocked into the note border) + AI sparkle.
+         Scaled to the adaptive-icon safe zone. -->
+    <group android:pivotX="54" android:pivotY="54" android:scaleX="0.8" android:scaleY="0.8">
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="3.5"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M50,74 H27 A7,7 0 0 0 20,67 V29 A7,7 0 0 0 27,22 H53 A7,7 0 0 0 60,29 V36
+                M27,36 H50
+                M27,46 H44
+                M46,49 a9,9 0 0 1 18,0 v12 a9,9 0 0 1 -18,0 z
+                M55,70 V80
+                M47,81 H63
+                M84,21 Q85.12,26.88 91,28 Q85.12,29.12 84,35 Q82.88,29.12 77,28 Q82.88,26.88 84,21 Z" />
+    </group>
 </vector>

@@ -43,7 +43,7 @@ class RecordWidget : AppWidgetProvider() {
                 views.setChronometer(R.id.widget_timer, status.startedAtElapsedRealtime, null, true)
                 views.setOnClickPendingIntent(R.id.widget_root, stopIntent(context))
             } else {
-                views.setImageViewResource(R.id.widget_icon, R.drawable.ic_mic)
+                views.setImageViewResource(R.id.widget_icon, R.drawable.ic_notify)
                 views.setViewVisibility(R.id.widget_label, View.VISIBLE)
                 views.setViewVisibility(R.id.widget_timer, View.GONE)
                 views.setChronometer(R.id.widget_timer, 0L, null, false)
