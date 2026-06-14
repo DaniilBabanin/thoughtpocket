@@ -112,8 +112,17 @@ class RecordingService : Service() {
                     highQuality = false, // previews stay greedy/fast
                 )
             }.getOrNull()
-            if (!text.isNullOrBlank()) RecordState.setPartial(text)
+            if (!text.isNullOrBlank()) {
+                RecordState.setPartial(text)
+                if (prefs.liveTranscribeNotification) updateOngoing("Recording…", text)
+            }
         }
+    }
+
+    /** Update the ongoing notification; [body] (the live transcript) shows expandably in the shade. */
+    private fun updateOngoing(status: String, body: String?) {
+        getSystemService(NotificationManager::class.java)
+            .notify(Notifications.ONGOING_ID, Notifications.ongoing(this, status, body))
     }
 
     private suspend fun transcribeAndSave(
@@ -138,7 +147,10 @@ class RecordingService : Service() {
                         translate = prefs.translateToEnglish,
                         threads = prefs.resolvedThreads(),
                         highQuality = prefs.highQuality,
-                        onSegment = { seg -> sb.append(seg); RecordState.setPartial(sb.toString()) },
+                        onSegment = { seg ->
+                            sb.append(seg); RecordState.setPartial(sb.toString())
+                            if (prefs.liveTranscribeNotification) updateOngoing("Transcribing…", sb.toString())
+                        },
                     )
                 }.getOrElse { Log.e(TAG, "transcription failed", it); "" }
                 val body = text.ifBlank { "(no speech detected)" }

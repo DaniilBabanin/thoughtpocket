@@ -72,6 +72,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     var analysisModel by remember { mutableStateOf(prefs.analysisModelFilename) }
     var autoTag by remember { mutableStateOf(prefs.autoTag) }
     var autoMarkdown by remember { mutableStateOf(prefs.autoMarkdown) }
+    var liveNotif by remember { mutableStateOf(prefs.liveTranscribeNotification) }
     var aiError by remember { mutableStateOf<String?>(null) }
     var geckoTick by remember { mutableStateOf(0) }
     var geckoPct by remember { mutableStateOf<Int?>(null) }
@@ -175,6 +176,20 @@ fun SettingsScreen(onBack: () -> Unit) {
                 Switch(
                     checked = translate,
                     onCheckedChange = { translate = it; prefs.translateToEnglish = it },
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Live transcript in notification")
+                    Text(
+                        "Show the transcription in the notification shade while recording.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                }
+                Switch(
+                    checked = liveNotif,
+                    onCheckedChange = { liveNotif = it; prefs.liveTranscribeNotification = it },
                 )
             }
             Text(

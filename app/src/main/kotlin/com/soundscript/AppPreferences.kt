@@ -60,6 +60,11 @@ class AppPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_AUTO_MARKDOWN, true)
         set(value) = prefs.edit { putBoolean(KEY_AUTO_MARKDOWN, value) }
 
+    /** Show the live transcription in the ongoing notification (visible from the shade). Off by default. */
+    var liveTranscribeNotification: Boolean
+        get() = prefs.getBoolean(KEY_LIVE_NOTIF, false)
+        set(value) = prefs.edit { putBoolean(KEY_LIVE_NOTIF, value) }
+
     /** Per-task model overrides (filename in llm/ dir); "" = smart default. */
     var tagModelFilename: String
         get() = prefs.getString(KEY_TAG_MODEL, "")!!
@@ -109,6 +114,7 @@ class AppPreferences(context: Context) {
         private const val KEY_LLM_MODEL = "llm_model"
         private const val KEY_AUTO_TAG = "auto_tag"
         private const val KEY_AUTO_MARKDOWN = "auto_markdown"
+        private const val KEY_LIVE_NOTIF = "live_transcribe_notification"
         private const val KEY_TAG_MODEL = "tag_model"
         private const val KEY_ANALYSIS_MODEL = "analysis_model"
         private const val KEY_HF_TOKEN = "hf_token"

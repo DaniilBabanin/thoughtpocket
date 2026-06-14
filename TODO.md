@@ -1,5 +1,12 @@
 # SoundScript — deferred TODOs
 
+## UX / UI polish (backlog)
+General pass once features settle: visual hierarchy, empty/loading/error states, the Interact
+section + Undo affordance, markdown rendering (spacing, nested lists), the random-task dialog,
+Settings grouping, theming/typography, accessibility (content descriptions, touch targets),
+animations/transitions. Collect concrete nits here as they come up.
+
+
 ## Fully-bundled build variant (Gecko model in-APK)
 Gecko embedder model (~110MB) currently downloads on first run. Add an offline build
 flavor that bundles `Gecko_256_quant.tflite` + `sentencepiece.model` in assets so the app

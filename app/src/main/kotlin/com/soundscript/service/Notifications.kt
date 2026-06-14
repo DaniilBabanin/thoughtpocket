@@ -23,11 +23,18 @@ object Notifications {
         }
     }
 
-    fun ongoing(ctx: Context, text: String) =
+    /** [text] is the status line; [body], when set, shows the live transcript (expandable in the shade). */
+    fun ongoing(ctx: Context, text: String, body: String? = null) =
         NotificationCompat.Builder(ctx, CHANNEL)
             .setSmallIcon(R.drawable.ic_mic)
             .setContentTitle("SoundScript")
-            .setContentText(text)
+            .setContentText(if (body.isNullOrBlank()) text else body)
+            .apply {
+                if (!body.isNullOrBlank()) {
+                    setSubText(text)
+                    setStyle(NotificationCompat.BigTextStyle().bigText(body))
+                }
+            }
             .setOngoing(true)
             .setSilent(true)
             .build()
