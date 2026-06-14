@@ -5,7 +5,8 @@
 "tags": [
 "finance"
 ],
-"text": "Moved the emergency fund into a high-yield account."
+"text": "Moved the emergency fund into a high-yield account.",
+"markdown": ""
 },
 {
 "daysAgo": 179,
@@ -14,7 +15,8 @@
 "work",
 "atlas"
 ],
-"text": "Decided to move the Atlas API to gRPC next quarter. Need to spike load testing."
+"text": "Decided to move the Atlas API to gRPC next quarter. Need to spike load testing.",
+"markdown": ""
 },
 {
 "daysAgo": 178,
@@ -22,7 +24,8 @@
 "tags": [
 "travel"
 ],
-"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer."
+"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer.",
+"markdown": ""
 },
 {
 "daysAgo": 178,
@@ -30,7 +33,8 @@
 "tags": [
 "travel"
 ],
-"text": "Road trip route: coast highway, stop at the redwoods overnight."
+"text": "Road trip route: coast highway, stop at the redwoods overnight.",
+"markdown": ""
 },
 {
 "daysAgo": 178,
@@ -38,7 +42,8 @@
 "tags": [
 "finance"
 ],
-"text": "Monthly budget: rent, groceries, transit, savings. Stay under target."
+"text": "Monthly budget: rent, groceries, transit, savings. Stay under target.",
+"markdown": ""
 },
 {
 "daysAgo": 177,
@@ -46,7 +51,8 @@
 "tags": [
 "finance"
 ],
-"text": "Moved the emergency fund into a high-yield account."
+"text": "Moved the emergency fund into a high-yield account.",
+"markdown": ""
 },
 {
 "daysAgo": 176,
@@ -54,7 +60,8 @@
 "tags": [
 "home"
 ],
-"text": "Clean the gutters before the rainy season."
+"text": "Clean the gutters before the rainy season.",
+"markdown": ""
 },
 {
 "daysAgo": 175,
@@ -63,7 +70,18 @@
 "work",
 "atlas"
 ],
-"text": "Code review backlog is growing. Propose a rotation in the team sync."
+"text": "Code review backlog is growing. Propose a rotation in the team sync.",
+"markdown": ""
+},
+{
+"daysAgo": 174,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got onions, got potatoes, need salmon, got cheese.",
+"markdown": "Grocery run\n- [x] onions\n- [x] potatoes\n- [ ] salmon\n- [x] cheese"
 },
 {
 "daysAgo": 174,
@@ -72,7 +90,8 @@
 "work",
 "atlas"
 ],
-"text": "Code review backlog is growing. Propose a rotation in the team sync."
+"text": "Code review backlog is growing. Propose a rotation in the team sync.",
+"markdown": ""
 },
 {
 "daysAgo": 171,
@@ -80,7 +99,18 @@
 "tags": [
 "finance"
 ],
-"text": "Electricity bill spiked this month, check the heating schedule."
+"text": "Electricity bill spiked this month, check the heating schedule.",
+"markdown": ""
+},
+{
+"daysAgo": 170,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got oranges, need rice, got apples, got tea, got spinach.",
+"markdown": "Grocery run\n- [x] oranges\n- [ ] rice\n- [x] apples\n- [x] tea\n- [x] spinach"
 },
 {
 "daysAgo": 170,
@@ -89,7 +119,8 @@
 "work",
 "atlas"
 ],
-"text": "Decided to move the Atlas API to gRPC next quarter. Need to spike load testing."
+"text": "Decided to move the Atlas API to gRPC next quarter. Need to spike load testing.",
+"markdown": ""
 },
 {
 "daysAgo": 169,
@@ -97,7 +128,8 @@
 "tags": [
 "health"
 ],
-"text": "Flu shot done at the pharmacy."
+"text": "Flu shot done at the pharmacy.",
+"markdown": ""
 },
 {
 "daysAgo": 169,
@@ -105,7 +137,8 @@
 "tags": [
 "home"
 ],
-"text": "The dryer is squeaking; probably the belt. Order the part."
+"text": "The dryer is squeaking; probably the belt. Order the part.",
+"markdown": ""
 },
 {
 "daysAgo": 167,
@@ -113,7 +146,8 @@
 "tags": [
 "health"
 ],
-"text": "Started running again, 5k three times this week. Knee held up."
+"text": "Started running again, 5k three times this week. Knee held up.",
+"markdown": ""
 },
 {
 "daysAgo": 167,
@@ -121,16 +155,18 @@
 "tags": [
 "travel"
 ],
-"text": "Renew passport before the Japan trip, it expires soon."
+"text": "Renew passport before the Japan trip, it expires soon.",
+"markdown": ""
 },
 {
-"daysAgo": 166,
+"daysAgo": 165,
 "topic": "groceries",
 "tags": [
 "shopping",
 "groceries"
 ],
-"text": "Grocery run. got onions, got potatoes, need salmon, got cheese."
+"text": "Grocery run. need rice, need eggs, need bread, need oranges, need yogurt, need tea, need sugar.",
+"markdown": "Grocery run\n- [ ] rice\n- [ ] eggs\n- [ ] bread\n- [ ] oranges\n- [ ] yogurt\n- [ ] tea\n- [ ] sugar"
 },
 {
 "daysAgo": 165,
@@ -138,7 +174,8 @@
 "tags": [
 "home"
 ],
-"text": "Hung the shelves in the hallway, finally."
+"text": "Hung the shelves in the hallway, finally.",
+"markdown": ""
 },
 {
 "daysAgo": 164,
@@ -147,7 +184,8 @@
 "work",
 "atlas"
 ],
-"text": "Atlas: customer asked for SSO. Scope SAML for next month."
+"text": "Atlas: customer asked for SSO. Scope SAML for next month.",
+"markdown": ""
 },
 {
 "daysAgo": 163,
@@ -155,7 +193,8 @@
 "tags": [
 "travel"
 ],
-"text": "Pack list for the hiking trip: boots, rain jacket, water filter."
+"text": "Pack list for the hiking trip: boots, rain jacket, water filter.",
+"markdown": ""
 },
 {
 "daysAgo": 163,
@@ -163,16 +202,8 @@
 "tags": [
 "family"
 ],
-"text": "Family dinner on Sunday, call everyone to confirm."
-},
-{
-"daysAgo": 162,
-"topic": "groceries",
-"tags": [
-"shopping",
-"groceries"
-],
-"text": "Grocery run. got oranges, need rice, got apples, got tea, got spinach."
+"text": "Family dinner on Sunday, call everyone to confirm.",
+"markdown": ""
 },
 {
 "daysAgo": 162,
@@ -180,7 +211,8 @@
 "tags": [
 "health"
 ],
-"text": "Physio for the shoulder, do the band exercises daily."
+"text": "Physio for the shoulder, do the band exercises daily.",
+"markdown": ""
 },
 {
 "daysAgo": 161,
@@ -188,7 +220,8 @@
 "tags": [
 "ideas"
 ],
-"text": "Should learn more about vector databases for the notes idea."
+"text": "Should learn more about vector databases for the notes idea.",
+"markdown": ""
 },
 {
 "daysAgo": 160,
@@ -196,7 +229,8 @@
 "tags": [
 "finance"
 ],
-"text": "Moved the emergency fund into a high-yield account."
+"text": "Moved the emergency fund into a high-yield account.",
+"markdown": ""
 },
 {
 "daysAgo": 160,
@@ -204,7 +238,18 @@
 "tags": [
 "ideas"
 ],
-"text": "Idea: a CLI that summarizes my git history into a changelog."
+"text": "Idea: a CLI that summarizes my git history into a changelog.",
+"markdown": ""
+},
+{
+"daysAgo": 159,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need butter, got tea, got salmon, need cheese, got rice, got pasta.",
+"markdown": "Grocery run\n- [ ] butter\n- [x] tea\n- [x] salmon\n- [ ] cheese\n- [x] rice\n- [x] pasta"
 },
 {
 "daysAgo": 159,
@@ -212,7 +257,8 @@
 "tags": [
 "health"
 ],
-"text": "Started running again, 5k three times this week. Knee held up."
+"text": "Started running again, 5k three times this week. Knee held up.",
+"markdown": ""
 },
 {
 "daysAgo": 158,
@@ -220,16 +266,8 @@
 "tags": [
 "ideas"
 ],
-"text": "Idea: a CLI that summarizes my git history into a changelog."
-},
-{
-"daysAgo": 157,
-"topic": "groceries",
-"tags": [
-"shopping",
-"groceries"
-],
-"text": "Grocery run. need rice, need eggs, need bread, need oranges, need yogurt, need tea, need sugar."
+"text": "Idea: a CLI that summarizes my git history into a changelog.",
+"markdown": ""
 },
 {
 "daysAgo": 156,
@@ -237,7 +275,8 @@
 "tags": [
 "travel"
 ],
-"text": "Found cheap flights to Reykjavik for the northern lights week."
+"text": "Found cheap flights to Reykjavik for the northern lights week.",
+"markdown": ""
 },
 {
 "daysAgo": 156,
@@ -245,7 +284,8 @@
 "tags": [
 "home"
 ],
-"text": "Hung the shelves in the hallway, finally."
+"text": "Hung the shelves in the hallway, finally.",
+"markdown": ""
 },
 {
 "daysAgo": 155,
@@ -254,7 +294,8 @@
 "work",
 "atlas"
 ],
-"text": "Atlas: customer asked for SSO. Scope SAML for next month."
+"text": "Atlas: customer asked for SSO. Scope SAML for next month.",
+"markdown": ""
 },
 {
 "daysAgo": 155,
@@ -262,7 +303,8 @@
 "tags": [
 "ideas"
 ],
-"text": "Idea: a tiny e-ink dashboard for the week's tasks."
+"text": "Idea: a tiny e-ink dashboard for the week's tasks.",
+"markdown": ""
 },
 {
 "daysAgo": 154,
@@ -270,7 +312,18 @@
 "tags": [
 "finance"
 ],
-"text": "Moved the emergency fund into a high-yield account."
+"text": "Moved the emergency fund into a high-yield account.",
+"markdown": ""
+},
+{
+"daysAgo": 153,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got onions, got pasta, got apples, got spinach, got salmon.",
+"markdown": "Grocery run\n- [x] onions\n- [x] pasta\n- [x] apples\n- [x] spinach\n- [x] salmon"
 },
 {
 "daysAgo": 152,
@@ -278,7 +331,8 @@
 "tags": [
 "travel"
 ],
-"text": "Pack list for the hiking trip: boots, rain jacket, water filter."
+"text": "Pack list for the hiking trip: boots, rain jacket, water filter.",
+"markdown": ""
 },
 {
 "daysAgo": 152,
@@ -286,7 +340,8 @@
 "tags": [
 "home"
 ],
-"text": "Hung the shelves in the hallway, finally."
+"text": "Hung the shelves in the hallway, finally.",
+"markdown": ""
 },
 {
 "daysAgo": 152,
@@ -294,7 +349,8 @@
 "tags": [
 "family"
 ],
-"text": "Pick up a birthday present for my niece."
+"text": "Pick up a birthday present for my niece.",
+"markdown": ""
 },
 {
 "daysAgo": 151,
@@ -303,7 +359,8 @@
 "shopping",
 "groceries"
 ],
-"text": "Grocery run. need butter, got tea, got salmon, need cheese, got rice, got pasta."
+"text": "Grocery run. need bread, got salmon, need bananas, got olive oil.",
+"markdown": "Grocery run\n- [ ] bread\n- [x] salmon\n- [ ] bananas\n- [x] olive oil"
 },
 {
 "daysAgo": 151,
@@ -311,7 +368,8 @@
 "tags": [
 "home"
 ],
-"text": "Assembled the IKEA shelves, missing two dowels, ordered replacements."
+"text": "Assembled the IKEA shelves, missing two dowels, ordered replacements.",
+"markdown": ""
 },
 {
 "daysAgo": 150,
@@ -319,7 +377,8 @@
 "tags": [
 "family"
 ],
-"text": "Help Dad set up his new phone."
+"text": "Help Dad set up his new phone.",
+"markdown": ""
 },
 {
 "daysAgo": 148,
@@ -327,7 +386,8 @@
 "tags": [
 "health"
 ],
-"text": "Physio for the shoulder, do the band exercises daily."
+"text": "Physio for the shoulder, do the band exercises daily.",
+"markdown": ""
 },
 {
 "daysAgo": 147,
@@ -336,7 +396,8 @@
 "work",
 "atlas"
 ],
-"text": "Code review backlog is growing. Propose a rotation in the team sync."
+"text": "Code review backlog is growing. Propose a rotation in the team sync.",
+"markdown": ""
 },
 {
 "daysAgo": 147,
@@ -344,7 +405,8 @@
 "tags": [
 "travel"
 ],
-"text": "Portugal itinerary: Lisbon three days, then train to Porto."
+"text": "Portugal itinerary: Lisbon three days, then train to Porto.",
+"markdown": ""
 },
 {
 "daysAgo": 147,
@@ -352,7 +414,8 @@
 "tags": [
 "finance"
 ],
-"text": "Electricity bill spiked this month, check the heating schedule."
+"text": "Electricity bill spiked this month, check the heating schedule.",
+"markdown": ""
 },
 {
 "daysAgo": 146,
@@ -360,16 +423,8 @@
 "tags": [
 "family"
 ],
-"text": "Pick up a birthday present for my niece."
-},
-{
-"daysAgo": 145,
-"topic": "groceries",
-"tags": [
-"shopping",
-"groceries"
-],
-"text": "Grocery run. got onions, got pasta, got apples, got spinach, got salmon."
+"text": "Pick up a birthday present for my niece.",
+"markdown": ""
 },
 {
 "daysAgo": 145,
@@ -377,7 +432,8 @@
 "tags": [
 "health"
 ],
-"text": "Started running again, 5k three times this week. Knee held up."
+"text": "Started running again, 5k three times this week. Knee held up.",
+"markdown": ""
 },
 {
 "daysAgo": 145,
@@ -385,16 +441,18 @@
 "tags": [
 "ideas"
 ],
-"text": "Idea: a tiny e-ink dashboard for the week's tasks."
+"text": "Idea: a tiny e-ink dashboard for the week's tasks.",
+"markdown": ""
 },
 {
-"daysAgo": 143,
+"daysAgo": 144,
 "topic": "groceries",
 "tags": [
 "shopping",
 "groceries"
 ],
-"text": "Grocery run. need bread, got salmon, need bananas, got olive oil."
+"text": "Grocery run. got coffee, need cheese, need flour, need oranges, need pasta, got spinach.",
+"markdown": "Grocery run\n- [x] coffee\n- [ ] cheese\n- [ ] flour\n- [ ] oranges\n- [ ] pasta\n- [x] spinach"
 },
 {
 "daysAgo": 142,
@@ -402,7 +460,8 @@
 "tags": [
 "travel"
 ],
-"text": "Portugal itinerary: Lisbon three days, then train to Porto."
+"text": "Portugal itinerary: Lisbon three days, then train to Porto.",
+"markdown": ""
 },
 {
 "daysAgo": 142,
@@ -410,7 +469,8 @@
 "tags": [
 "home"
 ],
-"text": "Painted the spare room. Two coats of the off-white."
+"text": "Painted the spare room. Two coats of the off-white.",
+"markdown": ""
 },
 {
 "daysAgo": 142,
@@ -418,7 +478,8 @@
 "tags": [
 "ideas"
 ],
-"text": "Musing: I focus better in the morning; protect that block."
+"text": "Musing: I focus better in the morning; protect that block.",
+"markdown": ""
 },
 {
 "daysAgo": 141,
@@ -426,7 +487,8 @@
 "tags": [
 "family"
 ],
-"text": "Help Dad set up his new phone."
+"text": "Help Dad set up his new phone.",
+"markdown": ""
 },
 {
 "daysAgo": 141,
@@ -434,7 +496,8 @@
 "tags": [
 "ideas"
 ],
-"text": "App idea: a privacy-first voice notes app that transcribes on-device."
+"text": "App idea: a privacy-first voice notes app that transcribes on-device.",
+"markdown": ""
 },
 {
 "daysAgo": 140,
@@ -442,7 +505,8 @@
 "tags": [
 "travel"
 ],
-"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer."
+"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer.",
+"markdown": ""
 },
 {
 "daysAgo": 140,
@@ -450,7 +514,18 @@
 "tags": [
 "family"
 ],
-"text": "Pick up a birthday present for my niece."
+"text": "Pick up a birthday present for my niece.",
+"markdown": ""
+},
+{
+"daysAgo": 139,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got carrots, got bread, got yogurt, got flour.",
+"markdown": "Grocery run\n- [x] carrots\n- [x] bread\n- [x] yogurt\n- [x] flour"
 },
 {
 "daysAgo": 138,
@@ -458,7 +533,8 @@
 "tags": [
 "finance"
 ],
-"text": "Monthly budget: rent, groceries, transit, savings. Stay under target."
+"text": "Monthly budget: rent, groceries, transit, savings. Stay under target.",
+"markdown": ""
 },
 {
 "daysAgo": 138,
@@ -466,7 +542,8 @@
 "tags": [
 "finance"
 ],
-"text": "Electricity bill spiked this month, check the heating schedule."
+"text": "Electricity bill spiked this month, check the heating schedule.",
+"markdown": ""
 },
 {
 "daysAgo": 137,
@@ -474,7 +551,8 @@
 "tags": [
 "finance"
 ],
-"text": "Rebalanced the index fund allocation, more bonds."
+"text": "Rebalanced the index fund allocation, more bonds.",
+"markdown": ""
 },
 {
 "daysAgo": 137,
@@ -482,7 +560,8 @@
 "tags": [
 "home"
 ],
-"text": "Clean the gutters before the rainy season."
+"text": "Clean the gutters before the rainy season.",
+"markdown": ""
 },
 {
 "daysAgo": 137,
@@ -490,16 +569,8 @@
 "tags": [
 "family"
 ],
-"text": "Kids' parent-teacher conference next Thursday."
-},
-{
-"daysAgo": 136,
-"topic": "groceries",
-"tags": [
-"shopping",
-"groceries"
-],
-"text": "Grocery run. got coffee, need cheese, need flour, need oranges, need pasta, got spinach."
+"text": "Kids' parent-teacher conference next Thursday.",
+"markdown": ""
 },
 {
 "daysAgo": 136,
@@ -507,7 +578,8 @@
 "tags": [
 "family"
 ],
-"text": "Kids' parent-teacher conference next Thursday."
+"text": "Kids' parent-teacher conference next Thursday.",
+"markdown": ""
 },
 {
 "daysAgo": 135,
@@ -515,7 +587,18 @@
 "tags": [
 "travel"
 ],
-"text": "Road trip route: coast highway, stop at the redwoods overnight."
+"text": "Road trip route: coast highway, stop at the redwoods overnight.",
+"markdown": ""
+},
+{
+"daysAgo": 133,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need bread, need carrots, need flour, need chicken, need coffee.",
+"markdown": "Grocery run\n- [ ] bread\n- [ ] carrots\n- [ ] flour\n- [ ] chicken\n- [ ] coffee"
 },
 {
 "daysAgo": 133,
@@ -524,7 +607,8 @@
 "work",
 "atlas"
 ],
-"text": "Atlas: customer asked for SSO. Scope SAML for next month."
+"text": "Atlas: customer asked for SSO. Scope SAML for next month.",
+"markdown": ""
 },
 {
 "daysAgo": 133,
@@ -532,7 +616,8 @@
 "tags": [
 "travel"
 ],
-"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer."
+"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer.",
+"markdown": ""
 },
 {
 "daysAgo": 133,
@@ -540,16 +625,8 @@
 "tags": [
 "ideas"
 ],
-"text": "Musing: I focus better in the morning; protect that block."
-},
-{
-"daysAgo": 131,
-"topic": "groceries",
-"tags": [
-"shopping",
-"groceries"
-],
-"text": "Grocery run. got carrots, got bread, got yogurt, got flour."
+"text": "Musing: I focus better in the morning; protect that block.",
+"markdown": ""
 },
 {
 "daysAgo": 131,
@@ -557,7 +634,8 @@
 "tags": [
 "health"
 ],
-"text": "Slept badly all week. Cut coffee after 2pm and it helped."
+"text": "Slept badly all week. Cut coffee after 2pm and it helped.",
+"markdown": ""
 },
 {
 "daysAgo": 129,
@@ -565,7 +643,18 @@
 "tags": [
 "travel"
 ],
-"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer."
+"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer.",
+"markdown": ""
+},
+{
+"daysAgo": 128,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got eggs, need tea, need potatoes, need cereal, need olive oil, need carrots.",
+"markdown": "Grocery run\n- [x] eggs\n- [ ] tea\n- [ ] potatoes\n- [ ] cereal\n- [ ] olive oil\n- [ ] carrots"
 },
 {
 "daysAgo": 126,
@@ -573,48 +662,54 @@
 "tags": [
 "travel"
 ],
-"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer."
+"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer.",
+"markdown": ""
 },
 {
 "daysAgo": 125,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Clean the gutters before the rainy season.",
+"markdown": ""
+},
+{
+"daysAgo": 124,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Moved the emergency fund into a high-yield account.",
+"markdown": ""
+},
+{
+"daysAgo": 124,
+"topic": "finance",
+"tags": [
+"finance"
+],
+"text": "Monthly budget: rent, groceries, transit, savings. Stay under target.",
+"markdown": ""
+},
+{
+"daysAgo": 124,
+"topic": "home",
+"tags": [
+"home"
+],
+"text": "Painted the spare room. Two coats of the off-white.",
+"markdown": ""
+},
+{
+"daysAgo": 123,
 "topic": "groceries",
 "tags": [
 "shopping",
 "groceries"
 ],
-"text": "Grocery run. need bread, need carrots, need flour, need chicken, need coffee."
-},
-{
-"daysAgo": 125,
-"topic": "home",
-"tags": [
-"home"
-],
-"text": "Clean the gutters before the rainy season."
-},
-{
-"daysAgo": 124,
-"topic": "finance",
-"tags": [
-"finance"
-],
-"text": "Moved the emergency fund into a high-yield account."
-},
-{
-"daysAgo": 124,
-"topic": "finance",
-"tags": [
-"finance"
-],
-"text": "Monthly budget: rent, groceries, transit, savings. Stay under target."
-},
-{
-"daysAgo": 124,
-"topic": "home",
-"tags": [
-"home"
-],
-"text": "Painted the spare room. Two coats of the off-white."
+"text": "Grocery run. got rice, got spinach, got pasta, need yogurt, need salmon, need cereal, need cheese.",
+"markdown": "Grocery run\n- [x] rice\n- [x] spinach\n- [x] pasta\n- [ ] yogurt\n- [ ] salmon\n- [ ] cereal\n- [ ] cheese"
 },
 {
 "daysAgo": 123,
@@ -622,7 +717,8 @@
 "tags": [
 "family"
 ],
-"text": "Pick up a birthday present for my niece."
+"text": "Pick up a birthday present for my niece.",
+"markdown": ""
 },
 {
 "daysAgo": 122,
@@ -630,7 +726,8 @@
 "tags": [
 "finance"
 ],
-"text": "Monthly budget: rent, groceries, transit, savings. Stay under target."
+"text": "Monthly budget: rent, groceries, transit, savings. Stay under target.",
+"markdown": ""
 },
 {
 "daysAgo": 121,
@@ -638,7 +735,8 @@
 "tags": [
 "health"
 ],
-"text": "Flu shot done at the pharmacy."
+"text": "Flu shot done at the pharmacy.",
+"markdown": ""
 },
 {
 "daysAgo": 121,
@@ -646,7 +744,8 @@
 "tags": [
 "travel"
 ],
-"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer."
+"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer.",
+"markdown": ""
 },
 {
 "daysAgo": 120,
@@ -655,7 +754,8 @@
 "shopping",
 "groceries"
 ],
-"text": "Grocery run. got eggs, need tea, need potatoes, need cereal, need olive oil, need carrots."
+"text": "Grocery run. got olive oil, got salmon, need sugar.",
+"markdown": "Grocery run\n- [x] olive oil\n- [x] salmon\n- [ ] sugar"
 },
 {
 "daysAgo": 120,
@@ -664,7 +764,8 @@
 "work",
 "atlas"
 ],
-"text": "Code review backlog is growing. Propose a rotation in the team sync."
+"text": "Code review backlog is growing. Propose a rotation in the team sync.",
+"markdown": ""
 },
 {
 "daysAgo": 120,
@@ -673,7 +774,8 @@
 "learning",
 "rust"
 ],
-"text": "Ownership and moves in Rust: values have one owner, borrows are references."
+"text": "Ownership and moves in Rust: values have one owner, borrows are references.",
+"markdown": ""
 },
 {
 "daysAgo": 120,
@@ -682,7 +784,8 @@
 "learning",
 "rust"
 ],
-"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>."
+"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>.",
+"markdown": ""
 },
 {
 "daysAgo": 120,
@@ -690,7 +793,18 @@
 "tags": [
 "family"
 ],
-"text": "Family dinner on Sunday, call everyone to confirm."
+"text": "Family dinner on Sunday, call everyone to confirm.",
+"markdown": ""
+},
+{
+"daysAgo": 119,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need yogurt, need cereal, need bananas, got coffee, need eggs.",
+"markdown": "Grocery run\n- [ ] yogurt\n- [ ] cereal\n- [ ] bananas\n- [x] coffee\n- [ ] eggs"
 },
 {
 "daysAgo": 119,
@@ -698,7 +812,8 @@
 "tags": [
 "health"
 ],
-"text": "Need to refill the allergy prescription before it runs out."
+"text": "Need to refill the allergy prescription before it runs out.",
+"markdown": ""
 },
 {
 "daysAgo": 119,
@@ -706,7 +821,8 @@
 "tags": [
 "home"
 ],
-"text": "Clean the gutters before the rainy season."
+"text": "Clean the gutters before the rainy season.",
+"markdown": ""
 },
 {
 "daysAgo": 118,
@@ -714,7 +830,8 @@
 "tags": [
 "travel"
 ],
-"text": "Trip to Lisbon: book flights, find an apartment in Alfama."
+"text": "Trip to Lisbon: book flights, find an apartment in Alfama.",
+"markdown": ""
 },
 {
 "daysAgo": 118,
@@ -722,7 +839,8 @@
 "tags": [
 "travel"
 ],
-"text": "Renew passport before the Japan trip, it expires soon."
+"text": "Renew passport before the Japan trip, it expires soon.",
+"markdown": ""
 },
 {
 "daysAgo": 118,
@@ -731,7 +849,8 @@
 "learning",
 "rust"
 ],
-"text": "Pattern matching with match and enums is so clean in Rust."
+"text": "Pattern matching with match and enums is so clean in Rust.",
+"markdown": ""
 },
 {
 "daysAgo": 118,
@@ -740,7 +859,8 @@
 "learning",
 "rust"
 ],
-"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>."
+"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>.",
+"markdown": ""
 },
 {
 "daysAgo": 118,
@@ -748,7 +868,8 @@
 "tags": [
 "home"
 ],
-"text": "The dryer is squeaking; probably the belt. Order the part."
+"text": "The dryer is squeaking; probably the belt. Order the part.",
+"markdown": ""
 },
 {
 "daysAgo": 117,
@@ -757,7 +878,8 @@
 "learning",
 "rust"
 ],
-"text": "Cargo and crates.io make the Rust toolchain pleasant."
+"text": "Cargo and crates.io make the Rust toolchain pleasant.",
+"markdown": ""
 },
 {
 "daysAgo": 116,
@@ -766,7 +888,8 @@
 "learning",
 "rust"
 ],
-"text": "Cargo and crates.io make the Rust toolchain pleasant."
+"text": "Cargo and crates.io make the Rust toolchain pleasant.",
+"markdown": ""
 },
 {
 "daysAgo": 116,
@@ -775,16 +898,8 @@
 "learning",
 "rust"
 ],
-"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>."
-},
-{
-"daysAgo": 115,
-"topic": "groceries",
-"tags": [
-"shopping",
-"groceries"
-],
-"text": "Grocery run. got rice, got spinach, got pasta, need yogurt, need salmon, need cereal, need cheese."
+"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>.",
+"markdown": ""
 },
 {
 "daysAgo": 115,
@@ -792,7 +907,8 @@
 "tags": [
 "home"
 ],
-"text": "Painted the spare room. Two coats of the off-white."
+"text": "Painted the spare room. Two coats of the off-white.",
+"markdown": ""
 },
 {
 "daysAgo": 115,
@@ -800,7 +916,18 @@
 "tags": [
 "ideas"
 ],
-"text": "Musing: I focus better in the morning; protect that block."
+"text": "Musing: I focus better in the morning; protect that block.",
+"markdown": ""
+},
+{
+"daysAgo": 114,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got cheese, got yogurt, got apples, got rice, got spinach, got chicken, got bread.",
+"markdown": "Grocery run\n- [x] cheese\n- [x] yogurt\n- [x] apples\n- [x] rice\n- [x] spinach\n- [x] chicken\n- [x] bread"
 },
 {
 "daysAgo": 114,
@@ -809,7 +936,8 @@
 "learning",
 "rust"
 ],
-"text": "Rust traits are like interfaces; impl blocks add methods."
+"text": "Rust traits are like interfaces; impl blocks add methods.",
+"markdown": ""
 },
 {
 "daysAgo": 113,
@@ -817,7 +945,8 @@
 "tags": [
 "health"
 ],
-"text": "Slept badly all week. Cut coffee after 2pm and it helped."
+"text": "Slept badly all week. Cut coffee after 2pm and it helped.",
+"markdown": ""
 },
 {
 "daysAgo": 113,
@@ -825,7 +954,8 @@
 "tags": [
 "travel"
 ],
-"text": "Road trip route: coast highway, stop at the redwoods overnight."
+"text": "Road trip route: coast highway, stop at the redwoods overnight.",
+"markdown": ""
 },
 {
 "daysAgo": 113,
@@ -834,7 +964,8 @@
 "learning",
 "rust"
 ],
-"text": "Cargo and crates.io make the Rust toolchain pleasant."
+"text": "Cargo and crates.io make the Rust toolchain pleasant.",
+"markdown": ""
 },
 {
 "daysAgo": 112,
@@ -843,7 +974,8 @@
 "learning",
 "rust"
 ],
-"text": "Cargo and crates.io make the Rust toolchain pleasant."
+"text": "Cargo and crates.io make the Rust toolchain pleasant.",
+"markdown": ""
 },
 {
 "daysAgo": 112,
@@ -851,16 +983,8 @@
 "tags": [
 "ideas"
 ],
-"text": "What if notes could auto-link by topic? Embeddings could do it."
-},
-{
-"daysAgo": 111,
-"topic": "groceries",
-"tags": [
-"shopping",
-"groceries"
-],
-"text": "Grocery run. need yogurt, need cereal, need bananas, got coffee, need eggs."
+"text": "What if notes could auto-link by topic? Embeddings could do it.",
+"markdown": ""
 },
 {
 "daysAgo": 111,
@@ -869,7 +993,8 @@
 "work",
 "atlas"
 ],
-"text": "Postmortem for the Atlas outage: root cause was a missing index on events."
+"text": "Postmortem for the Atlas outage: root cause was a missing index on events.",
+"markdown": ""
 },
 {
 "daysAgo": 111,
@@ -878,7 +1003,8 @@
 "work",
 "atlas"
 ],
-"text": "Standup: finished the auth refactor, blocked on the staging deploy."
+"text": "Standup: finished the auth refactor, blocked on the staging deploy.",
+"markdown": ""
 },
 {
 "daysAgo": 111,
@@ -887,7 +1013,8 @@
 "learning",
 "rust"
 ],
-"text": "Rust: the borrow checker is strict but the errors are teaching me ownership."
+"text": "Rust: the borrow checker is strict but the errors are teaching me ownership.",
+"markdown": ""
 },
 {
 "daysAgo": 110,
@@ -895,7 +1022,8 @@
 "tags": [
 "health"
 ],
-"text": "Flu shot done at the pharmacy."
+"text": "Flu shot done at the pharmacy.",
+"markdown": ""
 },
 {
 "daysAgo": 109,
@@ -904,7 +1032,8 @@
 "learning",
 "rust"
 ],
-"text": "Cargo and crates.io make the Rust toolchain pleasant."
+"text": "Cargo and crates.io make the Rust toolchain pleasant.",
+"markdown": ""
 },
 {
 "daysAgo": 109,
@@ -912,7 +1041,18 @@
 "tags": [
 "ideas"
 ],
-"text": "What if notes could auto-link by topic? Embeddings could do it."
+"text": "What if notes could auto-link by topic? Embeddings could do it.",
+"markdown": ""
+},
+{
+"daysAgo": 108,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need coffee, got tea, need tomatoes, need butter.",
+"markdown": "Grocery run\n- [ ] coffee\n- [x] tea\n- [ ] tomatoes\n- [ ] butter"
 },
 {
 "daysAgo": 108,
@@ -920,7 +1060,8 @@
 "tags": [
 "travel"
 ],
-"text": "Portugal itinerary: Lisbon three days, then train to Porto."
+"text": "Portugal itinerary: Lisbon three days, then train to Porto.",
+"markdown": ""
 },
 {
 "daysAgo": 107,
@@ -928,7 +1069,8 @@
 "tags": [
 "health"
 ],
-"text": "Slept badly all week. Cut coffee after 2pm and it helped."
+"text": "Slept badly all week. Cut coffee after 2pm and it helped.",
+"markdown": ""
 },
 {
 "daysAgo": 107,
@@ -937,16 +1079,8 @@
 "learning",
 "rust"
 ],
-"text": "Lifetimes finally clicked \u2014 they annotate how long references stay valid."
-},
-{
-"daysAgo": 106,
-"topic": "groceries",
-"tags": [
-"shopping",
-"groceries"
-],
-"text": "Grocery run. got cheese, got yogurt, got apples, got rice, got spinach, got chicken, got bread."
+"text": "Lifetimes finally clicked \u2014 they annotate how long references stay valid.",
+"markdown": ""
 },
 {
 "daysAgo": 106,
@@ -954,7 +1088,8 @@
 "tags": [
 "travel"
 ],
-"text": "Renew passport before the Japan trip, it expires soon."
+"text": "Renew passport before the Japan trip, it expires soon.",
+"markdown": ""
 },
 {
 "daysAgo": 106,
@@ -962,7 +1097,8 @@
 "tags": [
 "finance"
 ],
-"text": "Monthly budget: rent, groceries, transit, savings. Stay under target."
+"text": "Monthly budget: rent, groceries, transit, savings. Stay under target.",
+"markdown": ""
 },
 {
 "daysAgo": 106,
@@ -971,7 +1107,8 @@
 "learning",
 "rust"
 ],
-"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>."
+"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>.",
+"markdown": ""
 },
 {
 "daysAgo": 105,
@@ -980,7 +1117,8 @@
 "work",
 "atlas"
 ],
-"text": "Standup: finished the auth refactor, blocked on the staging deploy."
+"text": "Standup: finished the auth refactor, blocked on the staging deploy.",
+"markdown": ""
 },
 {
 "daysAgo": 105,
@@ -989,7 +1127,18 @@
 "work",
 "atlas"
 ],
-"text": "Code review backlog is growing. Propose a rotation in the team sync."
+"text": "Code review backlog is growing. Propose a rotation in the team sync.",
+"markdown": ""
+},
+{
+"daysAgo": 104,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got butter, got flour, need yogurt, got onions.",
+"markdown": "Grocery run\n- [x] butter\n- [x] flour\n- [ ] yogurt\n- [x] onions"
 },
 {
 "daysAgo": 104,
@@ -998,7 +1147,8 @@
 "work",
 "atlas"
 ],
-"text": "Refactor the Atlas ingestion pipeline; the queue keeps backing up."
+"text": "Refactor the Atlas ingestion pipeline; the queue keeps backing up.",
+"markdown": ""
 },
 {
 "daysAgo": 104,
@@ -1006,7 +1156,8 @@
 "tags": [
 "health"
 ],
-"text": "Started running again, 5k three times this week. Knee held up."
+"text": "Started running again, 5k three times this week. Knee held up.",
+"markdown": ""
 },
 {
 "daysAgo": 104,
@@ -1014,7 +1165,8 @@
 "tags": [
 "finance"
 ],
-"text": "Quarterly taxes due soon, set aside the estimate."
+"text": "Quarterly taxes due soon, set aside the estimate.",
+"markdown": ""
 },
 {
 "daysAgo": 104,
@@ -1023,7 +1175,8 @@
 "learning",
 "rust"
 ],
-"text": "Rust traits are like interfaces; impl blocks add methods."
+"text": "Rust traits are like interfaces; impl blocks add methods.",
+"markdown": ""
 },
 {
 "daysAgo": 104,
@@ -1031,7 +1184,8 @@
 "tags": [
 "home"
 ],
-"text": "Clean the gutters before the rainy season."
+"text": "Clean the gutters before the rainy season.",
+"markdown": ""
 },
 {
 "daysAgo": 103,
@@ -1039,7 +1193,8 @@
 "tags": [
 "health"
 ],
-"text": "Slept badly all week. Cut coffee after 2pm and it helped."
+"text": "Slept badly all week. Cut coffee after 2pm and it helped.",
+"markdown": ""
 },
 {
 "daysAgo": 103,
@@ -1047,7 +1202,8 @@
 "tags": [
 "health"
 ],
-"text": "Physio for the shoulder, do the band exercises daily."
+"text": "Physio for the shoulder, do the band exercises daily.",
+"markdown": ""
 },
 {
 "daysAgo": 103,
@@ -1056,7 +1212,8 @@
 "learning",
 "rust"
 ],
-"text": "Ownership and moves in Rust: values have one owner, borrows are references."
+"text": "Ownership and moves in Rust: values have one owner, borrows are references.",
+"markdown": ""
 },
 {
 "daysAgo": 103,
@@ -1065,7 +1222,8 @@
 "learning",
 "rust"
 ],
-"text": "Rust: the borrow checker is strict but the errors are teaching me ownership."
+"text": "Rust: the borrow checker is strict but the errors are teaching me ownership.",
+"markdown": ""
 },
 {
 "daysAgo": 103,
@@ -1073,7 +1231,8 @@
 "tags": [
 "home"
 ],
-"text": "Hung the shelves in the hallway, finally."
+"text": "Hung the shelves in the hallway, finally.",
+"markdown": ""
 },
 {
 "daysAgo": 102,
@@ -1082,7 +1241,8 @@
 "work",
 "atlas"
 ],
-"text": "Postmortem for the Atlas outage: root cause was a missing index on events."
+"text": "Postmortem for the Atlas outage: root cause was a missing index on events.",
+"markdown": ""
 },
 {
 "daysAgo": 102,
@@ -1091,7 +1251,8 @@
 "work",
 "atlas"
 ],
-"text": "Atlas: customer asked for SSO. Scope SAML for next month."
+"text": "Atlas: customer asked for SSO. Scope SAML for next month.",
+"markdown": ""
 },
 {
 "daysAgo": 102,
@@ -1099,7 +1260,8 @@
 "tags": [
 "ideas"
 ],
-"text": "Musing: I focus better in the morning; protect that block."
+"text": "Musing: I focus better in the morning; protect that block.",
+"markdown": ""
 },
 {
 "daysAgo": 101,
@@ -1108,16 +1270,18 @@
 "learning",
 "rust"
 ],
-"text": "Rust: the borrow checker is strict but the errors are teaching me ownership."
+"text": "Rust: the borrow checker is strict but the errors are teaching me ownership.",
+"markdown": ""
 },
 {
-"daysAgo": 100,
+"daysAgo": 99,
 "topic": "groceries",
 "tags": [
 "shopping",
 "groceries"
 ],
-"text": "Grocery run. need coffee, got tea, need tomatoes, need butter."
+"text": "Grocery run. need flour, got cereal, need bananas, got salmon, got cheese, got potatoes.",
+"markdown": "Grocery run\n- [ ] flour\n- [x] cereal\n- [ ] bananas\n- [x] salmon\n- [x] cheese\n- [x] potatoes"
 },
 {
 "daysAgo": 99,
@@ -1125,7 +1289,8 @@
 "tags": [
 "finance"
 ],
-"text": "Rebalanced the index fund allocation, more bonds."
+"text": "Rebalanced the index fund allocation, more bonds.",
+"markdown": ""
 },
 {
 "daysAgo": 99,
@@ -1133,7 +1298,8 @@
 "tags": [
 "finance"
 ],
-"text": "Electricity bill spiked this month, check the heating schedule."
+"text": "Electricity bill spiked this month, check the heating schedule.",
+"markdown": ""
 },
 {
 "daysAgo": 99,
@@ -1141,7 +1307,8 @@
 "tags": [
 "finance"
 ],
-"text": "Quarterly taxes due soon, set aside the estimate."
+"text": "Quarterly taxes due soon, set aside the estimate.",
+"markdown": ""
 },
 {
 "daysAgo": 99,
@@ -1150,7 +1317,8 @@
 "learning",
 "rust"
 ],
-"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>."
+"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>.",
+"markdown": ""
 },
 {
 "daysAgo": 97,
@@ -1159,7 +1327,8 @@
 "work",
 "atlas"
 ],
-"text": "Standup: finished the auth refactor, blocked on the staging deploy."
+"text": "Standup: finished the auth refactor, blocked on the staging deploy.",
+"markdown": ""
 },
 {
 "daysAgo": 97,
@@ -1167,7 +1336,8 @@
 "tags": [
 "health"
 ],
-"text": "Slept badly all week. Cut coffee after 2pm and it helped."
+"text": "Slept badly all week. Cut coffee after 2pm and it helped.",
+"markdown": ""
 },
 {
 "daysAgo": 97,
@@ -1175,16 +1345,8 @@
 "tags": [
 "home"
 ],
-"text": "Assembled the IKEA shelves, missing two dowels, ordered replacements."
-},
-{
-"daysAgo": 96,
-"topic": "groceries",
-"tags": [
-"shopping",
-"groceries"
-],
-"text": "Grocery run. got butter, got flour, need yogurt, got onions."
+"text": "Assembled the IKEA shelves, missing two dowels, ordered replacements.",
+"markdown": ""
 },
 {
 "daysAgo": 96,
@@ -1193,7 +1355,8 @@
 "learning",
 "rust"
 ],
-"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>."
+"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>.",
+"markdown": ""
 },
 {
 "daysAgo": 94,
@@ -1201,7 +1364,18 @@
 "tags": [
 "family"
 ],
-"text": "Family dinner on Sunday, call everyone to confirm."
+"text": "Family dinner on Sunday, call everyone to confirm.",
+"markdown": ""
+},
+{
+"daysAgo": 93,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need chicken, need bread, need eggs, need tomatoes.",
+"markdown": "Grocery run\n- [ ] chicken\n- [ ] bread\n- [ ] eggs\n- [ ] tomatoes"
 },
 {
 "daysAgo": 93,
@@ -1210,7 +1384,8 @@
 "work",
 "atlas"
 ],
-"text": "Standup: finished the auth refactor, blocked on the staging deploy."
+"text": "Standup: finished the auth refactor, blocked on the staging deploy.",
+"markdown": ""
 },
 {
 "daysAgo": 93,
@@ -1219,7 +1394,8 @@
 "work",
 "atlas"
 ],
-"text": "Sprint planning: pull the analytics dashboard into this cycle."
+"text": "Sprint planning: pull the analytics dashboard into this cycle.",
+"markdown": ""
 },
 {
 "daysAgo": 93,
@@ -1228,7 +1404,8 @@
 "learning",
 "rust"
 ],
-"text": "Rust traits are like interfaces; impl blocks add methods."
+"text": "Rust traits are like interfaces; impl blocks add methods.",
+"markdown": ""
 },
 {
 "daysAgo": 92,
@@ -1237,7 +1414,8 @@
 "learning",
 "rust"
 ],
-"text": "Rust: the borrow checker is strict but the errors are teaching me ownership."
+"text": "Rust: the borrow checker is strict but the errors are teaching me ownership.",
+"markdown": ""
 },
 {
 "daysAgo": 92,
@@ -1245,7 +1423,8 @@
 "tags": [
 "family"
 ],
-"text": "Kids' parent-teacher conference next Thursday."
+"text": "Kids' parent-teacher conference next Thursday.",
+"markdown": ""
 },
 {
 "daysAgo": 91,
@@ -1254,7 +1433,8 @@
 "shopping",
 "groceries"
 ],
-"text": "Grocery run. need flour, got cereal, need bananas, got salmon, got cheese, got potatoes."
+"text": "Grocery run. got butter, got chicken, need sugar, need bread, got tomatoes, need milk, need salmon.",
+"markdown": "Grocery run\n- [x] butter\n- [x] chicken\n- [ ] sugar\n- [ ] bread\n- [x] tomatoes\n- [ ] milk\n- [ ] salmon"
 },
 {
 "daysAgo": 91,
@@ -1263,7 +1443,8 @@
 "work",
 "atlas"
 ],
-"text": "Code review backlog is growing. Propose a rotation in the team sync."
+"text": "Code review backlog is growing. Propose a rotation in the team sync.",
+"markdown": ""
 },
 {
 "daysAgo": 91,
@@ -1272,7 +1453,8 @@
 "learning",
 "rust"
 ],
-"text": "Cargo and crates.io make the Rust toolchain pleasant."
+"text": "Cargo and crates.io make the Rust toolchain pleasant.",
+"markdown": ""
 },
 {
 "daysAgo": 90,
@@ -1281,7 +1463,8 @@
 "work",
 "atlas"
 ],
-"text": "Atlas: customer asked for SSO. Scope SAML for next month."
+"text": "Atlas: customer asked for SSO. Scope SAML for next month.",
+"markdown": ""
 },
 {
 "daysAgo": 90,
@@ -1289,7 +1472,8 @@
 "tags": [
 "finance"
 ],
-"text": "Quarterly taxes due soon, set aside the estimate."
+"text": "Quarterly taxes due soon, set aside the estimate.",
+"markdown": ""
 },
 {
 "daysAgo": 90,
@@ -1298,7 +1482,8 @@
 "learning",
 "rust"
 ],
-"text": "Lifetimes finally clicked \u2014 they annotate how long references stay valid."
+"text": "Lifetimes finally clicked \u2014 they annotate how long references stay valid.",
+"markdown": ""
 },
 {
 "daysAgo": 90,
@@ -1306,7 +1491,8 @@
 "tags": [
 "home"
 ],
-"text": "Assembled the IKEA shelves, missing two dowels, ordered replacements."
+"text": "Assembled the IKEA shelves, missing two dowels, ordered replacements.",
+"markdown": ""
 },
 {
 "daysAgo": 90,
@@ -1314,7 +1500,8 @@
 "tags": [
 "family"
 ],
-"text": "Family dinner on Sunday, call everyone to confirm."
+"text": "Family dinner on Sunday, call everyone to confirm.",
+"markdown": ""
 },
 {
 "daysAgo": 89,
@@ -1323,7 +1510,8 @@
 "work",
 "atlas"
 ],
-"text": "Atlas roadmap: ship search v2, then the billing migration."
+"text": "Atlas roadmap: ship search v2, then the billing migration.",
+"markdown": ""
 },
 {
 "daysAgo": 89,
@@ -1332,7 +1520,8 @@
 "learning",
 "rust"
 ],
-"text": "Rust traits are like interfaces; impl blocks add methods."
+"text": "Rust traits are like interfaces; impl blocks add methods.",
+"markdown": ""
 },
 {
 "daysAgo": 88,
@@ -1340,7 +1529,8 @@
 "tags": [
 "family"
 ],
-"text": "Family dinner on Sunday, call everyone to confirm."
+"text": "Family dinner on Sunday, call everyone to confirm.",
+"markdown": ""
 },
 {
 "daysAgo": 87,
@@ -1349,7 +1539,8 @@
 "learning",
 "rust"
 ],
-"text": "Pattern matching with match and enums is so clean in Rust."
+"text": "Pattern matching with match and enums is so clean in Rust.",
+"markdown": ""
 },
 {
 "daysAgo": 87,
@@ -1358,7 +1549,8 @@
 "learning",
 "rust"
 ],
-"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>."
+"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>.",
+"markdown": ""
 },
 {
 "daysAgo": 87,
@@ -1367,7 +1559,8 @@
 "learning",
 "rust"
 ],
-"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>."
+"text": "Fighting the borrow checker on a graph; might use Rc<RefCell<>>.",
+"markdown": ""
 },
 {
 "daysAgo": 87,
@@ -1375,34 +1568,38 @@
 "tags": [
 "home"
 ],
-"text": "Assembled the IKEA shelves, missing two dowels, ordered replacements."
+"text": "Assembled the IKEA shelves, missing two dowels, ordered replacements.",
+"markdown": ""
 },
 {
 "daysAgo": 86,
-"topic": "rust",
-"tags": [
-"learning",
-"rust"
-],
-"text": "Pattern matching with match and enums is so clean in Rust."
-},
-{
-"daysAgo": 86,
-"topic": "rust",
-"tags": [
-"learning",
-"rust"
-],
-"text": "Cargo and crates.io make the Rust toolchain pleasant."
-},
-{
-"daysAgo": 85,
 "topic": "groceries",
 "tags": [
 "shopping",
 "groceries"
 ],
-"text": "Grocery run. need chicken, need bread, need eggs, need tomatoes."
+"text": "Grocery run. need rice, got olive oil, got carrots, got yogurt, got bananas.",
+"markdown": "Grocery run\n- [ ] rice\n- [x] olive oil\n- [x] carrots\n- [x] yogurt\n- [x] bananas"
+},
+{
+"daysAgo": 86,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Pattern matching with match and enums is so clean in Rust.",
+"markdown": ""
+},
+{
+"daysAgo": 86,
+"topic": "rust",
+"tags": [
+"learning",
+"rust"
+],
+"text": "Cargo and crates.io make the Rust toolchain pleasant.",
+"markdown": ""
 },
 {
 "daysAgo": 85,
@@ -1410,7 +1607,8 @@
 "tags": [
 "health"
 ],
-"text": "Gym: leg day. Squats felt strong, added 5kg."
+"text": "Gym: leg day. Squats felt strong, added 5kg.",
+"markdown": ""
 },
 {
 "daysAgo": 85,
@@ -1418,7 +1616,8 @@
 "tags": [
 "finance"
 ],
-"text": "Quarterly taxes due soon, set aside the estimate."
+"text": "Quarterly taxes due soon, set aside the estimate.",
+"markdown": ""
 },
 {
 "daysAgo": 84,
@@ -1427,16 +1626,8 @@
 "work",
 "atlas"
 ],
-"text": "Standup: finished the auth refactor, blocked on the staging deploy."
-},
-{
-"daysAgo": 83,
-"topic": "groceries",
-"tags": [
-"shopping",
-"groceries"
-],
-"text": "Grocery run. got butter, got chicken, need sugar, need bread, got tomatoes, need milk, need salmon."
+"text": "Standup: finished the auth refactor, blocked on the staging deploy.",
+"markdown": ""
 },
 {
 "daysAgo": 83,
@@ -1444,7 +1635,8 @@
 "tags": [
 "home"
 ],
-"text": "Painted the spare room. Two coats of the off-white."
+"text": "Painted the spare room. Two coats of the off-white.",
+"markdown": ""
 },
 {
 "daysAgo": 82,
@@ -1453,7 +1645,8 @@
 "learning",
 "rust"
 ],
-"text": "Lifetimes finally clicked \u2014 they annotate how long references stay valid."
+"text": "Lifetimes finally clicked \u2014 they annotate how long references stay valid.",
+"markdown": ""
 },
 {
 "daysAgo": 82,
@@ -1461,7 +1654,8 @@
 "tags": [
 "home"
 ],
-"text": "Painted the spare room. Two coats of the off-white."
+"text": "Painted the spare room. Two coats of the off-white.",
+"markdown": ""
 },
 {
 "daysAgo": 81,
@@ -1470,7 +1664,18 @@
 "learning",
 "rust"
 ],
-"text": "Lifetimes finally clicked \u2014 they annotate how long references stay valid."
+"text": "Lifetimes finally clicked \u2014 they annotate how long references stay valid.",
+"markdown": ""
+},
+{
+"daysAgo": 80,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got eggs, got chicken, need potatoes, need bread, got tea.",
+"markdown": "Grocery run\n- [x] eggs\n- [x] chicken\n- [ ] potatoes\n- [ ] bread\n- [x] tea"
 },
 {
 "daysAgo": 80,
@@ -1479,7 +1684,8 @@
 "work",
 "atlas"
 ],
-"text": "Sprint planning: pull the analytics dashboard into this cycle."
+"text": "Sprint planning: pull the analytics dashboard into this cycle.",
+"markdown": ""
 },
 {
 "daysAgo": 80,
@@ -1487,7 +1693,8 @@
 "tags": [
 "family"
 ],
-"text": "Call grandma this weekend."
+"text": "Call grandma this weekend.",
+"markdown": ""
 },
 {
 "daysAgo": 79,
@@ -1495,7 +1702,8 @@
 "tags": [
 "health"
 ],
-"text": "Slept badly all week. Cut coffee after 2pm and it helped."
+"text": "Slept badly all week. Cut coffee after 2pm and it helped.",
+"markdown": ""
 },
 {
 "daysAgo": 79,
@@ -1503,16 +1711,8 @@
 "tags": [
 "health"
 ],
-"text": "Doctor said the bloodwork looks fine, recheck in six months."
-},
-{
-"daysAgo": 78,
-"topic": "groceries",
-"tags": [
-"shopping",
-"groceries"
-],
-"text": "Grocery run. need rice, got olive oil, got carrots, got yogurt, got bananas."
+"text": "Doctor said the bloodwork looks fine, recheck in six months.",
+"markdown": ""
 },
 {
 "daysAgo": 77,
@@ -1520,7 +1720,8 @@
 "tags": [
 "family"
 ],
-"text": "Call grandma this weekend."
+"text": "Call grandma this weekend.",
+"markdown": ""
 },
 {
 "daysAgo": 77,
@@ -1528,7 +1729,8 @@
 "tags": [
 "ideas"
 ],
-"text": "App idea: a privacy-first voice notes app that transcribes on-device."
+"text": "App idea: a privacy-first voice notes app that transcribes on-device.",
+"markdown": ""
 },
 {
 "daysAgo": 76,
@@ -1536,7 +1738,8 @@
 "tags": [
 "health"
 ],
-"text": "Physio for the shoulder, do the band exercises daily."
+"text": "Physio for the shoulder, do the band exercises daily.",
+"markdown": ""
 },
 {
 "daysAgo": 76,
@@ -1544,7 +1747,8 @@
 "tags": [
 "ideas"
 ],
-"text": "Idea: a tiny e-ink dashboard for the week's tasks."
+"text": "Idea: a tiny e-ink dashboard for the week's tasks.",
+"markdown": ""
 },
 {
 "daysAgo": 75,
@@ -1552,7 +1756,8 @@
 "tags": [
 "health"
 ],
-"text": "Physio for the shoulder, do the band exercises daily."
+"text": "Physio for the shoulder, do the band exercises daily.",
+"markdown": ""
 },
 {
 "daysAgo": 75,
@@ -1560,7 +1765,8 @@
 "tags": [
 "home"
 ],
-"text": "Painted the spare room. Two coats of the off-white."
+"text": "Painted the spare room. Two coats of the off-white.",
+"markdown": ""
 },
 {
 "daysAgo": 75,
@@ -1568,7 +1774,18 @@
 "tags": [
 "family"
 ],
-"text": "Kids' parent-teacher conference next Thursday."
+"text": "Kids' parent-teacher conference next Thursday.",
+"markdown": ""
+},
+{
+"daysAgo": 74,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got apples, need salmon, got olive oil, need milk, need carrots, got tomatoes.",
+"markdown": "Grocery run\n- [x] apples\n- [ ] salmon\n- [x] olive oil\n- [ ] milk\n- [ ] carrots\n- [x] tomatoes"
 },
 {
 "daysAgo": 74,
@@ -1576,7 +1793,8 @@
 "tags": [
 "family"
 ],
-"text": "Kids' parent-teacher conference next Thursday."
+"text": "Kids' parent-teacher conference next Thursday.",
+"markdown": ""
 },
 {
 "daysAgo": 73,
@@ -1584,16 +1802,18 @@
 "tags": [
 "health"
 ],
-"text": "Doctor said the bloodwork looks fine, recheck in six months."
+"text": "Doctor said the bloodwork looks fine, recheck in six months.",
+"markdown": ""
 },
 {
-"daysAgo": 72,
+"daysAgo": 71,
 "topic": "groceries",
 "tags": [
 "shopping",
 "groceries"
 ],
-"text": "Grocery run. got eggs, got chicken, need potatoes, need bread, got tea."
+"text": "Grocery run. got tea, got rice, got olive oil, got apples.",
+"markdown": "Grocery run\n- [x] tea\n- [x] rice\n- [x] olive oil\n- [x] apples"
 },
 {
 "daysAgo": 71,
@@ -1602,7 +1822,8 @@
 "work",
 "atlas"
 ],
-"text": "Decided to move the Atlas API to gRPC next quarter. Need to spike load testing."
+"text": "Decided to move the Atlas API to gRPC next quarter. Need to spike load testing.",
+"markdown": ""
 },
 {
 "daysAgo": 71,
@@ -1611,7 +1832,8 @@
 "work",
 "atlas"
 ],
-"text": "Postmortem for the Atlas outage: root cause was a missing index on events."
+"text": "Postmortem for the Atlas outage: root cause was a missing index on events.",
+"markdown": ""
 },
 {
 "daysAgo": 70,
@@ -1619,7 +1841,8 @@
 "tags": [
 "finance"
 ],
-"text": "Electricity bill spiked this month, check the heating schedule."
+"text": "Electricity bill spiked this month, check the heating schedule.",
+"markdown": ""
 },
 {
 "daysAgo": 70,
@@ -1628,7 +1851,8 @@
 "home",
 "diy"
 ],
-"text": "Set up the new mesh router. The wifi password is bluefox42. Coverage is great now."
+"text": "Set up the new mesh router. The wifi password is bluefox42. Coverage is great now.",
+"markdown": ""
 },
 {
 "daysAgo": 70,
@@ -1636,7 +1860,8 @@
 "tags": [
 "home"
 ],
-"text": "The dryer is squeaking; probably the belt. Order the part."
+"text": "The dryer is squeaking; probably the belt. Order the part.",
+"markdown": ""
 },
 {
 "daysAgo": 70,
@@ -1644,7 +1869,8 @@
 "tags": [
 "family"
 ],
-"text": "Call grandma this weekend."
+"text": "Call grandma this weekend.",
+"markdown": ""
 },
 {
 "daysAgo": 69,
@@ -1652,7 +1878,8 @@
 "tags": [
 "finance"
 ],
-"text": "Electricity bill spiked this month, check the heating schedule."
+"text": "Electricity bill spiked this month, check the heating schedule.",
+"markdown": ""
 },
 {
 "daysAgo": 69,
@@ -1660,7 +1887,8 @@
 "tags": [
 "home"
 ],
-"text": "The dryer is squeaking; probably the belt. Order the part."
+"text": "The dryer is squeaking; probably the belt. Order the part.",
+"markdown": ""
 },
 {
 "daysAgo": 69,
@@ -1668,7 +1896,8 @@
 "tags": [
 "family"
 ],
-"text": "Pick up a birthday present for my niece."
+"text": "Pick up a birthday present for my niece.",
+"markdown": ""
 },
 {
 "daysAgo": 68,
@@ -1677,7 +1906,8 @@
 "work",
 "atlas"
 ],
-"text": "Atlas bug: the export job times out on large tenants. Add pagination."
+"text": "Atlas bug: the export job times out on large tenants. Add pagination.",
+"markdown": ""
 },
 {
 "daysAgo": 67,
@@ -1686,7 +1916,8 @@
 "work",
 "atlas"
 ],
-"text": "Standup: finished the auth refactor, blocked on the staging deploy."
+"text": "Standup: finished the auth refactor, blocked on the staging deploy.",
+"markdown": ""
 },
 {
 "daysAgo": 67,
@@ -1694,7 +1925,8 @@
 "tags": [
 "ideas"
 ],
-"text": "Should learn more about vector databases for the notes idea."
+"text": "Should learn more about vector databases for the notes idea.",
+"markdown": ""
 },
 {
 "daysAgo": 66,
@@ -1703,7 +1935,8 @@
 "shopping",
 "groceries"
 ],
-"text": "Grocery run. got apples, need salmon, got olive oil, need milk, need carrots, got tomatoes."
+"text": "Grocery run. got salmon, got milk, got flour, got butter, got tea, got rice.",
+"markdown": "Grocery run\n- [x] salmon\n- [x] milk\n- [x] flour\n- [x] butter\n- [x] tea\n- [x] rice"
 },
 {
 "daysAgo": 66,
@@ -1711,7 +1944,8 @@
 "tags": [
 "travel"
 ],
-"text": "Found cheap flights to Reykjavik for the northern lights week."
+"text": "Found cheap flights to Reykjavik for the northern lights week.",
+"markdown": ""
 },
 {
 "daysAgo": 65,
@@ -1720,7 +1954,8 @@
 "work",
 "atlas"
 ],
-"text": "Standup: finished the auth refactor, blocked on the staging deploy."
+"text": "Standup: finished the auth refactor, blocked on the staging deploy.",
+"markdown": ""
 },
 {
 "daysAgo": 64,
@@ -1728,7 +1963,8 @@
 "tags": [
 "family"
 ],
-"text": "Kids' parent-teacher conference next Thursday."
+"text": "Kids' parent-teacher conference next Thursday.",
+"markdown": ""
 },
 {
 "daysAgo": 64,
@@ -1736,16 +1972,8 @@
 "tags": [
 "ideas"
 ],
-"text": "Musing: I focus better in the morning; protect that block."
-},
-{
-"daysAgo": 63,
-"topic": "groceries",
-"tags": [
-"shopping",
-"groceries"
-],
-"text": "Grocery run. got tea, got rice, got olive oil, got apples."
+"text": "Musing: I focus better in the morning; protect that block.",
+"markdown": ""
 },
 {
 "daysAgo": 63,
@@ -1753,7 +1981,8 @@
 "tags": [
 "travel"
 ],
-"text": "Found cheap flights to Reykjavik for the northern lights week."
+"text": "Found cheap flights to Reykjavik for the northern lights week.",
+"markdown": ""
 },
 {
 "daysAgo": 63,
@@ -1761,7 +1990,8 @@
 "tags": [
 "ideas"
 ],
-"text": "App idea: a privacy-first voice notes app that transcribes on-device."
+"text": "App idea: a privacy-first voice notes app that transcribes on-device.",
+"markdown": ""
 },
 {
 "daysAgo": 62,
@@ -1769,7 +1999,8 @@
 "tags": [
 "travel"
 ],
-"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer."
+"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer.",
+"markdown": ""
 },
 {
 "daysAgo": 62,
@@ -1777,7 +2008,8 @@
 "tags": [
 "travel"
 ],
-"text": "Portugal itinerary: Lisbon three days, then train to Porto."
+"text": "Portugal itinerary: Lisbon three days, then train to Porto.",
+"markdown": ""
 },
 {
 "daysAgo": 62,
@@ -1785,7 +2017,8 @@
 "tags": [
 "home"
 ],
-"text": "Assembled the IKEA shelves, missing two dowels, ordered replacements."
+"text": "Assembled the IKEA shelves, missing two dowels, ordered replacements.",
+"markdown": ""
 },
 {
 "daysAgo": 61,
@@ -1793,7 +2026,8 @@
 "tags": [
 "home"
 ],
-"text": "Hung the shelves in the hallway, finally."
+"text": "Hung the shelves in the hallway, finally.",
+"markdown": ""
 },
 {
 "daysAgo": 61,
@@ -1801,7 +2035,8 @@
 "tags": [
 "ideas"
 ],
-"text": "Idea: a CLI that summarizes my git history into a changelog."
+"text": "Idea: a CLI that summarizes my git history into a changelog.",
+"markdown": ""
 },
 {
 "daysAgo": 60,
@@ -1809,7 +2044,8 @@
 "tags": [
 "health"
 ],
-"text": "Slept badly all week. Cut coffee after 2pm and it helped."
+"text": "Slept badly all week. Cut coffee after 2pm and it helped.",
+"markdown": ""
 },
 {
 "daysAgo": 60,
@@ -1817,7 +2053,8 @@
 "tags": [
 "finance"
 ],
-"text": "Quarterly taxes due soon, set aside the estimate."
+"text": "Quarterly taxes due soon, set aside the estimate.",
+"markdown": ""
 },
 {
 "daysAgo": 60,
@@ -1826,7 +2063,8 @@
 "learning",
 "python"
 ],
-"text": "Python packaging is still a mess; settled on uv + pyproject.toml."
+"text": "Python packaging is still a mess; settled on uv + pyproject.toml.",
+"markdown": ""
 },
 {
 "daysAgo": 60,
@@ -1835,7 +2073,8 @@
 "learning",
 "python"
 ],
-"text": "dataclasses vs namedtuple vs pydantic \u2014 pydantic for validation."
+"text": "dataclasses vs namedtuple vs pydantic \u2014 pydantic for validation.",
+"markdown": ""
 },
 {
 "daysAgo": 59,
@@ -1843,7 +2082,8 @@
 "tags": [
 "finance"
 ],
-"text": "Electricity bill spiked this month, check the heating schedule."
+"text": "Electricity bill spiked this month, check the heating schedule.",
+"markdown": ""
 },
 {
 "daysAgo": 59,
@@ -1852,7 +2092,8 @@
 "learning",
 "python"
 ],
-"text": "asyncio notes: await yields control to the event loop; gather runs coroutines concurrently."
+"text": "asyncio notes: await yields control to the event loop; gather runs coroutines concurrently.",
+"markdown": ""
 },
 {
 "daysAgo": 58,
@@ -1861,7 +2102,8 @@
 "shopping",
 "groceries"
 ],
-"text": "Grocery run. got salmon, got milk, got flour, got butter, got tea, got rice."
+"text": "Grocery run. got cheese, got oranges, got apples, need flour.",
+"markdown": "Grocery run\n- [x] cheese\n- [x] oranges\n- [x] apples\n- [ ] flour"
 },
 {
 "daysAgo": 58,
@@ -1870,7 +2112,8 @@
 "work",
 "atlas"
 ],
-"text": "Code review backlog is growing. Propose a rotation in the team sync."
+"text": "Code review backlog is growing. Propose a rotation in the team sync.",
+"markdown": ""
 },
 {
 "daysAgo": 58,
@@ -1879,7 +2122,8 @@
 "learning",
 "python"
 ],
-"text": "Type hints + mypy caught a real bug today. Worth the friction."
+"text": "Type hints + mypy caught a real bug today. Worth the friction.",
+"markdown": ""
 },
 {
 "daysAgo": 57,
@@ -1888,7 +2132,8 @@
 "learning",
 "python"
 ],
-"text": "Type hints + mypy caught a real bug today. Worth the friction."
+"text": "Type hints + mypy caught a real bug today. Worth the friction.",
+"markdown": ""
 },
 {
 "daysAgo": 56,
@@ -1897,7 +2142,8 @@
 "learning",
 "python"
 ],
-"text": "Type hints + mypy caught a real bug today. Worth the friction."
+"text": "Type hints + mypy caught a real bug today. Worth the friction.",
+"markdown": ""
 },
 {
 "daysAgo": 56,
@@ -1906,7 +2152,18 @@
 "learning",
 "python"
 ],
-"text": "Python: decorators are just functions returning functions. Wrote a timing decorator."
+"text": "Python: decorators are just functions returning functions. Wrote a timing decorator.",
+"markdown": ""
+},
+{
+"daysAgo": 55,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need potatoes, need coffee, need onions, need chicken, need cheese, need olive oil, got cereal.",
+"markdown": "Grocery run\n- [ ] potatoes\n- [ ] coffee\n- [ ] onions\n- [ ] chicken\n- [ ] cheese\n- [ ] olive oil\n- [x] cereal"
 },
 {
 "daysAgo": 54,
@@ -1914,7 +2171,8 @@
 "tags": [
 "health"
 ],
-"text": "Physio for the shoulder, do the band exercises daily."
+"text": "Physio for the shoulder, do the band exercises daily.",
+"markdown": ""
 },
 {
 "daysAgo": 53,
@@ -1923,7 +2181,8 @@
 "learning",
 "python"
 ],
-"text": "asyncio notes: await yields control to the event loop; gather runs coroutines concurrently."
+"text": "asyncio notes: await yields control to the event loop; gather runs coroutines concurrently.",
+"markdown": ""
 },
 {
 "daysAgo": 53,
@@ -1932,7 +2191,8 @@
 "learning",
 "python"
 ],
-"text": "Context managers with __enter__/__exit__, and contextlib.contextmanager."
+"text": "Context managers with __enter__/__exit__, and contextlib.contextmanager.",
+"markdown": ""
 },
 {
 "daysAgo": 52,
@@ -1940,7 +2200,8 @@
 "tags": [
 "finance"
 ],
-"text": "Electricity bill spiked this month, check the heating schedule."
+"text": "Electricity bill spiked this month, check the heating schedule.",
+"markdown": ""
 },
 {
 "daysAgo": 51,
@@ -1949,7 +2210,8 @@
 "work",
 "atlas"
 ],
-"text": "Pairing with Sam on the Atlas cache layer. Redis vs in-memory still open."
+"text": "Pairing with Sam on the Atlas cache layer. Redis vs in-memory still open.",
+"markdown": ""
 },
 {
 "daysAgo": 51,
@@ -1958,7 +2220,8 @@
 "learning",
 "python"
 ],
-"text": "Python: decorators are just functions returning functions. Wrote a timing decorator."
+"text": "Python: decorators are just functions returning functions. Wrote a timing decorator.",
+"markdown": ""
 },
 {
 "daysAgo": 50,
@@ -1967,7 +2230,8 @@
 "shopping",
 "groceries"
 ],
-"text": "Grocery run. got cheese, got oranges, got apples, need flour."
+"text": "Grocery run. got rice, got bread, got bananas, got potatoes, need tomatoes, got flour, got cereal.",
+"markdown": "Grocery run\n- [x] rice\n- [x] bread\n- [x] bananas\n- [x] potatoes\n- [ ] tomatoes\n- [x] flour\n- [x] cereal"
 },
 {
 "daysAgo": 50,
@@ -1975,7 +2239,8 @@
 "tags": [
 "health"
 ],
-"text": "Doctor said the bloodwork looks fine, recheck in six months."
+"text": "Doctor said the bloodwork looks fine, recheck in six months.",
+"markdown": ""
 },
 {
 "daysAgo": 49,
@@ -1984,7 +2249,8 @@
 "learning",
 "python"
 ],
-"text": "Context managers with __enter__/__exit__, and contextlib.contextmanager."
+"text": "Context managers with __enter__/__exit__, and contextlib.contextmanager.",
+"markdown": ""
 },
 {
 "daysAgo": 49,
@@ -1992,7 +2258,8 @@
 "tags": [
 "family"
 ],
-"text": "Kids' parent-teacher conference next Thursday."
+"text": "Kids' parent-teacher conference next Thursday.",
+"markdown": ""
 },
 {
 "daysAgo": 48,
@@ -2001,7 +2268,8 @@
 "learning",
 "python"
 ],
-"text": "Context managers with __enter__/__exit__, and contextlib.contextmanager."
+"text": "Context managers with __enter__/__exit__, and contextlib.contextmanager.",
+"markdown": ""
 },
 {
 "daysAgo": 48,
@@ -2009,16 +2277,8 @@
 "tags": [
 "home"
 ],
-"text": "Fix the leaky kitchen sink \u2014 replace the washer, get the right size."
-},
-{
-"daysAgo": 47,
-"topic": "groceries",
-"tags": [
-"shopping",
-"groceries"
-],
-"text": "Grocery run. need potatoes, need coffee, need onions, need chicken, need cheese, need olive oil, got cereal."
+"text": "Fix the leaky kitchen sink \u2014 replace the washer, get the right size.",
+"markdown": ""
 },
 {
 "daysAgo": 47,
@@ -2026,7 +2286,18 @@
 "tags": [
 "ideas"
 ],
-"text": "App idea: a privacy-first voice notes app that transcribes on-device."
+"text": "App idea: a privacy-first voice notes app that transcribes on-device.",
+"markdown": ""
+},
+{
+"daysAgo": 46,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got oranges, need sugar, need salmon, need chicken, need tomatoes, need eggs.",
+"markdown": "Grocery run\n- [x] oranges\n- [ ] sugar\n- [ ] salmon\n- [ ] chicken\n- [ ] tomatoes\n- [ ] eggs"
 },
 {
 "daysAgo": 45,
@@ -2035,7 +2306,8 @@
 "work",
 "atlas"
 ],
-"text": "Postmortem for the Atlas outage: root cause was a missing index on events."
+"text": "Postmortem for the Atlas outage: root cause was a missing index on events.",
+"markdown": ""
 },
 {
 "daysAgo": 45,
@@ -2044,7 +2316,8 @@
 "work",
 "atlas"
 ],
-"text": "Refactor the Atlas ingestion pipeline; the queue keeps backing up."
+"text": "Refactor the Atlas ingestion pipeline; the queue keeps backing up.",
+"markdown": ""
 },
 {
 "daysAgo": 45,
@@ -2052,7 +2325,8 @@
 "tags": [
 "travel"
 ],
-"text": "Found cheap flights to Reykjavik for the northern lights week."
+"text": "Found cheap flights to Reykjavik for the northern lights week.",
+"markdown": ""
 },
 {
 "daysAgo": 45,
@@ -2061,7 +2335,8 @@
 "learning",
 "python"
 ],
-"text": "Python: decorators are just functions returning functions. Wrote a timing decorator."
+"text": "Python: decorators are just functions returning functions. Wrote a timing decorator.",
+"markdown": ""
 },
 {
 "daysAgo": 44,
@@ -2069,7 +2344,8 @@
 "tags": [
 "health"
 ],
-"text": "Physio for the shoulder, do the band exercises daily."
+"text": "Physio for the shoulder, do the band exercises daily.",
+"markdown": ""
 },
 {
 "daysAgo": 44,
@@ -2078,7 +2354,8 @@
 "learning",
 "python"
 ],
-"text": "Learned about Python generators and lazy evaluation with yield."
+"text": "Learned about Python generators and lazy evaluation with yield.",
+"markdown": ""
 },
 {
 "daysAgo": 43,
@@ -2086,7 +2363,8 @@
 "tags": [
 "health"
 ],
-"text": "Slept badly all week. Cut coffee after 2pm and it helped."
+"text": "Slept badly all week. Cut coffee after 2pm and it helped.",
+"markdown": ""
 },
 {
 "daysAgo": 43,
@@ -2095,7 +2373,8 @@
 "learning",
 "python"
 ],
-"text": "asyncio notes: await yields control to the event loop; gather runs coroutines concurrently."
+"text": "asyncio notes: await yields control to the event loop; gather runs coroutines concurrently.",
+"markdown": ""
 },
 {
 "daysAgo": 43,
@@ -2104,16 +2383,8 @@
 "learning",
 "python"
 ],
-"text": "Learned about Python generators and lazy evaluation with yield."
-},
-{
-"daysAgo": 42,
-"topic": "groceries",
-"tags": [
-"shopping",
-"groceries"
-],
-"text": "Grocery run. got rice, got bread, got bananas, got potatoes, need tomatoes, got flour, got cereal."
+"text": "Learned about Python generators and lazy evaluation with yield.",
+"markdown": ""
 },
 {
 "daysAgo": 41,
@@ -2122,7 +2393,8 @@
 "work",
 "atlas"
 ],
-"text": "Atlas bug: the export job times out on large tenants. Add pagination."
+"text": "Atlas bug: the export job times out on large tenants. Add pagination.",
+"markdown": ""
 },
 {
 "daysAgo": 40,
@@ -2130,7 +2402,8 @@
 "tags": [
 "travel"
 ],
-"text": "Renew passport before the Japan trip, it expires soon."
+"text": "Renew passport before the Japan trip, it expires soon.",
+"markdown": ""
 },
 {
 "daysAgo": 40,
@@ -2139,7 +2412,8 @@
 "finance",
 "subscriptions"
 ],
-"text": "Audited subscriptions: Netflix is 15.99 a month, Spotify 9.99. Cancel the unused gym app."
+"text": "Audited subscriptions: Netflix is 15.99 a month, Spotify 9.99. Cancel the unused gym app.",
+"markdown": ""
 },
 {
 "daysAgo": 40,
@@ -2148,7 +2422,8 @@
 "learning",
 "python"
 ],
-"text": "asyncio notes: await yields control to the event loop; gather runs coroutines concurrently."
+"text": "asyncio notes: await yields control to the event loop; gather runs coroutines concurrently.",
+"markdown": ""
 },
 {
 "daysAgo": 40,
@@ -2157,7 +2432,18 @@
 "learning",
 "python"
 ],
-"text": "Python packaging is still a mess; settled on uv + pyproject.toml."
+"text": "Python packaging is still a mess; settled on uv + pyproject.toml.",
+"markdown": ""
+},
+{
+"daysAgo": 39,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need onions, got bananas, need flour, got rice, got bread, got apples.",
+"markdown": "Grocery run\n- [ ] onions\n- [x] bananas\n- [ ] flour\n- [x] rice\n- [x] bread\n- [x] apples"
 },
 {
 "daysAgo": 39,
@@ -2166,16 +2452,8 @@
 "work",
 "atlas"
 ],
-"text": "Code review backlog is growing. Propose a rotation in the team sync."
-},
-{
-"daysAgo": 38,
-"topic": "groceries",
-"tags": [
-"shopping",
-"groceries"
-],
-"text": "Grocery run. got oranges, need sugar, need salmon, need chicken, need tomatoes, need eggs."
+"text": "Code review backlog is growing. Propose a rotation in the team sync.",
+"markdown": ""
 },
 {
 "daysAgo": 38,
@@ -2184,7 +2462,8 @@
 "learning",
 "python"
 ],
-"text": "Type hints + mypy caught a real bug today. Worth the friction."
+"text": "Type hints + mypy caught a real bug today. Worth the friction.",
+"markdown": ""
 },
 {
 "daysAgo": 38,
@@ -2193,7 +2472,8 @@
 "learning",
 "python"
 ],
-"text": "Python packaging is still a mess; settled on uv + pyproject.toml."
+"text": "Python packaging is still a mess; settled on uv + pyproject.toml.",
+"markdown": ""
 },
 {
 "daysAgo": 38,
@@ -2201,7 +2481,8 @@
 "tags": [
 "ideas"
 ],
-"text": "Idea: a tiny e-ink dashboard for the week's tasks."
+"text": "Idea: a tiny e-ink dashboard for the week's tasks.",
+"markdown": ""
 },
 {
 "daysAgo": 37,
@@ -2210,7 +2491,8 @@
 "learning",
 "python"
 ],
-"text": "dataclasses vs namedtuple vs pydantic \u2014 pydantic for validation."
+"text": "dataclasses vs namedtuple vs pydantic \u2014 pydantic for validation.",
+"markdown": ""
 },
 {
 "daysAgo": 36,
@@ -2219,7 +2501,8 @@
 "learning",
 "python"
 ],
-"text": "Python packaging is still a mess; settled on uv + pyproject.toml."
+"text": "Python packaging is still a mess; settled on uv + pyproject.toml.",
+"markdown": ""
 },
 {
 "daysAgo": 35,
@@ -2227,7 +2510,8 @@
 "tags": [
 "finance"
 ],
-"text": "Moved the emergency fund into a high-yield account."
+"text": "Moved the emergency fund into a high-yield account.",
+"markdown": ""
 },
 {
 "daysAgo": 35,
@@ -2236,7 +2520,8 @@
 "learning",
 "python"
 ],
-"text": "Python: decorators are just functions returning functions. Wrote a timing decorator."
+"text": "Python: decorators are just functions returning functions. Wrote a timing decorator.",
+"markdown": ""
 },
 {
 "daysAgo": 34,
@@ -2244,7 +2529,8 @@
 "tags": [
 "travel"
 ],
-"text": "Found cheap flights to Reykjavik for the northern lights week."
+"text": "Found cheap flights to Reykjavik for the northern lights week.",
+"markdown": ""
 },
 {
 "daysAgo": 34,
@@ -2253,7 +2539,8 @@
 "learning",
 "python"
 ],
-"text": "asyncio notes: await yields control to the event loop; gather runs coroutines concurrently."
+"text": "asyncio notes: await yields control to the event loop; gather runs coroutines concurrently.",
+"markdown": ""
 },
 {
 "daysAgo": 34,
@@ -2262,7 +2549,18 @@
 "learning",
 "python"
 ],
-"text": "Type hints + mypy caught a real bug today. Worth the friction."
+"text": "Type hints + mypy caught a real bug today. Worth the friction.",
+"markdown": ""
+},
+{
+"daysAgo": 33,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need pasta, need bread, got chicken, got butter, need coffee.",
+"markdown": "Grocery run\n- [ ] pasta\n- [ ] bread\n- [x] chicken\n- [x] butter\n- [ ] coffee"
 },
 {
 "daysAgo": 32,
@@ -2270,7 +2568,8 @@
 "tags": [
 "health"
 ],
-"text": "Doctor said the bloodwork looks fine, recheck in six months."
+"text": "Doctor said the bloodwork looks fine, recheck in six months.",
+"markdown": ""
 },
 {
 "daysAgo": 32,
@@ -2279,7 +2578,8 @@
 "learning",
 "python"
 ],
-"text": "dataclasses vs namedtuple vs pydantic \u2014 pydantic for validation."
+"text": "dataclasses vs namedtuple vs pydantic \u2014 pydantic for validation.",
+"markdown": ""
 },
 {
 "daysAgo": 32,
@@ -2288,7 +2588,8 @@
 "learning",
 "python"
 ],
-"text": "Python packaging is still a mess; settled on uv + pyproject.toml."
+"text": "Python packaging is still a mess; settled on uv + pyproject.toml.",
+"markdown": ""
 },
 {
 "daysAgo": 31,
@@ -2297,7 +2598,8 @@
 "shopping",
 "groceries"
 ],
-"text": "Grocery run. need onions, got bananas, need flour, got rice, got bread, got apples."
+"text": "Grocery run. got coffee, got bread, got salmon, got pasta.",
+"markdown": "Grocery run\n- [x] coffee\n- [x] bread\n- [x] salmon\n- [x] pasta"
 },
 {
 "daysAgo": 31,
@@ -2305,7 +2607,8 @@
 "tags": [
 "health"
 ],
-"text": "Slept badly all week. Cut coffee after 2pm and it helped."
+"text": "Slept badly all week. Cut coffee after 2pm and it helped.",
+"markdown": ""
 },
 {
 "daysAgo": 31,
@@ -2313,7 +2616,8 @@
 "tags": [
 "travel"
 ],
-"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer."
+"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer.",
+"markdown": ""
 },
 {
 "daysAgo": 31,
@@ -2322,7 +2626,8 @@
 "learning",
 "python"
 ],
-"text": "Learned about Python generators and lazy evaluation with yield."
+"text": "Learned about Python generators and lazy evaluation with yield.",
+"markdown": ""
 },
 {
 "daysAgo": 31,
@@ -2331,7 +2636,8 @@
 "learning",
 "python"
 ],
-"text": "Python packaging is still a mess; settled on uv + pyproject.toml."
+"text": "Python packaging is still a mess; settled on uv + pyproject.toml.",
+"markdown": ""
 },
 {
 "daysAgo": 30,
@@ -2340,7 +2646,8 @@
 "learning",
 "python"
 ],
-"text": "Type hints + mypy caught a real bug today. Worth the friction."
+"text": "Type hints + mypy caught a real bug today. Worth the friction.",
+"markdown": ""
 },
 {
 "daysAgo": 30,
@@ -2349,7 +2656,8 @@
 "learning",
 "python"
 ],
-"text": "asyncio notes: await yields control to the event loop; gather runs coroutines concurrently."
+"text": "asyncio notes: await yields control to the event loop; gather runs coroutines concurrently.",
+"markdown": ""
 },
 {
 "daysAgo": 30,
@@ -2358,7 +2666,8 @@
 "learning",
 "python"
 ],
-"text": "Context managers with __enter__/__exit__, and contextlib.contextmanager."
+"text": "Context managers with __enter__/__exit__, and contextlib.contextmanager.",
+"markdown": ""
 },
 {
 "daysAgo": 30,
@@ -2366,7 +2675,8 @@
 "tags": [
 "family"
 ],
-"text": "Kids' parent-teacher conference next Thursday."
+"text": "Kids' parent-teacher conference next Thursday.",
+"markdown": ""
 },
 {
 "daysAgo": 29,
@@ -2375,7 +2685,8 @@
 "work",
 "atlas"
 ],
-"text": "Atlas roadmap: ship search v2, then the billing migration."
+"text": "Atlas roadmap: ship search v2, then the billing migration.",
+"markdown": ""
 },
 {
 "daysAgo": 29,
@@ -2384,7 +2695,8 @@
 "work",
 "atlas"
 ],
-"text": "Sprint planning: pull the analytics dashboard into this cycle."
+"text": "Sprint planning: pull the analytics dashboard into this cycle.",
+"markdown": ""
 },
 {
 "daysAgo": 29,
@@ -2392,7 +2704,8 @@
 "tags": [
 "ideas"
 ],
-"text": "App idea: a privacy-first voice notes app that transcribes on-device."
+"text": "App idea: a privacy-first voice notes app that transcribes on-device.",
+"markdown": ""
 },
 {
 "daysAgo": 27,
@@ -2401,7 +2714,8 @@
 "work",
 "atlas"
 ],
-"text": "Refactor the Atlas ingestion pipeline; the queue keeps backing up."
+"text": "Refactor the Atlas ingestion pipeline; the queue keeps backing up.",
+"markdown": ""
 },
 {
 "daysAgo": 27,
@@ -2409,7 +2723,8 @@
 "tags": [
 "travel"
 ],
-"text": "Found cheap flights to Reykjavik for the northern lights week."
+"text": "Found cheap flights to Reykjavik for the northern lights week.",
+"markdown": ""
 },
 {
 "daysAgo": 26,
@@ -2417,7 +2732,8 @@
 "tags": [
 "family"
 ],
-"text": "Call grandma this weekend."
+"text": "Call grandma this weekend.",
+"markdown": ""
 },
 {
 "daysAgo": 25,
@@ -2426,7 +2742,8 @@
 "shopping",
 "groceries"
 ],
-"text": "Grocery run. need pasta, need bread, got chicken, got butter, need coffee."
+"text": "Grocery run. got bread, need coffee, got butter, need onions.",
+"markdown": "Grocery run\n- [x] bread\n- [ ] coffee\n- [x] butter\n- [ ] onions"
 },
 {
 "daysAgo": 25,
@@ -2434,7 +2751,8 @@
 "tags": [
 "family"
 ],
-"text": "Kids' parent-teacher conference next Thursday."
+"text": "Kids' parent-teacher conference next Thursday.",
+"markdown": ""
 },
 {
 "daysAgo": 25,
@@ -2442,16 +2760,8 @@
 "tags": [
 "ideas"
 ],
-"text": "Idea: a CLI that summarizes my git history into a changelog."
-},
-{
-"daysAgo": 23,
-"topic": "groceries",
-"tags": [
-"shopping",
-"groceries"
-],
-"text": "Grocery run. got coffee, got bread, got salmon, got pasta."
+"text": "Idea: a CLI that summarizes my git history into a changelog.",
+"markdown": ""
 },
 {
 "daysAgo": 22,
@@ -2459,7 +2769,18 @@
 "tags": [
 "home"
 ],
-"text": "Assembled the IKEA shelves, missing two dowels, ordered replacements."
+"text": "Assembled the IKEA shelves, missing two dowels, ordered replacements.",
+"markdown": ""
+},
+{
+"daysAgo": 21,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got spinach, got potatoes, got rice, got milk, got apples.",
+"markdown": "Grocery run\n- [x] spinach\n- [x] potatoes\n- [x] rice\n- [x] milk\n- [x] apples"
 },
 {
 "daysAgo": 21,
@@ -2467,7 +2788,8 @@
 "tags": [
 "health"
 ],
-"text": "Started running again, 5k three times this week. Knee held up."
+"text": "Started running again, 5k three times this week. Knee held up.",
+"markdown": ""
 },
 {
 "daysAgo": 20,
@@ -2475,7 +2797,8 @@
 "tags": [
 "family"
 ],
-"text": "Mom's birthday is April 12. Plan a dinner and get her the gardening book."
+"text": "Mom's birthday is April 12. Plan a dinner and get her the gardening book.",
+"markdown": ""
 },
 {
 "daysAgo": 20,
@@ -2483,7 +2806,8 @@
 "tags": [
 "ideas"
 ],
-"text": "Idea: a CLI that summarizes my git history into a changelog."
+"text": "Idea: a CLI that summarizes my git history into a changelog.",
+"markdown": ""
 },
 {
 "daysAgo": 19,
@@ -2491,7 +2815,8 @@
 "tags": [
 "finance"
 ],
-"text": "Quarterly taxes due soon, set aside the estimate."
+"text": "Quarterly taxes due soon, set aside the estimate.",
+"markdown": ""
 },
 {
 "daysAgo": 18,
@@ -2499,7 +2824,8 @@
 "tags": [
 "travel"
 ],
-"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer."
+"text": "Kyoto in autumn \u2014 temples, then a day trip to Nara for the deer.",
+"markdown": ""
 },
 {
 "daysAgo": 18,
@@ -2507,16 +2833,8 @@
 "tags": [
 "ideas"
 ],
-"text": "Idea: a tiny e-ink dashboard for the week's tasks."
-},
-{
-"daysAgo": 17,
-"topic": "groceries",
-"tags": [
-"shopping",
-"groceries"
-],
-"text": "Grocery run. got bread, need coffee, got butter, need onions."
+"text": "Idea: a tiny e-ink dashboard for the week's tasks.",
+"markdown": ""
 },
 {
 "daysAgo": 17,
@@ -2525,7 +2843,8 @@
 "work",
 "atlas"
 ],
-"text": "Postmortem for the Atlas outage: root cause was a missing index on events."
+"text": "Postmortem for the Atlas outage: root cause was a missing index on events.",
+"markdown": ""
 },
 {
 "daysAgo": 16,
@@ -2533,7 +2852,8 @@
 "tags": [
 "finance"
 ],
-"text": "Electricity bill spiked this month, check the heating schedule."
+"text": "Electricity bill spiked this month, check the heating schedule.",
+"markdown": ""
 },
 {
 "daysAgo": 15,
@@ -2542,7 +2862,8 @@
 "ideas",
 "books"
 ],
-"text": "Reading 'The Pragmatic Programmer'. The bit on DRY and orthogonality is gold."
+"text": "Reading 'The Pragmatic Programmer'. The bit on DRY and orthogonality is gold.",
+"markdown": ""
 },
 {
 "daysAgo": 15,
@@ -2550,7 +2871,8 @@
 "tags": [
 "ideas"
 ],
-"text": "Idea: a tiny e-ink dashboard for the week's tasks."
+"text": "Idea: a tiny e-ink dashboard for the week's tasks.",
+"markdown": ""
 },
 {
 "daysAgo": 13,
@@ -2559,7 +2881,8 @@
 "shopping",
 "groceries"
 ],
-"text": "Grocery run. got spinach, got potatoes, got rice, got milk, got apples."
+"text": "Grocery run. need eggs, need milk, need bread, need bananas, got chicken, got olive oil, got sugar.",
+"markdown": "Grocery run\n- [ ] eggs\n- [ ] milk\n- [ ] bread\n- [ ] bananas\n- [x] chicken\n- [x] olive oil\n- [x] sugar"
 },
 {
 "daysAgo": 13,
@@ -2567,7 +2890,8 @@
 "tags": [
 "family"
 ],
-"text": "Help Dad set up his new phone."
+"text": "Help Dad set up his new phone.",
+"markdown": ""
 },
 {
 "daysAgo": 13,
@@ -2575,7 +2899,8 @@
 "tags": [
 "ideas"
 ],
-"text": "Idea: a CLI that summarizes my git history into a changelog."
+"text": "Idea: a CLI that summarizes my git history into a changelog.",
+"markdown": ""
 },
 {
 "daysAgo": 12,
@@ -2584,7 +2909,18 @@
 "health",
 "dentist"
 ],
-"text": "Dentist appointment booked for March 3 at 9am. Cleaning plus that filling."
+"text": "Dentist appointment booked for March 3 at 9am. Cleaning plus that filling.",
+"markdown": ""
+},
+{
+"daysAgo": 8,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. need tea, need rice, need chicken, need cheese.",
+"markdown": "Grocery run\n- [ ] tea\n- [ ] rice\n- [ ] chicken\n- [ ] cheese"
 },
 {
 "daysAgo": 7,
@@ -2592,7 +2928,8 @@
 "tags": [
 "home"
 ],
-"text": "Clean the gutters before the rainy season."
+"text": "Clean the gutters before the rainy season.",
+"markdown": ""
 },
 {
 "daysAgo": 6,
@@ -2601,7 +2938,8 @@
 "work",
 "atlas"
 ],
-"text": "Code review backlog is growing. Propose a rotation in the team sync."
+"text": "Code review backlog is growing. Propose a rotation in the team sync.",
+"markdown": ""
 },
 {
 "daysAgo": 6,
@@ -2609,7 +2947,8 @@
 "tags": [
 "health"
 ],
-"text": "Gym: leg day. Squats felt strong, added 5kg."
+"text": "Gym: leg day. Squats felt strong, added 5kg.",
+"markdown": ""
 },
 {
 "daysAgo": 5,
@@ -2618,7 +2957,8 @@
 "shopping",
 "groceries"
 ],
-"text": "Grocery run. need eggs, need milk, need bread, need bananas, got chicken, got olive oil, got sugar."
+"text": "Grocery run. got bananas, got yogurt, need spinach, need chicken.",
+"markdown": "Grocery run\n- [x] bananas\n- [x] yogurt\n- [ ] spinach\n- [ ] chicken"
 },
 {
 "daysAgo": 4,
@@ -2626,7 +2966,18 @@
 "tags": [
 "home"
 ],
-"text": "Fix the leaky kitchen sink \u2014 replace the washer, get the right size."
+"text": "Fix the leaky kitchen sink \u2014 replace the washer, get the right size.",
+"markdown": ""
+},
+{
+"daysAgo": 2,
+"topic": "groceries",
+"tags": [
+"shopping",
+"groceries"
+],
+"text": "Grocery run. got milk, got eggs, need bread, need coffee, need rice.",
+"markdown": "Grocery run\n- [x] milk\n- [x] eggs\n- [ ] bread\n- [ ] coffee\n- [ ] rice"
 },
 {
 "daysAgo": 2,
@@ -2634,7 +2985,8 @@
 "tags": [
 "home"
 ],
-"text": "The dryer is squeaking; probably the belt. Order the part."
+"text": "The dryer is squeaking; probably the belt. Order the part.",
+"markdown": ""
 },
 {
 "daysAgo": 1,
@@ -2642,16 +2994,8 @@
 "tags": [
 "travel"
 ],
-"text": "Found cheap flights to Reykjavik for the northern lights week."
-},
-{
-"daysAgo": 0,
-"topic": "groceries",
-"tags": [
-"shopping",
-"groceries"
-],
-"text": "Grocery run. need tea, need rice, need chicken, need cheese."
+"text": "Found cheap flights to Reykjavik for the northern lights week.",
+"markdown": ""
 },
 {
 "daysAgo": 0,
@@ -2659,6 +3003,7 @@
 "tags": [
 "health"
 ],
-"text": "Started running again, 5k three times this week. Knee held up."
+"text": "Started running again, 5k three times this week. Knee held up.",
+"markdown": ""
 }
 ]

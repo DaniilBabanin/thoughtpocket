@@ -6,7 +6,8 @@ Writes:
   app/src/androidTest/assets/queries.json  ground truth: factual (expectContains) + topic (precision@k)
 
 Deterministic (fixed seed) so the corpus and its known facts never drift between runs.
-Phase 1 is plain text (no markdown yet — that's phase 2); checklists here are prose.
+Grocery notes carry a Markdown checklist (- [x] bought / - [ ] needed) so the phase-3 complex
+queries (checklist-aware + time-window) have assertable ground truth; other topics stay plain.
 """
 import json
 import os
@@ -18,26 +19,51 @@ OUT = os.path.join(os.path.dirname(__file__), "..", "app", "src", "androidTest",
 notes = []  # each: {daysAgo, topic, tags, text}
 
 
-def add(days_ago, topic, tags, text):
-    notes.append({"daysAgo": days_ago, "topic": topic, "tags": tags, "text": text})
+def add(days_ago, topic, tags, text, markdown=""):
+    notes.append({"daysAgo": days_ago, "topic": topic, "tags": tags, "text": text, "markdown": markdown})
 
 
 # ---- recurring topics spread across ~6 months (0..180 days ago) ----
 
-# Groceries — roughly weekly, varied item lists (some "bought", some "need").
+# Groceries — Markdown checklists ("- [x]" bought / "- [ ]" still needed). The two forced runs
+# below are the only grocery notes within the last 7 days; random runs start >7 days ago. That
+# makes the "last week" window deterministic ground truth for the phase-3 checklist+time queries.
 GROCERIES = [
     "milk", "eggs", "bread", "butter", "cheese", "apples", "bananas", "chicken",
     "rice", "pasta", "tomatoes", "onions", "coffee", "yogurt", "spinach", "cereal",
     "olive oil", "salmon", "potatoes", "carrots", "oranges", "flour", "sugar", "tea",
 ]
+
+
+def grocery_text(items, bought):
+    return "Grocery run. " + ", ".join(f"got {x}" if x in bought else f"need {x}" for x in items) + "."
+
+
+def grocery_md(items, bought):
+    return "Grocery run\n" + "\n".join(f"- [x] {x}" if x in bought else f"- [ ] {x}" for x in items)
+
+
+grocery_recent = []  # (bought, needed) for runs within the last 7 days — ground-truth source
+
+# Forced recent runs (within the last week) — deterministic ground truth.
+for days, items, bought in [
+    (2, ["milk", "eggs", "bread", "coffee", "rice"], ["milk", "eggs"]),
+    (5, ["bananas", "yogurt", "spinach", "chicken"], ["bananas", "yogurt"]),
+]:
+    add(days, "groceries", ["shopping", "groceries"], grocery_text(items, bought), grocery_md(items, bought))
+    grocery_recent.append((bought, [x for x in items if x not in bought]))
+
+# An older run that bought items we never buy in the last week — time-filter discriminator.
+add(120, "groceries", ["shopping", "groceries"],
+    grocery_text(["olive oil", "salmon", "sugar"], ["olive oil", "salmon"]),
+    grocery_md(["olive oil", "salmon", "sugar"], ["olive oil", "salmon"]))
+
 for i in range(34):
-    days = i * 5 + R.randint(0, 3)
+    days = i * 5 + 8 + R.randint(0, 3)   # all >7 days ago
     n = R.randint(4, 7)
     items = R.sample(GROCERIES, n)
     bought = R.sample(items, R.randint(0, n))
-    parts = [f"need {x}" if x not in bought else f"got {x}" for x in items]
-    add(days, "groceries", ["shopping", "groceries"],
-        "Grocery run. " + ", ".join(parts) + ".")
+    add(days, "groceries", ["shopping", "groceries"], grocery_text(items, bought), grocery_md(items, bought))
 
 # Work project "Atlas" — standups, decisions, todos.
 ATLAS = [
@@ -185,6 +211,30 @@ queries = {
         {"q": "home repairs and fixing things", "topic": "home", "k": 5, "minPrecision": 0.5},
         {"q": "planning a vacation trip", "topic": "travel", "k": 5, "minPrecision": 0.6},
         {"q": "the Atlas project at work", "topic": "work", "k": 5, "minPrecision": 0.6},
+    ],
+    # complex: checklist-aware + time-window + topic-synthesis queries over the whole corpus,
+    # answered via RAG (NotesAnalysis.ask reads the Markdown checklists + per-note dates).
+    "complex": [
+        {
+            "q": "Which groceries did I buy in the last week?",
+            "kind": "all_and_none",
+            "expect": sorted({x for bought, _ in grocery_recent for x in bought}),
+            "absent": ["olive oil", "salmon"],  # bought 120 days ago, not last week
+            "note": "checked (- [x]) items in grocery notes from the last 7 days",
+        },
+        {
+            "q": "Which groceries do I still need to buy this week?",
+            "kind": "contains_all",
+            "expect": sorted({x for _, needed in grocery_recent for x in needed}),
+            "note": "unchecked (- [ ]) items in recent grocery notes",
+        },
+        {
+            "q": "What have I been learning about Rust?",
+            "kind": "contains_any",
+            "min": 3,
+            "expect": ["borrow", "ownership", "lifetime", "trait", "cargo", "pattern", "enum"],
+            "note": "multi-note topic synthesis",
+        },
     ],
 }
 

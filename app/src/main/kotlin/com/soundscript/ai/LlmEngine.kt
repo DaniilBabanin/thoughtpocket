@@ -190,10 +190,18 @@ object NotesAnalysis {
         if (notes.isEmpty()) return Result.success("No notes in this scope.")
         if (question.isBlank()) return Result.success("")
         val selected = select(context, notes, question)
-        val joined = selected.joinToString("\n\n") { "- (${df.format(Date(it.createdAt))}) ${it.text}" }
+        // Feed the Markdown when present so checklist state ("- [x]" done / "- [ ]" still to do) is visible.
+        val joined = selected.joinToString("\n\n") {
+            "- (${df.format(Date(it.createdAt))}) ${it.markdown.ifBlank { it.text }}"
+        }
         val coverage = if (selected.size < notes.size)
             "\n\n(These are the ${selected.size} most relevant of ${notes.size} notes in scope.)" else ""
-        val prompt = "You are analysing the user's personal voice notes. ${question.trim()}\n\n" +
+        val today = df.format(Date(System.currentTimeMillis()))
+        val prompt = "You are analysing the user's personal voice notes. Today is $today. " +
+            "In checklists, \"- [x]\" means done or bought and \"- [ ] \" means still to do. " +
+            "When the question asks which items, scan EVERY relevant note in the time window and list " +
+            "ALL matching items across all of them — do not stop after the first note or summarise. " +
+            "${question.trim()}\n\n" +
             "Notes:\n\"\"\"\n$joined\n\"\"\"$coverage"
         val model = LlmEngine.resolve(context, AppPreferences(context).analysisModelFilename, "4b")
         return LlmEngine.generate(context, prompt, model).map { strip(it) }
@@ -205,7 +213,8 @@ object NotesAnalysis {
      * cosine, up to the char budget / note cap. Returned in chronological order.
      */
     private suspend fun select(context: Context, notes: List<Note>, question: String): List<Note> {
-        val totalChars = notes.sumOf { it.text.length + 24 }
+        fun bodyLen(n: Note) = (if (n.markdown.isNotBlank()) n.markdown.length else n.text.length) + 24
+        val totalChars = notes.sumOf { bodyLen(it) }
         if (notes.size <= MAX_NOTES && totalChars <= MAX_CHARS) return notes
 
         val qv = Embedder.embed(context, question, query = true)
@@ -221,7 +230,7 @@ object NotesAnalysis {
         var chars = 0
         for (n in ranked) {
             if (out.size >= MAX_NOTES) break
-            val len = n.text.length + 24
+            val len = bodyLen(n)
             if (chars + len > MAX_CHARS && out.isNotEmpty()) break
             out.add(n); chars += len
         }

@@ -70,5 +70,49 @@
       "k": 5,
       "minPrecision": 0.6
     }
+  ],
+  "complex": [
+    {
+      "q": "Which groceries did I buy in the last week?",
+      "kind": "all_and_none",
+      "expect": [
+        "bananas",
+        "eggs",
+        "milk",
+        "yogurt"
+      ],
+      "absent": [
+        "olive oil",
+        "salmon"
+      ],
+      "note": "checked (- [x]) items in grocery notes from the last 7 days"
+    },
+    {
+      "q": "Which groceries do I still need to buy this week?",
+      "kind": "contains_all",
+      "expect": [
+        "bread",
+        "chicken",
+        "coffee",
+        "rice",
+        "spinach"
+      ],
+      "note": "unchecked (- [ ]) items in recent grocery notes"
+    },
+    {
+      "q": "What have I been learning about Rust?",
+      "kind": "contains_any",
+      "min": 3,
+      "expect": [
+        "borrow",
+        "ownership",
+        "lifetime",
+        "trait",
+        "cargo",
+        "pattern",
+        "enum"
+      ],
+      "note": "multi-note topic synthesis"
+    }
   ]
 }
