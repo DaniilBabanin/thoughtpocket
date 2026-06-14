@@ -33,3 +33,8 @@ Thumbs.db
 # Claude Code local settings
 .claude/
 tmp-gecko/
+
+# Cached on-device AI models (multi-GB, licence-gated Gemma weights + Gecko).
+# Pulled from a device with adb; repopulate via tools/copy-edge-model.sh, then push
+# to other devices with tools/push-models.sh. Never committed.
+/models/
