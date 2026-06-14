@@ -16,23 +16,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-
-private val CHECKBOX = Regex("^(\\s*)- \\[([ xX])] (.*)$")
-private val BULLET = Regex("^(\\s*)[-*] (.*)$")
-private val ORDERED = Regex("^(\\s*)(\\d+)\\. (.*)$")
-private val HEADING = Regex("^(#{1,6}) (.*)$")
+import com.soundscript.ai.BULLET
+import com.soundscript.ai.CHECKBOX
+import com.soundscript.ai.HEADING
+import com.soundscript.ai.ORDERED
+import com.soundscript.ai.toggleCheckbox
 
 /** Indent step from leading-whitespace width (2 spaces ≈ one level). */
 private fun indent(ws: String) = (ws.length / 2 * 16).dp
-
-/** Flip the checkbox on line [lineIndex] of [markdown] to [checked]; returns the new Markdown. */
-fun toggleCheckbox(markdown: String, lineIndex: Int, checked: Boolean): String {
-    val lines = markdown.split("\n").toMutableList()
-    val m = lines.getOrNull(lineIndex)?.let { CHECKBOX.find(it) } ?: return markdown
-    val (ws, _, label) = m.destructured
-    lines[lineIndex] = "$ws- [${if (checked) "x" else " "}] $label"
-    return lines.joinToString("\n")
-}
 
 /**
  * Render Markdown with interactive, persistent checkboxes. Bullets/ordered/headings/paragraphs are

@@ -26,8 +26,11 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -37,6 +40,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -67,18 +72,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.soundscript.AppPreferences
+import com.soundscript.ModelManager
+import com.soundscript.WhisperEngine
 import com.soundscript.ai.Embedder
+import com.soundscript.ai.InteractEngine
+import com.soundscript.ai.InteractOp
 import com.soundscript.ai.LlmEngine
 import com.soundscript.ai.MarkdownEngine
 import com.soundscript.ai.TaggingEngine
 import com.soundscript.ai.TitleEngine
+import com.soundscript.ai.addItem
+import com.soundscript.ai.openTasks
+import com.soundscript.ai.setItemChecked
+import com.soundscript.audio.MicRecorder
 import com.soundscript.data.Note
 import com.soundscript.data.NotesDb
 import com.soundscript.service.RecordState
 import com.soundscript.service.RecordingService
 import kotlin.math.roundToInt
+import kotlin.random.Random
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,6 +112,16 @@ fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit, onAnalyze: (
     var queryVec by remember { mutableStateOf<FloatArray?>(null) }
     LaunchedEffect(query) {
         if (query.isBlank()) { queryVec = null } else { delay(200); queryVec = Embedder.embed(context, query, query = true) }
+    }
+
+    // "Give me a random task" — surface a random unchecked checklist item across all notes.
+    val scope = rememberCoroutineScope()
+    var showRandom by remember { mutableStateOf(false) }
+    var randomTask by remember { mutableStateOf<Pair<Note, String>?>(null) }
+    fun pickTask(exclude: Pair<Long, String>? = null) {
+        val tasks = openTasks(notes).filterNot { exclude != null && it.first.id == exclude.first && it.second == exclude.second }
+        randomTask = if (tasks.isEmpty()) null else tasks[Random.nextInt(tasks.size)]
+        showRandom = true
     }
 
     val allTags = notes.flatMap { it.tags }.distinct().sorted()
@@ -150,6 +177,7 @@ fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit, onAnalyze: (
             TopAppBar(
                 title = { Text("SoundScript") },
                 actions = {
+                    IconButton(onClick = { pickTask() }) { Icon(Icons.Filled.Casino, "Random task") }
                     IconButton(onClick = onAnalyze) { Icon(Icons.Filled.Insights, "Ask your notes") }
                     IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, "Settings") }
                 }
@@ -227,6 +255,45 @@ fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit, onAnalyze: (
             }
         }
     }
+
+    if (showRandom) {
+        val rt = randomTask
+        AlertDialog(
+            onDismissRequest = { showRandom = false },
+            title = { Text(if (rt == null) "No open tasks" else "Random task") },
+            text = {
+                if (rt == null) {
+                    Text("Nothing left to do 🎉")
+                } else {
+                    Column {
+                        Text(rt.second, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "from “${rt.first.title.ifBlank { rt.first.text.substringBefore('\n') }}”",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                if (rt != null) {
+                    TextButton(onClick = {
+                        scope.launch { dao.update(rt.first.copy(markdown = setItemChecked(rt.first.markdown, rt.second, true))) }
+                        pickTask(exclude = rt.first.id to rt.second)
+                    }) { Text("Mark done") }
+                }
+            },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (rt != null) {
+                        TextButton(onClick = { pickTask(exclude = rt.first.id to rt.second) }) { Text("Another") }
+                        TextButton(onClick = { showRandom = false; onOpen(rt.first.id) }) { Text("Open") }
+                    }
+                    TextButton(onClick = { showRandom = false }) { Text("Close") }
+                }
+            },
+        )
+    }
 }
 
 @Composable
@@ -287,6 +354,84 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
     var suggestions by remember(n.id) { mutableStateOf<List<String>>(emptyList()) }
     var aiError by remember(n.id) { mutableStateOf<String?>(null) }
 
+    // Interact (AI commands on the checklist) + single-level undo for AI changes.
+    val prefs = remember { AppPreferences(context) }
+    var undo by remember(n.id) { mutableStateOf<Note?>(null) }
+    var command by remember(n.id) { mutableStateOf("") }
+    var interacting by remember(n.id) { mutableStateOf(false) }
+    var listening by remember(n.id) { mutableStateOf(false) }
+    var micRec by remember(n.id) { mutableStateOf<MicRecorder?>(null) }
+    var itemSuggestions by remember(n.id) { mutableStateOf<List<String>>(emptyList()) }
+
+    // Snapshot the current note, then apply an AI change to the markdown (undoable).
+    fun applyMarkdown(newMd: String) {
+        if (newMd == markdown) return
+        undo = n
+        markdown = newMd
+        showRaw = false
+        scope.launch { dao.update(n.copy(markdown = newMd)) }
+    }
+    fun doUndo() {
+        val snap = undo ?: return
+        markdown = snap.markdown; text = snap.text; title = snap.title; tags = snap.tags
+        showRaw = snap.markdown.isBlank()
+        scope.launch { dao.update(snap) }
+        undo = null
+    }
+    fun runCommand() {
+        val cmd = command.trim()
+        if (cmd.isBlank() || interacting) return
+        scope.launch {
+            interacting = true; aiError = null
+            InteractEngine.interpret(context, markdown, cmd).onSuccess { op ->
+                when (op) {
+                    is InteractOp.Suggest -> InteractEngine.suggestAdditions(context, markdown.ifBlank { text })
+                        .onSuccess { itemSuggestions = it }.onFailure { aiError = it.message }
+                    is InteractOp.Unknown -> aiError = "Didn't understand: \"$cmd\""
+                    else -> {
+                        val newMd = InteractEngine.apply(markdown, op)
+                        if (newMd != null && newMd != markdown) { applyMarkdown(newMd); command = "" }
+                        else aiError = "No matching item for: \"$cmd\""
+                    }
+                }
+            }.onFailure { aiError = it.message }
+            interacting = false
+        }
+    }
+
+    val micPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) listening = true  // re-tap to actually start; keeps the flow simple
+    }
+    fun micToggle() {
+        if (listening) { micRec?.stop(); return }
+        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            micPerm.launch(Manifest.permission.RECORD_AUDIO); return
+        }
+        val r = MicRecorder(); micRec = r; listening = true; aiError = null
+        scope.launch {
+            try {
+                val loaded = withContext(Dispatchers.IO) {
+                    val entry = ModelManager.entryById(context, prefs.selectedModelId)
+                        ?.takeIf { ModelManager.isDownloaded(context, it) }
+                        ?: ModelManager.listInstalled(context).firstOrNull()
+                    entry != null && WhisperEngine.load(ModelManager.fileFor(context, entry), useGpu = false).isSuccess
+                }
+                if (!loaded) { aiError = "No transcription model — see Settings"; return@launch }
+                r.start()
+                r.runUntilStopped()   // returns when micToggle() calls stop()
+                val txt = WhisperEngine.transcribe(
+                    pcm16k = r.snapshot(), language = prefs.language.ifBlank { null },
+                    translate = prefs.translateToEnglish, threads = prefs.resolvedThreads(), highQuality = false,
+                )
+                command = txt.trim().ifBlank { command }
+            } catch (t: Throwable) {
+                aiError = "Voice input failed: ${t.message}"
+            } finally {
+                listening = false; micRec = null
+            }
+        }
+    }
+
     // On open: embed the note if needed, and auto-title if still untitled. Single combined save.
     LaunchedEffect(n.id) {
         var changed = n
@@ -324,6 +469,13 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
             Modifier.padding(pad).padding(16.dp).fillMaxSize().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            if (undo != null) {
+                AssistChip(
+                    onClick = { doUndo() },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, null, Modifier.size(18.dp)) },
+                    label = { Text("Undo last AI change") },
+                )
+            }
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
@@ -386,6 +538,62 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
                     else if (markdown.isBlank()) "Format as Markdown (AI)" else "Reformat (AI)"
                 )
             }
+
+            HorizontalDivider()
+            Text("Interact", style = MaterialTheme.typography.titleSmall)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = command,
+                    onValueChange = { command = it },
+                    label = { Text(if (listening) "Listening…" else "Tell me what to do…") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                    trailingIcon = {
+                        IconButton(onClick = { micToggle() }) {
+                            Icon(
+                                if (listening) Icons.Filled.Stop else Icons.Filled.Mic,
+                                if (listening) "Stop" else "Voice command",
+                            )
+                        }
+                    },
+                )
+                if (interacting) {
+                    CircularProgressIndicator(Modifier.size(24.dp).padding(start = 8.dp))
+                } else {
+                    IconButton(onClick = { runCommand() }, enabled = command.isNotBlank()) {
+                        Icon(Icons.AutoMirrored.Filled.Send, "Send")
+                    }
+                }
+            }
+            Button(
+                onClick = {
+                    scope.launch {
+                        interacting = true; aiError = null
+                        InteractEngine.suggestAdditions(context, markdown.ifBlank { text })
+                            .onSuccess { itemSuggestions = it }.onFailure { aiError = it.message }
+                        interacting = false
+                    }
+                },
+                enabled = !interacting,
+            ) {
+                Icon(Icons.Filled.AutoAwesome, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Suggest items (AI)")
+            }
+            if (itemSuggestions.isNotEmpty()) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    itemSuggestions.forEach { s ->
+                        SuggestionChip(
+                            onClick = {
+                                applyMarkdown(addItem(markdown, s, top = false))
+                                itemSuggestions = itemSuggestions - s
+                            },
+                            label = { Text(s) },
+                        )
+                    }
+                }
+            }
+
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 tags.forEach { tag ->
                     InputChip(
