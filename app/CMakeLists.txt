@@ -87,6 +87,14 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     ${android-lib}
 )
 
+# 16 KB page alignment (Google Play requirement). NDK r27's new toolchain doesn't inject this,
+# so our .so links with 4 KB LOAD segments; force 16 KB. common-page-size matters for lld's
+# .relro_padding. (All dependency .so files are already 16 KB-aligned.)
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
+    "-Wl,-z,max-page-size=16384"
+    "-Wl,-z,common-page-size=16384"
+)
+
 if(WHISPERSHARE_VULKAN)
     target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE WHISPERSHARE_VULKAN=1)
 endif()

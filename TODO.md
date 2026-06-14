@@ -7,23 +7,19 @@ Settings grouping, theming/typography, accessibility (content descriptions, touc
 animations/transitions. Collect concrete nits here as they come up.
 
 
-## Fully-bundled build variant (Gecko model in-APK)
-Gecko embedder model (~110MB) currently downloads on first run. Add an offline build
-flavor that bundles `Gecko_256_quant.tflite` + `sentencepiece.model` in assets so the app
-works with zero network on first launch (at the cost of a big APK).
-(Gecko-on-GPU tested 2026-06-14: 307ms/note vs 321 CPU — no meaningful speedup, staying on CPU.)
+## Fully-bundled / offline build (Gecko in-APK; Gemma stays download-only)
+Investigated 2026-06-14: Gemma 3n E2B/E4B **cannot** be bundled — each model (>2 GB) blows past
+Play Asset Delivery's 2 GB total-asset-pack cap, and the weights are gated under the custom Gemma
+Terms (redistribution carries NOTICE/EULA duties). Keep Gemma download-on-first-run.
+Gecko (`Gecko_256_quant.tflite` ~109 MB + `sentencepiece.model`, non-gated) **can** be bundled —
+install-time asset pack or `assets/` + `noCompress`. Gives a true offline search + transcription
+build; AI tagging still needs the one-time Gemma download. (Gecko-on-GPU tested: no speedup, CPU.)
 
-
-
-## 16 KB page-size native alignment (Play Store blocker, eventually)
-Debug dialog flags these `.so` libs as not 16 KB-aligned:
-`libLiteRt.so`, `liblitertlm_jni.so`, `libLiteRtClGlAccelerator.so`,
-`libsoundscript.so` (whisper, "LOAD segment not aligned"),
-`libc++_shared.so`, `libomp.so`, `libandroidx.graphics.path.so`.
-Harmless for local testing; Google Play will require 16 KB alignment.
-Fix: build with NDK r28+ (defaults to 16 KB) and/or linker flag
-`-Wl,-z,max-page-size=16384` for our own CMake target; bump the litertlm
-dependency to a 16 KB-aligned release when available.
+## 16 KB page-size native alignment (Play Store blocker) — RESOLVED 2026-06-14
+Only `libsoundscript.so` (our whisper build) was misaligned (4 KB LOAD segments); every dependency
+lib (litertlm 0.13.1, RAG SDK 0.3.0, NDK, androidx) was already 16 KB — no dep bumps needed.
+Fixed by adding `-Wl,-z,max-page-size=16384` + `-Wl,-z,common-page-size=16384` to our CMake target
+(see app/CMakeLists.txt); verified all 4 LOAD segments are now 0x4000 via `llvm-readelf -l`.
 
 ## Whisper on LiteRT / NPU (investigate, maybe faster)
 We run whisper.cpp on CPU (Vulkan disabled — unstable on this Mali). A TFLite
