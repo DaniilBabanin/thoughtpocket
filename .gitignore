@@ -38,3 +38,6 @@ tmp-gecko/
 # Pulled from a device with adb; repopulate via tools/copy-edge-model.sh, then push
 # to other devices with tools/push-models.sh. Never committed.
 /models/
+
+# HTML/CSS reference prototype for the Reach redesign — kept on disk, never committed.
+/design/
