@@ -1,4 +1,4 @@
-# SoundScript — deferred TODOs
+# ThoughtPocket — deferred TODOs
 
 ## UX / UI polish (backlog)
 General pass once features settle: visual hierarchy, empty/loading/error states, the Interact
@@ -21,7 +21,7 @@ download everything on demand — no asset-pack bundling of Gecko/Gemma. (Gecko-
 no speedup, CPU.)
 
 ## 16 KB page-size native alignment (Play Store blocker) — RESOLVED 2026-06-14
-Only `libsoundscript.so` (our whisper build) was misaligned (4 KB LOAD segments); every dependency
+Only `libthoughtpocket.so` (our whisper build) was misaligned (4 KB LOAD segments); every dependency
 lib (litertlm 0.13.1, RAG SDK 0.3.0, NDK, androidx) was already 16 KB — no dep bumps needed.
 Fixed by adding `-Wl,-z,max-page-size=16384` + `-Wl,-z,common-page-size=16384` to our CMake target
 (see app/CMakeLists.txt); verified all 4 LOAD segments are now 0x4000 via `llvm-readelf -l`.

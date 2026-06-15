@@ -19,12 +19,12 @@ configurations.all {
 }
 
 android {
-    namespace = "com.soundscript"
+    namespace = "com.thoughtpocket"
     compileSdk = 35
     ndkVersion = "27.0.12077973"
 
     defaultConfig {
-        applicationId = "com.soundscript"
+        applicationId = "com.thoughtpocket"
         minSdk = 31
         targetSdk = 35
         versionCode = 1
@@ -57,7 +57,7 @@ android {
             create("release") {
                 storeFile = releaseKeystore
                 storePassword = "whispershare"
-                keyAlias = "soundscript"
+                keyAlias = "thoughtpocket"
                 keyPassword = "whispershare"
             }
         }

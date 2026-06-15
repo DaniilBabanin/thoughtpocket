@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SoundScript"
+rootProject.name = "ThoughtPocket"
 include(":app")

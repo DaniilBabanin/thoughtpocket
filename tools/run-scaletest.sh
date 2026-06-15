@@ -14,7 +14,7 @@ METHOD="${1:-scale}"
 SER="${2:-48171FDAS004EU}"
 ADB=(adb -s "$SER")
 export JAVA_HOME="${JAVA_HOME:-/home/db/jdk/jdk-17.0.13+11}"
-DST=/sdcard/Android/data/com.soundscript/files/llm
+DST=/sdcard/Android/data/com.thoughtpocket/files/llm
 APK=app/build/outputs/apk/debug/app-debug.apk
 TAPK=app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 
@@ -30,7 +30,7 @@ fi
 
 "${ADB[@]}" logcat -c
 "${ADB[@]}" shell am instrument -w \
-  -e class "com.soundscript.ScaleTest#$METHOD" \
-  com.soundscript.test/androidx.test.runner.AndroidJUnitRunner
+  -e class "com.thoughtpocket.ScaleTest#$METHOD" \
+  com.thoughtpocket.test/androidx.test.runner.AndroidJUnitRunner
 echo "=== SCALE log ==="
 "${ADB[@]}" logcat -d -s SCALE | sed 's/.*SCALE *: //' | grep -vE '^\s*$|beginning of'

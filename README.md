@@ -1,4 +1,4 @@
-# SoundScript
+# ThoughtPocket
 
 Privacy-first voice notes for Android. Record, transcribe, tag, and search your notes **entirely on-device** — no cloud, no account, no audio ever leaving the phone. Recordings are transcribed locally with [whisper.cpp](https://github.com/ggml-org/whisper.cpp) and the audio is deleted immediately; only the transcript is kept. On-device Gemma 4 (via LiteRT-LM) adds AI tagging, Markdown formatting, and question-answering over your notes, with semantic search powered by on-device Gecko embeddings.
 
@@ -20,7 +20,7 @@ Requires Android 12+ (minSdk 31), arm64. The APK also ships an `x86_64` slice so
 
 ## 2. First-time setup
 
-Open SoundScript → **Settings** → **Download all models** (~6.4 GB, once, over Wi-Fi):
+Open ThoughtPocket → **Settings** → **Download all models** (~6.4 GB, once, over Wi-Fi):
 
 | Model | Size | Used for |
 |-------|------|----------|
@@ -39,7 +39,7 @@ Three entry points, all producing a transcribed note:
 
 - **In-app** — the record FAB on the notes list.
 - **Home-screen widget** — tap to record, tap to stop.
-- **Quick Settings tile** — drag the SoundScript tile into Quick Settings, tap to record/stop.
+- **Quick Settings tile** — drag the ThoughtPocket tile into Quick Settings, tap to record/stop.
 
 Speak, stop, and the note appears transcribed (audio is discarded). New notes are auto-tagged and auto-formatted as Markdown if those options are on (Settings).
 

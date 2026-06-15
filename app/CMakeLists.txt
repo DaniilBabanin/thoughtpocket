@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22.1)
-project("soundscript" LANGUAGES C CXX)
+project("thoughtpocket" LANGUAGES C CXX)
 
 option(WHISPERSHARE_VULKAN "Enable Vulkan GPU backend in whisper.cpp" OFF)
 

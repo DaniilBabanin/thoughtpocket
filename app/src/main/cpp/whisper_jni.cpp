@@ -60,7 +60,7 @@ void cb_progress(struct whisper_context * /*ctx*/, struct whisper_state * /*stat
 extern "C" {
 
 JNIEXPORT jlong JNICALL
-Java_com_soundscript_WhisperEngine_nativeInitContext(
+Java_com_thoughtpocket_WhisperEngine_nativeInitContext(
         JNIEnv *env, jobject /*thiz*/, jstring modelPath, jboolean useGpu) {
     const char *path = env->GetStringUTFChars(modelPath, nullptr);
 
@@ -103,7 +103,7 @@ Java_com_soundscript_WhisperEngine_nativeInitContext(
 }
 
 JNIEXPORT void JNICALL
-Java_com_soundscript_WhisperEngine_nativeFreeContext(
+Java_com_thoughtpocket_WhisperEngine_nativeFreeContext(
         JNIEnv * /*env*/, jobject /*thiz*/, jlong ctxPtr) {
     auto *ctx = reinterpret_cast<whisper_context *>(ctxPtr);
     if (!ctx) return;
@@ -117,7 +117,7 @@ Java_com_soundscript_WhisperEngine_nativeFreeContext(
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_soundscript_WhisperEngine_nativeTranscribe(
+Java_com_thoughtpocket_WhisperEngine_nativeTranscribe(
         JNIEnv *env, jobject /*thiz*/,
         jlong ctxPtr,
         jfloatArray pcm,
@@ -211,7 +211,7 @@ Java_com_soundscript_WhisperEngine_nativeTranscribe(
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_soundscript_WhisperEngine_nativeBackendInfo(
+Java_com_thoughtpocket_WhisperEngine_nativeBackendInfo(
         JNIEnv *env, jobject /*thiz*/) {
     std::string info;
 #ifdef WHISPERSHARE_VULKAN
@@ -223,7 +223,7 @@ Java_com_soundscript_WhisperEngine_nativeBackendInfo(
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_soundscript_WhisperEngine_nativeLastError(
+Java_com_thoughtpocket_WhisperEngine_nativeLastError(
         JNIEnv *env, jobject /*thiz*/) {
     return env->NewStringUTF(g_last_error.c_str());
 }

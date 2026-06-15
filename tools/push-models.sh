@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Push the project's cached AI models to a device's SoundScript dirs, so we don't have to
+# Push the project's cached AI models to a device's ThoughtPocket dirs, so we don't have to
 # re-copy them from Edge Gallery (or another device) every time. The models live in the
 # git-ignored models/ folder (models/llm/*.litertlm + models/gecko/*); populate it once with
 # `adb pull` or tools/copy-edge-model.sh. Files already present with the same size are skipped.
@@ -10,8 +10,8 @@ set -euo pipefail
 SER="${1:-}"
 ADB=(adb); [ -n "$SER" ] && ADB=(adb -s "$SER")
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-LLM=/sdcard/Android/data/com.soundscript/files/llm
-GECKO=/sdcard/Android/data/com.soundscript/files/gecko
+LLM=/sdcard/Android/data/com.thoughtpocket/files/llm
+GECKO=/sdcard/Android/data/com.thoughtpocket/files/gecko
 
 push() {  # localfile remotedir
     local f="$1" dir="$2" name lsize rsize
