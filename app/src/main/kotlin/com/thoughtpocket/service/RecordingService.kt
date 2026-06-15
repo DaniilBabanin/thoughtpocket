@@ -108,9 +108,9 @@ class RecordingService : Service() {
                 return@launch
             }
 
-            // Live preview while recording — only for models fast enough to keep up.
+            // Live preview while recording — opt-out, and only for models fast enough to keep up.
             val liveJob: Job? =
-                if (model != null && model.approxSizeMb <= LIVE_MAX_MODEL_MB)
+                if (prefs.liveTranscription && model != null && model.approxSizeMb <= LIVE_MAX_MODEL_MB)
                     launch { liveLoop(rec, prefs, model) }
                 else null
 

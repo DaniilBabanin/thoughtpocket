@@ -83,6 +83,7 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
     var autoTag by remember { mutableStateOf(prefs.autoTag) }
     var autoMarkdown by remember { mutableStateOf(prefs.autoMarkdown) }
     var reformatAppended by remember { mutableStateOf(prefs.reformatAppendedNotes) }
+    var liveTranscribe by remember { mutableStateOf(prefs.liveTranscription) }
     var liveNotif by remember { mutableStateOf(prefs.liveTranscribeNotification) }
     var aiError by remember { mutableStateOf<String?>(null) }
     var geckoTick by remember { mutableStateOf(0) }
@@ -262,6 +263,11 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
                 "Transcribe non-English speech but output it in English.",
                 translate,
             ) { translate = it; prefs.translateToEnglish = it }
+            SwitchRow(
+                "Live transcription",
+                "Show text as you speak. Turn off to save battery on long recordings.",
+                liveTranscribe,
+            ) { liveTranscribe = it; prefs.liveTranscription = it }
             SwitchRow(
                 "Live transcript in notification",
                 "Show the transcription in the notification shade while recording.",

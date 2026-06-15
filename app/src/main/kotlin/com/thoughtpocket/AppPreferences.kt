@@ -68,6 +68,14 @@ class AppPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_REFORMAT_APPENDED, true)
         set(value) = prefs.edit { putBoolean(KEY_REFORMAT_APPENDED, value) }
 
+    /**
+     * Transcribe progressively while recording (live preview). On by default. Turning it off saves
+     * battery/heat and avoids re-transcribing a growing buffer on long recordings.
+     */
+    var liveTranscription: Boolean
+        get() = prefs.getBoolean(KEY_LIVE_TRANSCRIBE, true)
+        set(value) = prefs.edit { putBoolean(KEY_LIVE_TRANSCRIBE, value) }
+
     /** Show the live transcription in the ongoing notification (visible from the shade). Off by default. */
     var liveTranscribeNotification: Boolean
         get() = prefs.getBoolean(KEY_LIVE_NOTIF, false)
@@ -128,6 +136,7 @@ class AppPreferences(context: Context) {
         private const val KEY_AUTO_TAG = "auto_tag"
         private const val KEY_AUTO_MARKDOWN = "auto_markdown"
         private const val KEY_REFORMAT_APPENDED = "reformat_appended_notes"
+        private const val KEY_LIVE_TRANSCRIBE = "live_transcription"
         private const val KEY_LIVE_NOTIF = "live_transcribe_notification"
         private const val KEY_REDUCE_MOTION = "reduce_animations"
         private const val KEY_TAG_MODEL = "tag_model"
