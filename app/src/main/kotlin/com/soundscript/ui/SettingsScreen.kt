@@ -5,32 +5,27 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -41,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import android.provider.OpenableColumns
 import androidx.compose.runtime.collectAsState
@@ -50,14 +46,25 @@ import com.soundscript.notesToMarkdown
 import com.soundscript.ai.Embedder
 import com.soundscript.ai.LlmEngine
 import com.soundscript.data.NotesDb
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.draw.clip
+import com.soundscript.ui.theme.GlassCard
+import com.soundscript.ui.theme.GlassTextField
+import com.soundscript.ui.theme.ReachChip
+import com.soundscript.ui.theme.ReachRadio
+import com.soundscript.ui.theme.ReachShapes
+import com.soundscript.ui.theme.ReachSwitch
+import com.soundscript.ui.theme.SectionTitle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Boolean) -> Unit) {
     val context = LocalContext.current
     val prefs = remember { AppPreferences(context) }
     val scope = rememberCoroutineScope()
@@ -75,6 +82,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     var analysisModel by remember { mutableStateOf(prefs.analysisModelFilename) }
     var autoTag by remember { mutableStateOf(prefs.autoTag) }
     var autoMarkdown by remember { mutableStateOf(prefs.autoMarkdown) }
+    var reformatAppended by remember { mutableStateOf(prefs.reformatAppendedNotes) }
     var liveNotif by remember { mutableStateOf(prefs.liveTranscribeNotification) }
     var aiError by remember { mutableStateOf<String?>(null) }
     var geckoTick by remember { mutableStateOf(0) }
@@ -118,26 +126,35 @@ fun SettingsScreen(onBack: () -> Unit) {
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
-                },
-                title = { Text("Settings") },
-            )
-        }
-    ) { pad ->
-        Column(
-            Modifier.padding(pad).padding(16.dp).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // One-tap setup: fetch the default transcription + AI + search models, skipping any
-            // already installed. Re-reads tick state so it disables once everything is present.
-            @Suppress("UNUSED_EXPRESSION") run { installedTick; aiTick; geckoTick }
-            val needsSetup = ModelManager.listInstalled(context).isEmpty() ||
-                LlmEngine.Downloadable.entries.any { !LlmEngine.isInstalled(context, it) } ||
-                !Embedder.isReady(context)
+    // All filesystem checks cached, keyed on the tick counters, so they never run during scroll.
+    val installedTranscription = remember(installedTick) {
+        models.filter { ModelManager.isDownloaded(context, it) }.map { it.id }.toSet()
+    }
+    val installedGemma = remember(aiTick) {
+        LlmEngine.Downloadable.entries.filter { LlmEngine.isInstalled(context, it) }.map { it.name }.toSet()
+    }
+    val installedModels = remember(aiTick) { LlmEngine.installed(context) }
+    val installedSizes = remember(aiTick) { installedModels.associate { it.name to it.length() / 1_000_000 } }
+    val geckoReady = remember(geckoTick) { Embedder.isReady(context) }
+    val needsSetup = remember(installedTick, aiTick, geckoTick) {
+        ModelManager.listInstalled(context).isEmpty() ||
+            LlmEngine.Downloadable.entries.any { !LlmEngine.isInstalled(context, it) } ||
+            !Embedder.isReady(context)
+    }
+    Column(
+        Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState())
+            .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = bottomSpace),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            "Settings",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            fontSize = 24.sp,
+            modifier = Modifier.padding(start = 2.dp, top = 6.dp),
+        )
+
+        if (needsSetup || setupStatus != null) {
             Button(
                 onClick = {
                     scope.launch {
@@ -164,41 +181,58 @@ fun SettingsScreen(onBack: () -> Unit) {
                         setupStatus = null
                     }
                 },
-                enabled = setupStatus == null && needsSetup,
+                enabled = setupStatus == null,
+                shape = ReachShapes.field,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(setupStatus ?: if (needsSetup) "Download all models (~6.4 GB)" else "All models installed ✓")
+                Text(setupStatus ?: "Download all models (~6.4 GB)")
             }
+        } else {
+            // Tonal "installed" status pill (the design's `.btn.done`).
+            Row(
+                Modifier.fillMaxWidth()
+                    .clip(ReachShapes.field)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f))
+                    .padding(vertical = 13.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.CheckCircle, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("On-device · all models installed", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+            }
+        }
 
-            HorizontalDivider()
+        // Interface.
+        GlassCard(Modifier.fillMaxWidth()) {
+            SectionTitle("Interface", Modifier.padding(bottom = 4.dp))
+            SwitchRow("Reduce animations", "Turn off card reveals, glow and pulse motion.", reduceMotion, onReduceMotion)
+        }
 
-            Text("Model", style = MaterialTheme.typography.titleMedium)
+        // Transcription model.
+        GlassCard(Modifier.fillMaxWidth()) {
+            SectionTitle("Transcription model", Modifier.padding(bottom = 4.dp))
             models.forEach { m ->
-                @Suppress("UNUSED_EXPRESSION") installedTick // re-read so this row recomputes
-                val installed = ModelManager.isDownloaded(context, m)
+                val installed = m.id in installedTranscription
                 val pct = progress[m.id]
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
+                    ReachRadio(
                         selected = selected == m.id,
                         enabled = installed,
                         onClick = { selected = m.id; prefs.selectedModelId = m.id },
                     )
+                    Spacer(Modifier.width(4.dp))
                     Column(Modifier.weight(1f)) {
                         Text(m.displayName)
                         Text(
                             "${m.approxSizeMb} MB",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     when {
-                        pct != null -> CircularProgressIndicator(
-                            progress = { pct / 100f }, modifier = Modifier.size(24.dp)
-                        )
-                        installed -> Icon(
-                            Icons.Filled.CheckCircle, "Installed",
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
+                        pct != null -> CircularProgressIndicator(progress = { pct / 100f }, modifier = Modifier.size(24.dp))
+                        installed -> Icon(Icons.Filled.CheckCircle, "Installed", tint = MaterialTheme.colorScheme.primary)
                         else -> IconButton(onClick = {
                             scope.launch {
                                 ModelManager.download(context, m).collect { p ->
@@ -210,64 +244,47 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                 }
             }
+        }
 
-            HorizontalDivider()
-
-            Text("Language", style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(
+        // Language.
+        GlassCard(Modifier.fillMaxWidth()) {
+            SectionTitle("Language", Modifier.padding(bottom = 4.dp))
+            GlassTextField(
                 value = language,
                 onValueChange = { language = it; prefs.language = it.trim() },
-                label = { Text("ISO code — blank = auto-detect") },
-                placeholder = { Text("e.g. en, de, fr") },
-                singleLine = true,
+                placeholder = "e.g. en, de, fr",
+                label = "ISO code — blank = auto-detect",
+                flat = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Translate to English")
-                    Text(
-                        "Transcribe non-English speech but output it in English.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline,
-                    )
-                }
-                Switch(
-                    checked = translate,
-                    onCheckedChange = { translate = it; prefs.translateToEnglish = it },
-                )
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Live transcript in notification")
-                    Text(
-                        "Show the transcription in the notification shade while recording.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline,
-                    )
-                }
-                Switch(
-                    checked = liveNotif,
-                    onCheckedChange = { liveNotif = it; prefs.liveTranscribeNotification = it },
-                )
-            }
+            SwitchRow(
+                "Translate to English",
+                "Transcribe non-English speech but output it in English.",
+                translate,
+            ) { translate = it; prefs.translateToEnglish = it }
+            SwitchRow(
+                "Live transcript in notification",
+                "Show the transcription in the notification shade while recording.",
+                liveNotif,
+            ) { liveNotif = it; prefs.liveTranscribeNotification = it }
             Text(
                 "Transcription runs fully on-device. A model downloads once over the internet, then everything is offline.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
 
-            HorizontalDivider()
-
-            Text("AI model (Gemma)", style = MaterialTheme.typography.titleMedium)
+        // AI model (Gemma).
+        GlassCard(Modifier.fillMaxWidth()) {
+            SectionTitle("AI model (Gemma)", Modifier.padding(bottom = 4.dp))
             Text(
                 "On-device LLM (LiteRT-LM) for AI tagging, formatting and Q&A. Download one below (once, then offline), or import a .litertlm file. Runs on GPU.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             // Downloadable Gemma bundles (Nextcloud). E2B = default/fast, E4B = deeper.
             LlmEngine.Downloadable.entries.forEach { d ->
-                @Suppress("UNUSED_EXPRESSION") aiTick // re-read so this row recomputes after a download
-                val installed = LlmEngine.isInstalled(context, d)
+                val installed = d.name in installedGemma
                 val pct = llmPct[d.name]
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -275,17 +292,12 @@ fun SettingsScreen(onBack: () -> Unit) {
                         Text(
                             "${d.approxSizeMb} MB · on-device",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     when {
-                        pct != null -> CircularProgressIndicator(
-                            progress = { pct / 100f }, modifier = Modifier.size(24.dp)
-                        )
-                        installed -> Icon(
-                            Icons.Filled.CheckCircle, "Installed",
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
+                        pct != null -> CircularProgressIndicator(progress = { pct / 100f }, modifier = Modifier.size(24.dp))
+                        installed -> Icon(Icons.Filled.CheckCircle, "Installed", tint = MaterialTheme.colorScheme.primary)
                         else -> IconButton(onClick = {
                             scope.launch {
                                 llmPct[d.name] = 0
@@ -299,20 +311,17 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
             }
             // Semantic search/relate/cluster model (Gecko) — downloads once, then offline.
-            val geckoReady = remember(geckoTick) { Embedder.isReady(context) }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("Search model (Gecko)")
                     Text(
                         "Powers semantic relate, search & clusters. ${Embedder.SIZE_MB} MB, on-device.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 when {
-                    geckoPct != null -> CircularProgressIndicator(
-                        progress = { geckoPct!! / 100f }, modifier = Modifier.size(24.dp)
-                    )
+                    geckoPct != null -> CircularProgressIndicator(progress = { geckoPct!! / 100f }, modifier = Modifier.size(24.dp))
                     geckoReady -> Icon(Icons.Filled.CheckCircle, "Installed", tint = MaterialTheme.colorScheme.primary)
                     else -> IconButton(onClick = {
                         scope.launch {
@@ -325,69 +334,54 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Auto-tag new notes")
-                    Text(
-                        "Tag each note with Gemma right after transcription.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline,
-                    )
-                }
-                Switch(checked = autoTag, onCheckedChange = { autoTag = it; prefs.autoTag = it })
+            SwitchRow("Auto-tag new notes", "Tag each note with Gemma right after transcription.", autoTag) {
+                autoTag = it; prefs.autoTag = it
             }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Auto-format as Markdown")
-                    Text(
-                        "Rewrite each note as Markdown (lists, tickable checklists) with Gemma E4B after transcription.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline,
-                    )
-                }
-                Switch(checked = autoMarkdown, onCheckedChange = { autoMarkdown = it; prefs.autoMarkdown = it })
-            }
-
-            val installedModels = remember(aiTick) { LlmEngine.installed(context) }
+            SwitchRow(
+                "Auto-format as Markdown",
+                "Rewrite each note as Markdown (lists, tickable checklists) with Gemma E4B after transcription.",
+                autoMarkdown,
+            ) { autoMarkdown = it; prefs.autoMarkdown = it }
+            SwitchRow(
+                "Reformat after adding recordings",
+                "When you record more into an open note, append the raw transcript, then reformat it and refresh tags once the recordings finish.",
+                reformatAppended,
+            ) { reformatAppended = it; prefs.reformatAppendedNotes = it }
 
             if (installedModels.size > 1) {
-                val tagResolved = LlmEngine.resolve(context, tagModel, "E2B")?.name
-                val analysisResolved = LlmEngine.resolve(context, analysisModel, "4b")?.name
-                Text("Tagging model", style = MaterialTheme.typography.titleSmall)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                // Resolve from the cached list — LlmEngine.resolve() re-lists+stats the model dir (disk I/O).
+                val tagResolved = remember(installedModels, tagModel) { resolveName(installedModels, tagModel, "E2B") }
+                val analysisResolved = remember(installedModels, analysisModel) { resolveName(installedModels, analysisModel, "4b") }
+                SectionTitle("Tagging model", Modifier.padding(top = 4.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     installedModels.forEach { f ->
-                        FilterChip(
-                            selected = tagResolved == f.name,
-                            onClick = { tagModel = f.name; prefs.tagModelFilename = f.name; LlmEngine.release() },
-                            label = { Text(LlmEngine.prettyName(f.name)) },
-                        )
+                        ReachChip(LlmEngine.prettyName(f.name), tagResolved == f.name, {
+                            tagModel = f.name; prefs.tagModelFilename = f.name; LlmEngine.release()
+                        })
                     }
                 }
-                Text("Analysis model", style = MaterialTheme.typography.titleSmall)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                SectionTitle("Analysis model", Modifier.padding(top = 4.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     installedModels.forEach { f ->
-                        FilterChip(
-                            selected = analysisResolved == f.name,
-                            onClick = { analysisModel = f.name; prefs.analysisModelFilename = f.name; LlmEngine.release() },
-                            label = { Text(LlmEngine.prettyName(f.name)) },
-                        )
+                        ReachChip(LlmEngine.prettyName(f.name), analysisResolved == f.name, {
+                            analysisModel = f.name; prefs.analysisModelFilename = f.name; LlmEngine.release()
+                        })
                     }
                 }
             }
 
             // Installed models — sizes + remove.
             if (installedModels.isNotEmpty()) {
-                Text("Installed models", style = MaterialTheme.typography.titleSmall)
+                SectionTitle("Installed models", Modifier.padding(top = 4.dp))
             }
             installedModels.forEach { f ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(LlmEngine.prettyName(f.name), style = MaterialTheme.typography.bodyMedium)
                         Text(
-                            "${f.length() / 1_000_000} MB · ${f.name.takeLast(40)}",
+                            "${installedSizes[f.name] ?: 0} MB · ${f.name.takeLast(40)}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     TextButton(onClick = { LlmEngine.release(); f.delete(); aiTick++ }) { Text("Remove") }
@@ -396,32 +390,56 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             if (importingModel) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(Modifier.size(20.dp))
-                    Text("  Importing…")
+                    CircularProgressIndicator(Modifier.size(20.dp)); Text("  Importing…")
                 }
             } else {
-                Button(onClick = { pickGemma.launch(arrayOf("*/*")) }) {
+                Button(onClick = { pickGemma.launch(arrayOf("*/*")) }, shape = ReachShapes.field) {
                     Text("Import .litertlm / .task file")
                 }
             }
             aiError?.let {
                 Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
+        }
 
-            HorizontalDivider()
-
-            Text("Export", style = MaterialTheme.typography.titleMedium)
+        // Export.
+        GlassCard(Modifier.fillMaxWidth()) {
+            SectionTitle("Export", Modifier.padding(bottom = 4.dp))
             Text(
                 "Save all notes as one Markdown file (titles, tags, checklists). Pick where it goes.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Button(
                 onClick = { exportNotes.launch("soundscript-notes.md") },
                 enabled = notes.isNotEmpty(),
+                shape = ReachShapes.field,
+                modifier = Modifier.padding(top = 6.dp),
             ) {
                 Text("Export ${notes.size} notes")
             }
         }
+    }
+}
+
+/** Pure (no-disk) resolve over an already-loaded file list — safe to call in composition. */
+private fun resolveName(files: List<File>, explicit: String, fallbackContains: String): String? =
+    (files.firstOrNull { it.name == explicit }
+        ?: files.firstOrNull { it.name.contains(fallbackContains, ignoreCase = true) }
+        ?: files.firstOrNull())?.name
+
+/** Title + description on the left, a Reach switch on the right. */
+@Composable
+private fun SwitchRow(title: String, description: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
+        Column(Modifier.weight(1f)) {
+            Text(title)
+            Text(
+                description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        ReachSwitch(checked = checked, onChange = onChange)
     }
 }

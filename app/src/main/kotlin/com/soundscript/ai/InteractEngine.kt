@@ -9,6 +9,7 @@ sealed interface InteractOp {
     data class Check(val item: String, val on: Boolean) : InteractOp
     data class Add(val item: String, val top: Boolean) : InteractOp
     data class Remove(val item: String) : InteractOp
+    data object Convert : InteractOp
     data object Suggest : InteractOp
     data class Unknown(val raw: String) : InteractOp
 }
@@ -31,6 +32,7 @@ object InteractEngine {
         is InteractOp.Check -> setItemChecked(markdown, op.item, op.on)
         is InteractOp.Add -> addItem(markdown, op.item, op.top)
         is InteractOp.Remove -> removeItem(markdown, op.item)
+        is InteractOp.Convert -> bulletsToChecklist(markdown)
         else -> null
     }
 
@@ -47,7 +49,8 @@ object InteractEngine {
             "Command: \"${command.trim()}\"\n" +
             "Reply with ONLY JSON, e.g. {\"action\":\"check\",\"item\":\"milk\",\"position\":\"bottom\"}.\n" +
             "action is one of: check (mark done/bought), uncheck (mark not done yet), add (new item), " +
-            "remove (delete an item), suggest (propose new items), unknown.\n" +
+            "remove (delete an item), convert (turn the whole list or note into a checkbox list), " +
+            "suggest (propose new items), unknown.\n" +
             "For add, item is the new item text. position is \"top\" or \"bottom\" (default bottom)."
 
     private fun parse(raw: String): InteractOp {
@@ -62,6 +65,7 @@ object InteractEngine {
                 "uncheck" -> InteractOp.Check(item, false)
                 "add" -> InteractOp.Add(item, top)
                 "remove", "delete" -> InteractOp.Remove(item)
+                "convert", "checklist", "checkboxes", "checkbox" -> InteractOp.Convert
                 "suggest" -> InteractOp.Suggest
                 else -> InteractOp.Unknown(raw.trim())
             }

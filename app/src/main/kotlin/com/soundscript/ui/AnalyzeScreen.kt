@@ -4,25 +4,21 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.AssistChip
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -32,17 +28,25 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.soundscript.ai.Clusters
 import com.soundscript.ai.NotesAnalysis
 import com.soundscript.data.NotesDb
+import com.soundscript.ui.theme.GlassCard
+import com.soundscript.ui.theme.GlassTextField
+import com.soundscript.ui.theme.ReachChip
+import com.soundscript.ui.theme.ReachShapes
+import com.soundscript.ui.theme.SectionTitle
 import kotlinx.coroutines.launch
 
 private const val DAY = 86_400_000L
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AnalyzeScreen(onBack: () -> Unit) {
+fun AnalyzeScreen(bottomSpace: Dp) {
     val context = LocalContext.current
     val dao = remember { NotesDb.get(context).notes() }
     val notes by dao.all().collectAsState(initial = emptyList())
@@ -74,69 +78,58 @@ fun AnalyzeScreen(onBack: () -> Unit) {
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
-                },
-                title = { Text("Ask your notes") },
-            )
+    Column(
+        Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState())
+            .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = bottomSpace),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            "Ask your notes",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            fontSize = 24.sp,
+            modifier = Modifier.padding(start = 2.dp, top = 6.dp),
+        )
+        SectionTitle("Scope")
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            ReachChip("All", sel == "All", { sel = "All" })
+            ReachChip("Last 7 days", sel == "week", { sel = "week" })
+            ReachChip("Last month", sel == "month", { sel = "month" })
+            allTags.forEach { t -> ReachChip("#$t", sel == "tag:$t", { sel = "tag:$t" }) }
+            clusters.forEachIndexed { i, c ->
+                ReachChip("◆ ${c.label} · ${c.notes.size}", sel == "cluster:$i", { sel = "cluster:$i" })
+            }
         }
-    ) { pad ->
-        Column(
-            Modifier.padding(pad).padding(16.dp).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text("Scope", style = MaterialTheme.typography.titleSmall)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                FilterChip(sel == "All", { sel = "All" }, { Text("All") })
-                FilterChip(sel == "week", { sel = "week" }, { Text("Last 7 days") })
-                FilterChip(sel == "month", { sel = "month" }, { Text("Last month") })
-                allTags.forEach { t ->
-                    FilterChip(sel == "tag:$t", { sel = "tag:$t" }, { Text("#$t") })
-                }
-                clusters.forEachIndexed { i, c ->
-                    FilterChip(sel == "cluster:$i", { sel = "cluster:$i" }, { Text("◆ ${c.label} (${c.notes.size})") })
-                }
-            }
-            Text(
-                "${scoped.size} note${if (scoped.size == 1) "" else "s"} in scope",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline,
-            )
+        Text(
+            "${scoped.size} note${if (scoped.size == 1) "" else "s"} in scope",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AssistChip(
-                    onClick = { run("Summarize these notes into a concise digest of the key points.") },
-                    label = { Text("Summarize") },
-                )
-                AssistChip(
-                    onClick = { run("Identify and group the main themes and topics across these notes.") },
-                    label = { Text("Themes") },
-                )
-                AssistChip(
-                    onClick = { run("Extract every action item, task and reminder as a checklist.") },
-                    label = { Text("Action items") },
-                )
-            }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            ReachChip("Summarize", false, dashed = true, onClick = { run("Summarize these notes into a concise digest of the key points.") })
+            ReachChip("Themes", false, dashed = true, onClick = { run("Identify and group the main themes and topics across these notes.") })
+            ReachChip("Action items", false, dashed = true, onClick = { run("Extract every action item, task and reminder as a checklist.") })
+        }
 
-            OutlinedTextField(
-                value = prompt,
-                onValueChange = { prompt = it },
-                label = { Text("Ask anything about these notes") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 2,
-            )
-            Button(onClick = { run(prompt) }, enabled = !running && scoped.isNotEmpty()) {
-                Text(if (running) "Thinking…" else "Ask")
-            }
+        GlassTextField(
+            value = prompt,
+            onValueChange = { prompt = it },
+            placeholder = "what did I promise Sam?",
+            label = "Ask anything about these notes",
+            singleLine = false,
+            minLines = 2,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Button(onClick = { run(prompt) }, enabled = !running && scoped.isNotEmpty(), shape = ReachShapes.field, modifier = Modifier.fillMaxWidth()) {
+            if (!running) { Icon(Icons.Filled.AutoAwesome, null); Spacer(Modifier.width(8.dp)) }
+            Text(if (running) "Thinking…" else "Ask")
+        }
 
-            result?.let {
-                HorizontalDivider()
-                SelectionContainer {
-                    Text(it, style = MaterialTheme.typography.bodyMedium)
-                }
+        result?.let {
+            SectionTitle("Answer")
+            GlassCard(Modifier.fillMaxWidth()) {
+                SelectionContainer { Text(it, style = MaterialTheme.typography.bodyMedium) }
             }
         }
     }

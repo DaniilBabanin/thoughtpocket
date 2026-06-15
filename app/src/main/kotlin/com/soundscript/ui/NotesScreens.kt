@@ -10,24 +10,36 @@ import android.text.format.DateUtils
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -36,37 +48,24 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.InputChip
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -77,9 +76,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.soundscript.AppPreferences
 import com.soundscript.ModelManager
 import com.soundscript.WhisperEngine
@@ -92,13 +98,32 @@ import com.soundscript.ai.ReminderEngine
 import com.soundscript.ai.TaggingEngine
 import com.soundscript.ai.TitleEngine
 import com.soundscript.ai.addItem
+import com.soundscript.ai.bulletsToChecklist
+import com.soundscript.ai.canonicalizeTags
 import com.soundscript.ai.openTasks
+import com.soundscript.ai.preserveChecked
+import com.soundscript.ai.renameItem
 import com.soundscript.ai.setItemChecked
 import com.soundscript.audio.MicRecorder
 import com.soundscript.data.Note
 import com.soundscript.data.NotesDb
 import com.soundscript.service.RecordState
 import com.soundscript.service.RecordingService
+import com.soundscript.ui.theme.GlassCard
+import com.soundscript.ui.theme.GlassTextField
+import com.soundscript.ui.theme.glass
+import com.soundscript.ui.theme.GreetingStyle
+import com.soundscript.ui.theme.LocalReduceMotion
+import com.soundscript.ui.theme.ReachCheck
+import com.soundscript.ui.theme.ReachChip
+import com.soundscript.ui.theme.ReachShapes
+import com.soundscript.ui.theme.RecordOrb
+import com.soundscript.ui.theme.SectionLabel
+import com.soundscript.ui.theme.SectionTitle
+import com.soundscript.ui.theme.ShimmerLines
+import com.soundscript.ui.theme.rememberReveal
+import com.soundscript.ui.theme.revealItem
+import com.soundscript.ui.theme.WaveBars
 import kotlin.math.roundToInt
 import kotlin.random.Random
 import kotlinx.coroutines.Dispatchers
@@ -113,16 +138,41 @@ internal fun llmReadyOrToast(context: Context): Boolean {
     return false
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+private fun greeting(): String = when (java.time.LocalTime.now().hour) {
+    in 5..11 -> "good morning"
+    in 12..17 -> "good afternoon"
+    in 18..21 -> "good evening"
+    else -> "good night"
+}
+
+/** Record with [rec] until stopped, then transcribe with the user's Whisper model. Throws if no model. */
+private suspend fun recordAndTranscribe(context: Context, prefs: AppPreferences, rec: MicRecorder): String {
+    val loaded = withContext(Dispatchers.IO) {
+        val entry = ModelManager.entryById(context, prefs.selectedModelId)?.takeIf { ModelManager.isDownloaded(context, it) }
+            ?: ModelManager.listInstalled(context).firstOrNull()
+        entry != null && WhisperEngine.load(ModelManager.fileFor(context, entry), useGpu = false).isSuccess
+    }
+    if (!loaded) throw IllegalStateException("No transcription model — see Settings")
+    rec.start()
+    rec.runUntilStopped()   // returns when the caller stops the recorder
+    return WhisperEngine.transcribe(
+        pcm16k = rec.snapshot(), language = prefs.language.ifBlank { null },
+        translate = prefs.translateToEnglish, threads = prefs.resolvedThreads(), highQuality = false,
+    ).trim()
+}
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit, onAnalyze: () -> Unit, onTasks: () -> Unit) {
+fun NotesListScreen(onOpen: (Long) -> Unit, bottomSpace: Dp) {
     val context = LocalContext.current
     val dao = remember { NotesDb.get(context).notes() }
+    val prefs = remember { AppPreferences(context) }
     val notes by dao.all().collectAsState(initial = emptyList())
     // Embed any notes still missing a vector (one-time, cheap) so semantic relate works app-wide.
     LaunchedEffect(Unit) { Embedder.backfillMissing(context, dao) }
     val status by RecordState.status.collectAsState()
     val partial by RecordState.partial.collectAsState()
+    val pending by RecordState.pending.collectAsState()
     var filter by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
     var queryVec by remember { mutableStateOf<FloatArray?>(null) }
@@ -130,17 +180,33 @@ fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit, onAnalyze: (
         if (query.isBlank()) { queryVec = null } else { delay(200); queryVec = Embedder.embed(context, query, query = true) }
     }
 
-    // "Give me a random task" — surface a random unchecked checklist item across all notes.
+    // "Give me a random task" — surface a random unchecked checklist item (scoped to the active filter/search).
     val scope = rememberCoroutineScope()
     var showRandom by remember { mutableStateOf(false) }
     var randomTask by remember { mutableStateOf<Pair<Note, String>?>(null) }
-    fun pickTask(exclude: Pair<Long, String>? = null) {
-        val tasks = openTasks(notes).filterNot { exclude != null && it.first.id == exclude.first && it.second == exclude.second }
-        randomTask = if (tasks.isEmpty()) null else tasks[Random.nextInt(tasks.size)]
-        showRandom = true
+
+    // Voice search: record → transcribe → drop the text into the query (does NOT create a new note).
+    var listening by remember { mutableStateOf(false) }
+    var micRec by remember { mutableStateOf<MicRecorder?>(null) }
+    val voicePerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    fun voiceSearch() {
+        if (listening) { micRec?.stop(); return }
+        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            voicePerm.launch(Manifest.permission.RECORD_AUDIO); return
+        }
+        val r = MicRecorder(); micRec = r; listening = true
+        scope.launch {
+            try { recordAndTranscribe(context, prefs, r).takeIf { it.isNotBlank() }?.let { query = it } }
+            catch (t: Throwable) { Toast.makeText(context, t.message ?: "Voice search failed", Toast.LENGTH_LONG).show() }
+            finally { listening = false; micRec = null }
+        }
     }
 
-    val allTags = notes.flatMap { it.tags }.distinct().sorted()
+    // Most-used tags first (then alphabetical) so the common filters surface at the front.
+    val allTags = notes.flatMap { it.tags }
+        .groupingBy { it }.eachCount().entries
+        .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+        .map { it.key }
     // Corpus mean to subtract: USE cosines are compressed; centering restores contrast.
     val noteMean = remember(notes) { Embedder.mean(notes.mapNotNull { it.embedding }) }
     val q = query.trim()
@@ -160,116 +226,141 @@ fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit, onAnalyze: (
             .map { it.first }
     }
 
-    val permLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { res ->
-        if (res[Manifest.permission.RECORD_AUDIO] == true) {
-            context.startForegroundService(RecordingService.startIntent(context))
-        }
+    // Random task is drawn from what's currently shown — an active tag filter or search scopes it.
+    fun pickTask(exclude: Pair<Long, String>? = null) {
+        val tasks = openTasks(shown).filterNot { exclude != null && it.first.id == exclude.first && it.second == exclude.second }
+        randomTask = if (tasks.isEmpty()) null else tasks[Random.nextInt(tasks.size)]
+        showRandom = true
     }
 
-    fun toggle() {
-        when (status.state) {
-            RecordState.State.RECORDING -> context.startService(RecordingService.stopIntent(context))
-            RecordState.State.IDLE -> {
-                if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
-                    PackageManager.PERMISSION_GRANTED
-                ) {
-                    context.startForegroundService(RecordingService.startIntent(context))
-                } else {
-                    val needed = buildList {
-                        add(Manifest.permission.RECORD_AUDIO)
-                        if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
-                    }
-                    permLauncher.launch(needed.toTypedArray())
+    // Long-press a card → reveal Delete; delete is undoable via the snackbar.
+    var actionsOpenId by remember { mutableStateOf<Long?>(null) }
+    var deleted by remember { mutableStateOf<Note?>(null) }
+    val recording = status.state == RecordState.State.RECORDING
+    val transcribing = status.state == RecordState.State.TRANSCRIBING
+
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().statusBarsPadding()) {
+            // Header: greeting + brand, random-task die.
+            Row(
+                Modifier.fillMaxWidth().padding(start = 18.dp, end = 10.dp, top = 10.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(greeting(), style = GreetingStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("SoundScript", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, fontSize = 26.sp)
                 }
+                IconButton(onClick = { pickTask() }) { Icon(Icons.Filled.Casino, "Random task") }
             }
-            RecordState.State.TRANSCRIBING -> Unit
-        }
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("SoundScript") },
-                actions = {
-                    IconButton(onClick = onTasks) { Icon(Icons.Filled.Checklist, "Action items") }
-                    IconButton(onClick = { pickTask() }) { Icon(Icons.Filled.Casino, "Random task") }
-                    IconButton(onClick = onAnalyze) { Icon(Icons.Filled.Insights, "Ask your notes") }
-                    IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, "Settings") }
-                }
-            )
-        },
-        floatingActionButton = {
-            val recording = status.state == RecordState.State.RECORDING
-            val transcribing = status.state == RecordState.State.TRANSCRIBING
-            ExtendedFloatingActionButton(
-                onClick = { toggle() },
-                icon = { Icon(if (recording) Icons.Filled.Stop else Icons.Filled.Mic, null) },
-                text = { Text(if (recording) "Stop" else if (transcribing) "Transcribing…" else "Record") },
-            )
-        }
-    ) { pad ->
-        Column(Modifier.padding(pad).fillMaxSize()) {
-            OutlinedTextField(
+            // Semantic search.
+            GlassTextField(
                 value = query,
                 onValueChange = { query = it },
-                placeholder = { Text("Search notes by meaning") },
-                leadingIcon = { Icon(Icons.Filled.Search, null) },
-                trailingIcon = {
-                    if (query.isNotEmpty()) {
-                        IconButton(onClick = { query = "" }) { Icon(Icons.Filled.Close, "Clear") }
+                placeholder = if (listening) "Listening…" else "Search notes by meaning",
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                leading = { Icon(Icons.Filled.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                trailing = when {
+                    listening -> {
+                        { IconButton(onClick = { voiceSearch() }, modifier = Modifier.size(24.dp)) { Icon(Icons.Filled.Stop, "Stop", tint = MaterialTheme.colorScheme.primary) } }
+                    }
+                    query.isNotEmpty() -> {
+                        { IconButton(onClick = { query = "" }, modifier = Modifier.size(24.dp)) { Icon(Icons.Filled.Close, "Clear") } }
+                    }
+                    else -> {
+                        { IconButton(onClick = { voiceSearch() }, modifier = Modifier.size(24.dp)) { Icon(Icons.Filled.Mic, "Voice search", tint = MaterialTheme.colorScheme.primary) } }
                     }
                 },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
             )
-            val s = status.state
-            if (s == RecordState.State.RECORDING || s == RecordState.State.TRANSCRIBING) {
-                Card(Modifier.fillMaxWidth().padding(12.dp)) {
-                    Column(Modifier.padding(12.dp)) {
-                        Text(
-                            if (s == RecordState.State.RECORDING) "Listening…" else "Transcribing…",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        if (partial.isNotBlank()) {
-                            Text(partial, style = MaterialTheme.typography.bodyMedium)
+            // Live "listening" card while recording/transcribing (design `.listening`: accent-tinted text).
+            if (recording || transcribing) {
+                val accent = MaterialTheme.colorScheme.primary
+                GlassCard(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (recording) {
+                            WaveBars()
+                            Spacer(Modifier.width(13.dp))
+                        }
+                        Column {
+                            Text(
+                                if (recording) "LISTENING…" else "TRANSCRIBING…",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.6.sp,
+                                color = accent,
+                            )
+                            if (recording && partial.isNotBlank()) {
+                                Text(
+                                    partial,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = lerp(MaterialTheme.colorScheme.onSurface, accent, 0.5f),
+                                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.padding(top = 2.dp),
+                                )
+                            } else if (!recording && pending > 0) {
+                                Text(
+                                    "$pending recording${if (pending == 1) "" else "s"} finishing up…",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 2.dp),
+                                )
+                            }
                         }
                     }
                 }
             }
+            // Tag filters.
             if (allTags.isNotEmpty() && q.isEmpty()) {
                 LazyRow(
-                    Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    item {
-                        FilterChip(selected = filter == null, onClick = { filter = null }, label = { Text("All") })
-                    }
+                    item { ReachChip("All", filter == null, { filter = null }) }
                     items(allTags) { t ->
-                        FilterChip(
-                            selected = filter == t,
-                            onClick = { filter = if (filter == t) null else t },
-                            label = { Text(t) },
-                        )
+                        ReachChip(t, filter == t, { filter = if (filter == t) null else t })
                     }
                 }
             }
             if (shown.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        if (q.isEmpty()) "No notes yet. Tap Record." else "No matches.",
-                        color = MaterialTheme.colorScheme.outline,
+                        if (q.isEmpty()) "No notes yet. Tap the orb to record." else "No matches.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             } else {
-                LazyColumn(Modifier.fillMaxSize()) {
-                    items(shown, key = { it.id }) { note ->
-                        NoteRow(note) { onOpen(note.id) }
+                SectionLabel("Recent", Modifier.padding(start = 18.dp, top = 6.dp, bottom = 8.dp))
+                val reveal = rememberReveal()
+                LazyColumn(
+                    Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = bottomSpace),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    itemsIndexed(shown, key = { _, it -> it.id }) { index, note ->
+                        NoteCard(
+                            note = note,
+                            modifier = Modifier.revealItem(index) { reveal.value },
+                            actionsOpen = actionsOpenId == note.id,
+                            onClick = { if (actionsOpenId == note.id) actionsOpenId = null else onOpen(note.id) },
+                            onLongClick = { actionsOpenId = note.id },
+                            onDelete = {
+                                actionsOpenId = null
+                                deleted = note
+                                scope.launch { dao.delete(note) }
+                            },
+                        )
                     }
                 }
             }
+        }
+
+        deleted?.let { d ->
+            UndoSnackbar(
+                message = "Note deleted",
+                onUndo = { scope.launch { dao.insert(d) }; deleted = null },
+                onDismiss = { deleted = null },
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomSpace),
+            )
         }
     }
 
@@ -287,7 +378,7 @@ fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit, onAnalyze: (
                         Text(
                             "from “${rt.first.title.ifBlank { rt.first.text.substringBefore('\n') }}”",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -313,58 +404,204 @@ fun NotesListScreen(onOpen: (Long) -> Unit, onSettings: () -> Unit, onAnalyze: (
     }
 }
 
-/** Every open "- [ ]" item across all notes, one tap to mark done or jump to its note. */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ActionItemsScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
+private fun NoteCard(
+    note: Note,
+    actionsOpen: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val when_ = DateUtils.getRelativeTimeSpanString(note.createdAt).toString()
+    val tagLine = if (note.tags.isEmpty()) when_ else "$when_ · ${note.tags.joinToString(" ") { "#$it" }}"
+    Box(
+        modifier
+            .fillMaxWidth()
+            .glass(ReachShapes.card)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+    ) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    note.title.ifBlank { note.text.substringBefore('\n') },
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    tagLine,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+        }
+        if (actionsOpen) {
+            Box(
+                Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 12.dp)
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.errorContainer)
+                    .clickable(onClick = onDelete),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Delete, "Delete", tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(20.dp))
+            }
+        }
+    }
+}
+
+/** Glass snackbar with an UNDO action; auto-dismisses after a few seconds. */
+@Composable
+private fun UndoSnackbar(message: String, onUndo: () -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    LaunchedEffect(message) { delay(3500); onDismiss() }
+    val reduce = LocalReduceMotion.current
+    val enter = remember { Animatable(if (reduce) 0f else 1f) }  // 1 = below, 0 = in place
+    LaunchedEffect(Unit) { if (!reduce) enter.animateTo(0f, tween(300)) }
+    GlassCard(
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .graphicsLayer { translationY = enter.value * 140.dp.toPx() },
+        padding = 0.dp,
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(message, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                "UNDO",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clip(ReachShapes.pill).clickable(onClick = onUndo).padding(horizontal = 8.dp, vertical = 4.dp),
+            )
+        }
+    }
+}
+
+/** Every open "- [ ]" item across all notes: tap to mark done, or use the ⋮ menu to add to calendar,
+ *  rename, or open the source note. */
+@Composable
+fun ActionItemsScreen(onOpen: (Long) -> Unit, bottomSpace: Dp) {
     val context = LocalContext.current
     val dao = remember { NotesDb.get(context).notes() }
     val notes by dao.all().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     // Recent notes first; openTasks() flattens every unchecked checklist item to (note, label).
     val tasks = remember(notes) { openTasks(notes.sortedByDescending { it.createdAt }) }
+    val sourceCount = remember(tasks) { tasks.map { it.first.id }.distinct().size }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
-                },
-                title = { Text("Action items") },
+    var menuFor by remember { mutableStateOf<String?>(null) }          // "<noteId>:<label>" of the open ⋮ menu
+    var renaming by remember { mutableStateOf<Pair<Note, String>?>(null) }
+    var renameText by remember { mutableStateOf("") }
+
+    // Add this single task to the calendar; the LLM pre-fills date/time/title if the task names one.
+    fun addTaskToCalendar(note: Note, label: String) {
+        scope.launch {
+            val r = if (LlmEngine.isModelInstalled(context))
+                ReminderEngine.extract(context, label, System.currentTimeMillis()).getOrNull() else null
+            val intent = calendarInsertIntent(
+                title = r?.title?.takeIf { it.isNotBlank() } ?: label,
+                description = "From: ${note.title.ifBlank { note.text.substringBefore('\n') }}",
+                startMillis = r?.startMillis,
+                allDay = r?.allDay ?: false,
             )
+            runCatching { context.startActivity(intent) }
+                .onFailure { Toast.makeText(context, "No calendar app found", Toast.LENGTH_SHORT).show() }
         }
-    ) { pad ->
+    }
+
+    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+        Text(
+            "Action items",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            fontSize = 24.sp,
+            modifier = Modifier.padding(start = 18.dp, top = 10.dp, bottom = 2.dp),
+        )
         if (tasks.isEmpty()) {
-            Box(Modifier.padding(pad).fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Nothing open 🎉", color = MaterialTheme.colorScheme.outline)
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Nothing open 🎉", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
-            LazyColumn(Modifier.padding(pad).fillMaxSize()) {
-                items(tasks) { (note, label) ->
-                    ListItem(
-                        modifier = Modifier.clickable { onOpen(note.id) },
-                        leadingContent = {
-                            Checkbox(
-                                checked = false,
-                                onCheckedChange = {
-                                    scope.launch {
-                                        dao.update(note.copy(markdown = setItemChecked(note.markdown, label, true)))
-                                    }
-                                },
-                            )
-                        },
-                        headlineContent = { Text(label) },
-                        supportingContent = {
-                            Text(
-                                note.title.ifBlank { note.text.substringBefore('\n') },
-                                style = MaterialTheme.typography.bodySmall,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            )
-                        },
-                    )
+            SectionLabel(
+                "${tasks.size} open · across $sourceCount note${if (sourceCount == 1) "" else "s"}",
+                Modifier.padding(start = 18.dp, bottom = 8.dp),
+            )
+            val reveal = rememberReveal()
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = bottomSpace),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                itemsIndexed(tasks) { index, t ->
+                    val (note, label) = t
+                    val key = "${note.id}:$label"
+                    GlassCard(Modifier.fillMaxWidth().revealItem(index) { reveal.value }.clickable { onOpen(note.id) }, padding = 0.dp) {
+                        Row(Modifier.padding(start = 14.dp, top = 6.dp, bottom = 6.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            ReachCheck(checked = false, onToggle = {
+                                scope.launch { dao.update(note.copy(markdown = setItemChecked(note.markdown, label, true))) }
+                            })
+                            Spacer(Modifier.width(13.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(label, style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    "from ${note.title.ifBlank { note.text.substringBefore('\n') }}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                            Box {
+                                IconButton(onClick = { menuFor = key }) {
+                                    Icon(Icons.Filled.MoreVert, "Task actions", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                DropdownMenu(expanded = menuFor == key, onDismissRequest = { menuFor = null }) {
+                                    DropdownMenuItem(
+                                        text = { Text("Add to calendar") },
+                                        leadingIcon = { Icon(Icons.Filled.Event, null) },
+                                        onClick = { menuFor = null; addTaskToCalendar(note, label) },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Rename") },
+                                        leadingIcon = { Icon(Icons.Filled.AutoAwesome, null) },
+                                        onClick = { menuFor = null; renaming = note to label; renameText = label },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Open note") },
+                                        onClick = { menuFor = null; onOpen(note.id) },
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
+    }
+
+    renaming?.let { (note, label) ->
+        AlertDialog(
+            onDismissRequest = { renaming = null },
+            title = { Text("Rename task") },
+            text = {
+                GlassTextField(value = renameText, onValueChange = { renameText = it }, placeholder = "Task", modifier = Modifier.fillMaxWidth())
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val nu = renameText.trim()
+                    if (nu.isNotEmpty() && nu != label)
+                        scope.launch { dao.update(note.copy(markdown = renameItem(note.markdown, label, nu))) }
+                    renaming = null
+                }) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { renaming = null }) { Text("Cancel") } },
+        )
     }
 }
 
@@ -381,23 +618,7 @@ private fun calendarInsertIntent(title: String, description: String, startMillis
         }
     }
 
-@Composable
-private fun NoteRow(note: Note, onClick: () -> Unit) {
-    val when_ = DateUtils.getRelativeTimeSpanString(note.createdAt).toString()
-    val tagLine = if (note.tags.isEmpty()) when_ else "$when_ · ${note.tags.joinToString(" ") { "#$it" }}"
-    ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
-        headlineContent = {
-            Text(
-                note.title.ifBlank { note.text.substringBefore('\n') },
-                maxLines = 2, overflow = TextOverflow.Ellipsis,
-            )
-        },
-        supportingContent = { Text(tagLine, style = MaterialTheme.typography.bodySmall) },
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
     val context = LocalContext.current
@@ -430,11 +651,13 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
     var text by remember(n.id) { mutableStateOf(n.text) }
     var markdown by remember(n.id) { mutableStateOf(n.markdown) }
     var formatting by remember(n.id) { mutableStateOf(false) }
-    var showRaw by remember(n.id) { mutableStateOf(n.markdown.isBlank()) }
+    var showFormatted by remember(n.id) { mutableStateOf(n.markdown.isNotBlank()) }
     var title by remember(n.id) { mutableStateOf(n.title) }
     var titling by remember(n.id) { mutableStateOf(false) }
     var tags by remember(n.id) { mutableStateOf(n.tags) }
     var newTag by remember(n.id) { mutableStateOf("") }
+    // Tags already used across the app — new tags are folded onto these so near-duplicates don't pile up.
+    val corpusTags = remember(allNotes) { allNotes.flatMap { it.tags } }
     var suggesting by remember(n.id) { mutableStateOf(false) }
     var suggestions by remember(n.id) { mutableStateOf<List<String>>(emptyList()) }
     var aiError by remember(n.id) { mutableStateOf<String?>(null) }
@@ -454,13 +677,13 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
         if (newMd == markdown) return
         undo = n
         markdown = newMd
-        showRaw = false
+        showFormatted = true
         scope.launch { dao.update(n.copy(markdown = newMd)) }
     }
     fun doUndo() {
         val snap = undo ?: return
         markdown = snap.markdown; text = snap.text; title = snap.title; tags = snap.tags
-        showRaw = snap.markdown.isBlank()
+        showFormatted = snap.markdown.isNotBlank()
         scope.launch { dao.update(snap) }
         undo = null
     }
@@ -474,6 +697,11 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
                 when (op) {
                     is InteractOp.Suggest -> InteractEngine.suggestAdditions(context, markdown.ifBlank { text })
                         .onSuccess { itemSuggestions = it }.onFailure { aiError = it.message }
+                    is InteractOp.Convert -> {
+                        val newMd = bulletsToChecklist(markdown.ifBlank { text })
+                        if (newMd.isNotBlank() && newMd != markdown) { applyMarkdown(newMd); command = "" }
+                        else aiError = "Nothing to convert"
+                    }
                     is InteractOp.Unknown -> aiError = "Didn't understand: \"$cmd\""
                     else -> {
                         val newMd = InteractEngine.apply(markdown, op)
@@ -508,6 +736,22 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
         }
     }
 
+    fun reformat() {
+        if (formatting) return
+        if (!llmReadyOrToast(context)) return
+        scope.launch {
+            formatting = true; aiError = null
+            MarkdownEngine.toMarkdown(context, text)
+                .onSuccess {
+                    // Keep items the user already ticked checked after the reformat.
+                    val preserved = preserveChecked(markdown, it)
+                    markdown = preserved; showFormatted = true; dao.update(n.copy(markdown = preserved))
+                }
+                .onFailure { aiError = it.message ?: "Formatting failed" }
+            formatting = false
+        }
+    }
+
     val micPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) listening = true  // re-tap to actually start; keeps the flow simple
     }
@@ -518,26 +762,9 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
         }
         val r = MicRecorder(); micRec = r; listening = true; aiError = null
         scope.launch {
-            try {
-                val loaded = withContext(Dispatchers.IO) {
-                    val entry = ModelManager.entryById(context, prefs.selectedModelId)
-                        ?.takeIf { ModelManager.isDownloaded(context, it) }
-                        ?: ModelManager.listInstalled(context).firstOrNull()
-                    entry != null && WhisperEngine.load(ModelManager.fileFor(context, entry), useGpu = false).isSuccess
-                }
-                if (!loaded) { aiError = "No transcription model — see Settings"; return@launch }
-                r.start()
-                r.runUntilStopped()   // returns when micToggle() calls stop()
-                val txt = WhisperEngine.transcribe(
-                    pcm16k = r.snapshot(), language = prefs.language.ifBlank { null },
-                    translate = prefs.translateToEnglish, threads = prefs.resolvedThreads(), highQuality = false,
-                )
-                command = txt.trim().ifBlank { command }
-            } catch (t: Throwable) {
-                aiError = "Voice input failed: ${t.message}"
-            } finally {
-                listening = false; micRec = null
-            }
+            try { command = recordAndTranscribe(context, prefs, r).ifBlank { command } }
+            catch (t: Throwable) { aiError = "Voice input failed: ${t.message}" }
+            finally { listening = false; micRec = null }
         }
     }
 
@@ -556,235 +783,286 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
         if (changed !== n) dao.update(changed)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
-                },
-                title = { Text("Note") },
-                actions = {
-                    IconButton(onClick = {
-                        scope.launch { dao.update(n.copy(text = text, title = title, tags = tags, markdown = markdown)); onBack() }
-                    }) { Icon(Icons.Filled.Check, "Save") }
-                    IconButton(onClick = {
-                        scope.launch { dao.delete(n); onBack() }
-                    }) { Icon(Icons.Filled.Delete, "Delete") }
+    // Append-by-recording: the docked orb on this screen records into THIS note (background queue appends
+    // the transcript; once the recordings finish it reformats + retags in one pass, if enabled in Settings).
+    val recStatus by RecordState.status.collectAsState()
+    val recording = recStatus.state == RecordState.State.RECORDING
+    val recPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { res ->
+        if (res[Manifest.permission.RECORD_AUDIO] == true)
+            context.startForegroundService(RecordingService.startIntent(context, appendToNoteId = id))
+    }
+    fun startAppend() {
+        if (recording) return
+        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
+            context.startForegroundService(RecordingService.startIntent(context, appendToNoteId = id))
+        else recPerm.launch(
+            buildList {
+                add(Manifest.permission.RECORD_AUDIO)
+                if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
+            }.toTypedArray()
+        )
+    }
+    fun stopAppend() { if (recording) context.startService(RecordingService.stopIntent(context)) }
+    // While recording into this note show the raw transcript (it grows as clips land); resync the local
+    // buffers from the DB as background appends + the on-finish reformat/retag land, so the screen reflects
+    // them (and Save doesn't write back stale copies).
+    LaunchedEffect(recording) { if (recording) showFormatted = false }
+    LaunchedEffect(n.text) { if (n.text != text) text = n.text }
+    LaunchedEffect(n.markdown) { if (n.markdown != markdown) markdown = n.markdown }
+    LaunchedEffect(n.tags) { if (n.tags != tags) tags = n.tags }
+
+    val cs = MaterialTheme.colorScheme
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().statusBarsPadding()) {
+            // Top bar.
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+                Text("Note", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                IconButton(onClick = { reformat() }, enabled = !formatting) {
+                    Icon(Icons.Filled.AutoAwesome, "Reformat (AI)", tint = cs.primary)
                 }
-            )
-        }
-    ) { pad ->
-        Column(
-            Modifier.padding(pad).padding(16.dp).fillMaxSize().verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            if (undo != null) {
-                AssistChip(
-                    onClick = { doUndo() },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, null, Modifier.size(18.dp)) },
-                    label = { Text("Undo last AI change") },
-                )
+                IconButton(onClick = {
+                    scope.launch { dao.update(n.copy(text = text, title = title, tags = tags, markdown = markdown)); onBack() }
+                }) { Icon(Icons.Filled.Check, "Save") }
+                IconButton(onClick = { scope.launch { dao.delete(n); onBack() } }) { Icon(Icons.Filled.Delete, "Delete") }
             }
-            OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = { Text("Title") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                trailingIcon = {
-                    if (titling) {
-                        CircularProgressIndicator(Modifier.size(20.dp))
-                    } else {
-                        IconButton(onClick = {
+
+            Column(
+                Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                // AI title.
+                GlassTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    placeholder = "Untitled",
+                    label = "Title",
+                    modifier = Modifier.fillMaxWidth(),
+                    trailing = {
+                        if (titling) CircularProgressIndicator(Modifier.size(20.dp))
+                        else IconButton(onClick = {
                             scope.launch {
                                 titling = true
                                 TitleEngine.suggest(context, text).onSuccess { if (it.isNotBlank()) title = it }
                                 titling = false
                             }
-                        }) { Icon(Icons.Filled.AutoAwesome, "Suggest title (AI)") }
-                    }
-                },
-            )
-            // Formatted Markdown (interactive checklist) — primary view once generated.
-            if (markdown.isNotBlank()) {
-                MarkdownView(
-                    markdown = markdown,
-                    modifier = Modifier.fillMaxWidth(),
-                    onToggle = { md ->
-                        markdown = md
-                        scope.launch { dao.update(n.copy(markdown = md)) }
+                        }, modifier = Modifier.size(24.dp)) { Icon(Icons.Filled.AutoAwesome, "Suggest title (AI)", tint = cs.primary) }
                     },
                 )
-                TextButton(onClick = { showRaw = !showRaw }) {
-                    Text(if (showRaw) "Hide transcript" else "Show transcript")
-                }
-            }
-            if (showRaw) {
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    label = { Text("Transcript") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 4,
-                )
-            }
-            Button(
-                onClick = {
-                    if (!llmReadyOrToast(context)) return@Button
-                    scope.launch {
-                        formatting = true; aiError = null
-                        MarkdownEngine.toMarkdown(context, text)
-                            .onSuccess { markdown = it; dao.update(n.copy(markdown = it)) }
-                            .onFailure { aiError = it.message ?: "Formatting failed" }
-                        formatting = false
-                    }
-                },
-                enabled = !formatting,
-            ) {
-                Icon(Icons.Filled.AutoAwesome, null)
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    if (formatting) "Formatting…"
-                    else if (markdown.isBlank()) "Format as Markdown (AI)" else "Reformat (AI)"
-                )
-            }
-            OutlinedButton(onClick = { addToCalendar() }, enabled = !calBusy) {
-                if (calBusy) CircularProgressIndicator(Modifier.size(18.dp))
-                else Icon(Icons.Filled.Event, null)
-                Spacer(Modifier.width(8.dp))
-                Text(if (calBusy) "Reading time…" else "Add to calendar")
-            }
 
-            HorizontalDivider()
-            Text("Interact", style = MaterialTheme.typography.titleSmall)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
+                // Formatted / Transcript toggle (only once a Markdown version exists).
+                if (markdown.isNotBlank() && !formatting) {
+                    SegToggle("Formatted", "Transcript", showFormatted) { showFormatted = it }
+                }
+                when {
+                    // Reformatting in progress → shimmering skeleton (design's reformat state).
+                    formatting -> GlassCard(Modifier.fillMaxWidth()) { ShimmerLines(lines = 5) }
+                    markdown.isNotBlank() && showFormatted -> GlassCard(Modifier.fillMaxWidth()) {
+                        MarkdownView(
+                            markdown = markdown,
+                            modifier = Modifier.fillMaxWidth(),
+                            onToggle = { md ->
+                                markdown = md
+                                scope.launch { dao.update(n.copy(markdown = md)) }
+                            },
+                        )
+                    }
+                    else -> GlassTextField(
+                        value = text,
+                        onValueChange = { text = it },
+                        placeholder = "Transcript",
+                        label = "Transcript",
+                        singleLine = false,
+                        minLines = 4,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+
+                // Interact.
+                SectionTitle("Interact", Modifier.padding(top = 4.dp))
+                GlassTextField(
                     value = command,
                     onValueChange = { command = it },
-                    label = { Text(if (listening) "Listening…" else "Tell me what to do…") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
-                    trailingIcon = {
-                        IconButton(onClick = { micToggle() }) {
-                            Icon(
-                                if (listening) Icons.Filled.Stop else Icons.Filled.Mic,
-                                if (listening) "Stop" else "Voice command",
-                            )
+                    placeholder = if (listening) "Listening…" else "Tell me what to do…",
+                    modifier = Modifier.fillMaxWidth(),
+                    trailing = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { micToggle() }, modifier = Modifier.size(28.dp)) {
+                                Icon(if (listening) Icons.Filled.Stop else Icons.Filled.Mic, if (listening) "Stop" else "Voice command", tint = cs.primary)
+                            }
+                            if (interacting) CircularProgressIndicator(Modifier.size(22.dp))
+                            else IconButton(onClick = { runCommand() }, enabled = command.isNotBlank(), modifier = Modifier.size(28.dp)) {
+                                Icon(Icons.AutoMirrored.Filled.Send, "Send", tint = cs.primary)
+                            }
                         }
                     },
                 )
-                if (interacting) {
-                    CircularProgressIndicator(Modifier.size(24.dp).padding(start = 8.dp))
-                } else {
-                    IconButton(onClick = { runCommand() }, enabled = command.isNotBlank()) {
-                        Icon(Icons.AutoMirrored.Filled.Send, "Send")
+                if (itemSuggestions.isNotEmpty()) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        itemSuggestions.forEach { s ->
+                            ReachChip(s, selected = false, dashed = true, onClick = {
+                                applyMarkdown(addItem(markdown, s, top = false))
+                                itemSuggestions = itemSuggestions - s
+                            })
+                        }
                     }
                 }
-            }
-            Button(
-                onClick = {
-                    if (!llmReadyOrToast(context)) return@Button
+                FilledTonalButton(onClick = {
+                    if (!llmReadyOrToast(context)) return@FilledTonalButton
                     scope.launch {
                         interacting = true; aiError = null
                         InteractEngine.suggestAdditions(context, markdown.ifBlank { text })
                             .onSuccess { itemSuggestions = it }.onFailure { aiError = it.message }
                         interacting = false
                     }
-                },
-                enabled = !interacting,
-            ) {
-                Icon(Icons.Filled.AutoAwesome, null)
-                Spacer(Modifier.width(8.dp))
-                Text("Suggest items (AI)")
-            }
-            if (itemSuggestions.isNotEmpty()) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    itemSuggestions.forEach { s ->
-                        SuggestionChip(
-                            onClick = {
-                                applyMarkdown(addItem(markdown, s, top = false))
-                                itemSuggestions = itemSuggestions - s
-                            },
-                            label = { Text(s) },
-                        )
+                }, enabled = !interacting, shape = ReachShapes.field, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.AutoAwesome, null); Spacer(Modifier.width(8.dp)); Text("Suggest items (AI)")
+                }
+
+                // Tags.
+                if (tags.isNotEmpty()) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        tags.forEach { tag ->
+                            ReachChip("#$tag", selected = false, onClick = { tags = tags - tag })
+                        }
                     }
                 }
-            }
-
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                tags.forEach { tag ->
-                    InputChip(
-                        selected = false,
-                        onClick = { tags = tags - tag },
-                        label = { Text(tag) },
-                        trailingIcon = { Icon(Icons.Filled.Close, "Remove", Modifier.size(16.dp)) },
-                    )
-                }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
+                GlassTextField(
                     value = newTag,
                     onValueChange = { newTag = it },
-                    label = { Text("Add tag") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(0.8f),
+                    placeholder = "weekend…",
+                    label = "Add tag",
+                    modifier = Modifier.fillMaxWidth(),
+                    trailing = {
+                        IconButton(onClick = {
+                            val t = newTag.trim()
+                            if (t.isNotEmpty()) {
+                                val canonical = canonicalizeTags(listOf(t), corpusTags + tags).firstOrNull() ?: t
+                                if (canonical !in tags) tags = tags + canonical
+                                newTag = ""
+                            }
+                        }, modifier = Modifier.size(24.dp)) { Icon(Icons.Filled.Add, "Add tag", tint = cs.primary) }
+                    },
                 )
-                IconButton(onClick = {
-                    val t = newTag.trim()
-                    if (t.isNotEmpty() && t !in tags) { tags = tags + t; newTag = "" }
-                }) { Icon(Icons.Filled.Add, "Add tag") }
-            }
-
-            Button(
-                onClick = {
+                FilledTonalButton(onClick = {
                     scope.launch {
                         suggesting = true; aiError = null
                         TaggingEngine.suggestTags(context, text)
-                            .onSuccess { suggestions = it.filter { tag -> tag !in tags } }
+                            .onSuccess { suggestions = canonicalizeTags(it, corpusTags + tags).filter { tag -> tag !in tags } }
                             .onFailure { aiError = it.message ?: "AI tagging failed" }
                         suggesting = false
                     }
-                },
-                enabled = !suggesting,
-            ) {
-                Icon(Icons.Filled.AutoAwesome, null)
-                Spacer(Modifier.width(8.dp))
-                Text(if (suggesting) "Analyzing…" else "Suggest tags (AI)")
-            }
-            aiError?.let {
-                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            }
-            if (suggestions.isNotEmpty()) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    suggestions.forEach { s ->
-                        SuggestionChip(
-                            onClick = { tags = tags + s; suggestions = suggestions - s },
-                            label = { Text(s) },
-                        )
+                }, enabled = !suggesting, shape = ReachShapes.field, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.AutoAwesome, null); Spacer(Modifier.width(8.dp))
+                    Text(if (suggesting) "Analyzing…" else "Suggest tags (AI)")
+                }
+                if (suggestions.isNotEmpty()) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        suggestions.forEach { s ->
+                            ReachChip(s, selected = false, dashed = true, onClick = {
+                                val canonical = canonicalizeTags(listOf(s), corpusTags + tags).firstOrNull() ?: s
+                                if (canonical !in tags) tags = tags + canonical
+                                suggestions = suggestions - s
+                            })
+                        }
                     }
                 }
-            }
+                aiError?.let { Text(it, color = cs.error, style = MaterialTheme.typography.bodySmall) }
 
-            if (related.isNotEmpty()) {
-                HorizontalDivider(Modifier.padding(top = 8.dp))
-                Text("Related notes", style = MaterialTheme.typography.titleSmall)
-                related.forEach { (rn, score) ->
-                    val sub = if (score > 0f) "${(score * 100).roundToInt()}% match"
-                    else rn.tags.filter { it in n.tags }.joinToString(" ") { "#$it" }
-                    ListItem(
-                        modifier = Modifier.clickable { onOpen(rn.id) },
-                        headlineContent = {
+                // Related notes.
+                if (related.isNotEmpty()) {
+                    SectionTitle("Related notes", Modifier.padding(top = 8.dp))
+                    related.forEach { (rn, score) ->
+                        val sub = if (score > 0f) "${(score * 100).roundToInt()}% match"
+                        else rn.tags.filter { it in n.tags }.joinToString(" ") { "#$it" }
+                        Column(Modifier.fillMaxWidth().clickable { onOpen(rn.id) }.padding(vertical = 4.dp)) {
                             Text(
                                 rn.title.ifBlank { rn.text.substringBefore('\n') },
-                                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis,
                             )
-                        },
-                        supportingContent = {
-                            Text(sub, style = MaterialTheme.typography.bodySmall)
-                        },
-                    )
+                            Text(sub, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+                        }
+                    }
                 }
+                Spacer(Modifier.height(96.dp)) // clear the sticky action bar
             }
         }
+
+        // Sticky action bar: Reformat · Calendar.
+        Row(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Button(
+                onClick = { reformat() },
+                enabled = !formatting,
+                shape = ReachShapes.field,
+                modifier = Modifier.weight(1f),
+            ) {
+                Icon(Icons.Filled.AutoAwesome, null); Spacer(Modifier.width(8.dp))
+                Text(if (formatting) "Formatting…" else if (markdown.isBlank()) "Format" else "Reformat")
+            }
+            FilledTonalButton(onClick = { addToCalendar() }, enabled = !calBusy, shape = ReachShapes.field, modifier = Modifier.weight(1f)) {
+                if (calBusy) CircularProgressIndicator(Modifier.size(18.dp)) else Icon(Icons.Filled.Event, null)
+                Spacer(Modifier.width(8.dp)); Text(if (calBusy) "Reading…" else "Calendar")
+            }
+        }
+
+        // Floating record orb — adds more recordings to this note.
+        RecordOrb(
+            recording = recording,
+            onStart = { startAppend() },
+            onStop = { stopAppend() },
+            level = RecordState.amplitude,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 92.dp),
+        )
+
+        if (undo != null) {
+            UndoSnackbar(
+                message = "AI change applied",
+                onUndo = { doUndo() },
+                onDismiss = { undo = null },
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 80.dp),
+            )
+        }
+    }
+}
+
+/** Two-segment glass toggle (Formatted / Transcript). */
+@Composable
+private fun SegToggle(left: String, right: String, leftSelected: Boolean, onSelect: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().glass(ReachShapes.field).padding(4.dp)) {
+        Seg(left, leftSelected, Modifier.weight(1f)) { onSelect(true) }
+        Seg(right, !leftSelected, Modifier.weight(1f)) { onSelect(false) }
+    }
+}
+
+@Composable
+private fun Seg(label: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    Box(
+        modifier
+            .clip(RoundedCornerShape(10.dp))
+            .then(if (selected) Modifier.background(cs.primary) else Modifier)
+            .clickable(onClick = onClick)
+            .padding(vertical = 9.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = if (selected) cs.onPrimary else cs.onSurfaceVariant,
+        )
     }
 }

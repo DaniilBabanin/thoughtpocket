@@ -69,6 +69,9 @@ interface NoteDao {
     @Query("SELECT * FROM notes WHERE id = :id")
     fun byId(id: Long): Flow<Note?>
 
+    @Query("SELECT * FROM notes WHERE id = :id")
+    suspend fun getById(id: Long): Note?
+
     @Insert
     suspend fun insert(note: Note): Long
 

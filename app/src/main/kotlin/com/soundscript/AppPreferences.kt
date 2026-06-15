@@ -60,10 +60,23 @@ class AppPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_AUTO_MARKDOWN, true)
         set(value) = prefs.edit { putBoolean(KEY_AUTO_MARKDOWN, value) }
 
+    /**
+     * When recordings are appended to an existing note, append the raw transcript only — then once they
+     * finish, reformat the note's Markdown and refresh its tags in one pass. On by default.
+     */
+    var reformatAppendedNotes: Boolean
+        get() = prefs.getBoolean(KEY_REFORMAT_APPENDED, true)
+        set(value) = prefs.edit { putBoolean(KEY_REFORMAT_APPENDED, value) }
+
     /** Show the live transcription in the ongoing notification (visible from the shade). Off by default. */
     var liveTranscribeNotification: Boolean
         get() = prefs.getBoolean(KEY_LIVE_NOTIF, false)
         set(value) = prefs.edit { putBoolean(KEY_LIVE_NOTIF, value) }
+
+    /** Disable non-essential motion (card reveals, glow parallax, pulse). Off by default. */
+    var reduceAnimations: Boolean
+        get() = prefs.getBoolean(KEY_REDUCE_MOTION, false)
+        set(value) = prefs.edit { putBoolean(KEY_REDUCE_MOTION, value) }
 
     /** Per-task model overrides (filename in llm/ dir); "" = smart default. */
     var tagModelFilename: String
@@ -114,7 +127,9 @@ class AppPreferences(context: Context) {
         private const val KEY_LLM_MODEL = "llm_model"
         private const val KEY_AUTO_TAG = "auto_tag"
         private const val KEY_AUTO_MARKDOWN = "auto_markdown"
+        private const val KEY_REFORMAT_APPENDED = "reformat_appended_notes"
         private const val KEY_LIVE_NOTIF = "live_transcribe_notification"
+        private const val KEY_REDUCE_MOTION = "reduce_animations"
         private const val KEY_TAG_MODEL = "tag_model"
         private const val KEY_ANALYSIS_MODEL = "analysis_model"
         private const val KEY_HF_TOKEN = "hf_token"

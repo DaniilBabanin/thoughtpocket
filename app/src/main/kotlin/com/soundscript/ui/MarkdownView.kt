@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Checkbox
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import com.soundscript.ui.theme.ReachCheck
 import com.soundscript.ai.BULLET
 import com.soundscript.ai.CHECKBOX
 import com.soundscript.ai.HEADING
@@ -43,12 +44,13 @@ fun MarkdownView(markdown: String, modifier: Modifier = Modifier, onToggle: (Str
                     val (ws, mark, label) = cb.destructured
                     val checked = mark.equals("x", ignoreCase = true)
                     Row(
-                        Modifier.padding(start = indent(ws)),
+                        Modifier.padding(start = indent(ws), top = 3.dp, bottom = 3.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Checkbox(checked = checked, onCheckedChange = { on ->
-                            onToggle(toggleCheckbox(markdown, i, on))
+                        ReachCheck(checked = checked, onToggle = {
+                            onToggle(toggleCheckbox(markdown, i, !checked))
                         })
+                        Spacer(Modifier.width(11.dp))
                         Text(
                             label,
                             style = MaterialTheme.typography.bodyMedium,

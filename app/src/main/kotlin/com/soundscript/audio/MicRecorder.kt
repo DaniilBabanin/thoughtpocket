@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import kotlin.math.sqrt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
@@ -25,7 +26,20 @@ class MicRecorder {
     private var total = 0
 
     @Volatile private var recording = false
+    @Volatile private var levelValue = 0f
     private var ar: AudioRecord? = null
+
+    /** Smoothed mic loudness in 0..1 for live UI feedback (RMS; fast attack, slow decay). */
+    fun level(): Float = levelValue
+
+    private fun updateLevel(samples: FloatArray, n: Int) {
+        if (n <= 0) return
+        var sum = 0f
+        for (i in 0 until n) sum += samples[i] * samples[i]
+        val rms = sqrt(sum / n)
+        val target = (rms * 4.5f).coerceIn(0f, 1f)   // map typical speech RMS → ~full scale
+        levelValue += (target - levelValue) * if (target > levelValue) 0.55f else 0.12f
+    }
 
     @SuppressLint("MissingPermission") // caller guarantees RECORD_AUDIO is granted
     fun start() {
@@ -53,10 +67,12 @@ class MicRecorder {
                 val n = a.read(buf, 0, frame)
                 if (n > 0) {
                     val f = shortsToFloat(buf, n)
+                    updateLevel(f, n)
                     synchronized(lock) { chunks.add(f); total += n }
                 }
             }
         } finally {
+            levelValue = 0f
             runCatching { a.stop() }
             runCatching { a.release() }
             ar = null

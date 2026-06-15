@@ -1,9 +1,13 @@
 package com.soundscript
 
 import com.soundscript.ai.addItem
+import com.soundscript.ai.bulletsToChecklist
+import com.soundscript.ai.canonicalizeTags
 import com.soundscript.ai.checklistItems
 import com.soundscript.ai.openTasks
+import com.soundscript.ai.preserveChecked
 import com.soundscript.ai.removeItem
+import com.soundscript.ai.renameItem
 import com.soundscript.ai.setItemChecked
 import com.soundscript.ai.toggleCheckbox
 import com.soundscript.data.Note
@@ -77,6 +81,74 @@ class MarkdownToggleTest {
     fun unknownItemUnchanged() {
         assertEquals(list, setItemChecked(list, "pineapple", true))
         assertEquals(list, removeItem(list, "pineapple"))
+    }
+
+    // ---- preserve checked state across a reformat ----
+    @Test
+    fun preserveCheckedReChecksMatchingItems() {
+        val old = "Grocery run\n- [ ] milk\n- [x] eggs\n- [x] coffee"
+        // reformat regenerates everything unchecked, possibly reordered
+        val reformatted = "# Grocery run\n- [ ] coffee\n- [ ] milk\n- [ ] eggs"
+        assertEquals("# Grocery run\n- [x] coffee\n- [ ] milk\n- [x] eggs", preserveChecked(old, reformatted))
+    }
+
+    @Test
+    fun preserveCheckedIgnoresDroppedItems() {
+        // "eggs" was checked but the reformat dropped it → no crash, others still carried
+        val old = "- [x] eggs\n- [x] milk"
+        val reformatted = "- [ ] milk"
+        assertEquals("- [x] milk", preserveChecked(old, reformatted))
+    }
+
+    @Test
+    fun preserveCheckedNoopWhenNothingChecked() {
+        val old = "- [ ] milk\n- [ ] eggs"
+        val reformatted = "- [ ] eggs\n- [ ] milk"
+        assertEquals(reformatted, preserveChecked(old, reformatted))
+    }
+
+    // ---- convert to checklist (Interact "make it a checkbox list") ----
+    @Test
+    fun bulletsToChecklistConvertsBulletsAndNumbers() {
+        assertEquals("- [ ] milk\n- [ ] eggs\n- [ ] bread", bulletsToChecklist("- milk\n* eggs\n1. bread"))
+    }
+
+    @Test
+    fun bulletsToChecklistKeepsCheckedAndHeadingsAndBlanks() {
+        val md = "# Shopping\n- [x] coffee\n- milk\n\nplain note"
+        assertEquals("# Shopping\n- [x] coffee\n- [ ] milk\n\n- [ ] plain note", bulletsToChecklist(md))
+    }
+
+    // ---- rename a task ----
+    @Test
+    fun renameItemKeepsCheckedState() {
+        assertEquals("- [x] buy whole milk\n- [ ] eggs", renameItem("- [x] buy milk\n- [ ] eggs", "buy milk", "buy whole milk"))
+    }
+
+    @Test
+    fun renameItemUnknownOrBlankUnchanged() {
+        val md = "- [ ] eggs"
+        assertEquals(md, renameItem(md, "milk", "almond milk"))
+        assertEquals(md, renameItem(md, "eggs", "   "))
+    }
+
+    // ---- tag canonicalization (dedup near-duplicates) ----
+    @Test
+    fun canonicalizeFoldsCasePluralAndSpacing() {
+        assertEquals(
+            listOf("work", "meeting", "side-project"),
+            canonicalizeTags(listOf("Work", "meetings", "side project"), listOf("work", "meeting", "side-project")),
+        )
+    }
+
+    @Test
+    fun canonicalizeKeepsDistinctTagsAndDedups() {
+        assertEquals(listOf("travel", "food"), canonicalizeTags(listOf("travel", "Travel", "food"), emptyList()))
+    }
+
+    @Test
+    fun canonicalizeDoesNotMergeShortOrDoubleS() {
+        assertEquals(listOf("is", "business"), canonicalizeTags(listOf("is", "Business"), listOf("business")))
     }
 
     // ---- checklist aggregation (structured query path) ----
