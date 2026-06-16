@@ -23,6 +23,7 @@ import com.thoughtpocket.audio.MicRecorder
 import com.thoughtpocket.data.Note
 import com.thoughtpocket.data.NotesDb
 import com.thoughtpocket.widget.RecordWidget
+import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -61,7 +62,8 @@ class RecordingService : Service() {
 
     /** [appendNoteId] >= 0 → append this clip's transcript to that note instead of creating a new one. */
     private data class Clip(
-        val pcm: FloatArray,
+        val file: File,
+        val samples: Int,
         val model: ModelManager.ModelEntry?,
         val prefs: AppPreferences,
         val appendNoteId: Long = -1L,
@@ -69,6 +71,9 @@ class RecordingService : Service() {
 
     /** Notes that got appended recordings this drain; reformatted in one pass once the queue empties. */
     private val appendedIds = mutableSetOf<Long>()
+
+    /** One-shot: re-queue recordings a killed session left on disk, before this process's first record. */
+    @Volatile private var recovered = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -89,8 +94,10 @@ class RecordingService : Service() {
         )
         if (RecordState.status.value.state == RecordState.State.RECORDING) return // already recording
         ensureConsumer()
+        recoverOrphans()   // re-queue any recordings a previous (killed) session left on disk
 
-        val rec = MicRecorder()
+        val file = audioFile()
+        val rec = MicRecorder(file)
         recorder = rec
         RecordState.set(RecordState.State.RECORDING, SystemClock.elapsedRealtime())
         RecordWidget.refresh(this)
@@ -127,12 +134,12 @@ class RecordingService : Service() {
             liveJob?.cancelAndJoin()
             recorder = null
 
-            // Hand the audio to the background queue and free the mic immediately.
-            val pcm = rec.snapshot()
-            if (pcm.isNotEmpty()) {
+            // Hand the recording (a file on disk) to the background queue and free the mic immediately.
+            val n = rec.samples
+            if (n > 0) {
                 RecordState.setPending(pending.incrementAndGet())
-                queue.send(Clip(pcm, model, prefs, appendNoteId))
-            }
+                queue.send(Clip(file, n, model, prefs, appendNoteId))
+            } else rec.discard()
             settleStateAndMaybeStop()
         }
     }
@@ -157,7 +164,8 @@ class RecordingService : Service() {
     private suspend fun liveLoop(rec: MicRecorder, prefs: AppPreferences, model: ModelManager.ModelEntry) {
         while (currentCoroutineContext().isActive) {
             delay(LIVE_INTERVAL_MS)
-            val snap = rec.snapshot()
+            // Only the trailing window — bounded cost regardless of length (the full transcript is built once on stop).
+            val snap = rec.readTail(PREVIEW_WINDOW_SAMPLES)
             if (snap.size < MIN_SAMPLES) continue
             val text = runCatching { transcribe(snap, prefs, model, highQuality = false) }.getOrNull()
             if (!text.isNullOrBlank()) {
@@ -191,10 +199,10 @@ class RecordingService : Service() {
     private suspend fun transcribeAndSave(clip: Clip) {
         val prefs = clip.prefs
         when {
-            clip.model == null -> Notifications.done(this, "No model — open Settings to download one")
-            clip.appendNoteId >= 0 -> appendToNote(clip)
+            clip.model == null -> Notifications.done(this, "No model — open Settings to download one")  // keep file for recovery
+            clip.appendNoteId >= 0 -> { appendToNote(clip); clip.file.delete() }
             else -> {
-                val text = transcribe(clip.pcm, prefs, clip.model, highQuality = prefs.highQuality)
+                val text = transcribe(MicRecorder.readPcm(clip.file), prefs, clip.model, highQuality = prefs.highQuality)
                 val body = text.ifBlank { "(no speech detected)" }
                 val dao = NotesDb.get(this).notes()
                 val note = Note(createdAt = System.currentTimeMillis(), text = body)
@@ -219,6 +227,7 @@ class RecordingService : Service() {
                 }
                 if (emb != null || title.isNotEmpty() || tags.isNotEmpty() || markdown.isNotEmpty())
                     dao.update(note.copy(id = id, title = title, tags = tags, embedding = emb, markdown = markdown))
+                clip.file.delete()   // transcript saved → the audio file is no longer needed
             }
         }
     }
@@ -230,7 +239,7 @@ class RecordingService : Service() {
             Log.w(TAG, "append target ${clip.appendNoteId} gone")
             return
         }
-        val text = transcribe(clip.pcm, clip.prefs, clip.model!!, highQuality = clip.prefs.highQuality)
+        val text = transcribe(MicRecorder.readPcm(clip.file), clip.prefs, clip.model!!, highQuality = clip.prefs.highQuality)
         val add = text.ifBlank { "(no speech detected)" }
         val combined = if (note.text.isBlank()) add else note.text.trimEnd() + "\n\n" + add
         val emb = Embedder.embed(this, combined) ?: note.embedding
@@ -270,6 +279,28 @@ class RecordingService : Service() {
         ModelManager.entryById(this, prefs.selectedModelId)?.takeIf { ModelManager.isDownloaded(this, it) }
             ?: ModelManager.listInstalled(this).firstOrNull()
 
+    /** Durable dir for in-flight recordings — filesDir (NOT cache, which the OS may purge). */
+    private fun audioDir(): File = File(filesDir, "audio").apply { mkdirs() }
+    private fun audioFile(): File = File.createTempFile("rec", ".pcm", audioDir())
+
+    /**
+     * Re-queue any .pcm files a previous (killed) session left on disk — once per process, before the
+     * first record (so anything present is a genuine orphan). Recovered audio becomes a new note.
+     * ponytail: fires on the next record, not at app launch — add a launch-scan if users report waiting.
+     */
+    private fun recoverOrphans() {
+        if (recovered) return
+        recovered = true
+        val prefs = AppPreferences(this)
+        val model = resolveModel(prefs)
+        audioDir().listFiles { f -> f.isFile && f.name.endsWith(".pcm") }?.forEach { f ->
+            val n = (f.length() / 2).toInt()
+            if (n <= 0) { f.delete(); return@forEach }
+            RecordState.setPending(pending.incrementAndGet())
+            queue.trySend(Clip(f, n, model, prefs))
+        }
+    }
+
     /** Reflect the queue/mic in [RecordState], and stop the service once truly idle. */
     private fun settleStateAndMaybeStop() {
         if (recorder != null) return // a recording is active — RECORDING already set, leave it
@@ -295,6 +326,7 @@ class RecordingService : Service() {
         private const val LEVEL_INTERVAL_MS = 40L  // ~25 fps mic-level updates for the orb pulse
         private const val LIVE_MAX_MODEL_MB = 200 // tiny/base/small keep up; medium/large don't
         private const val MIN_SAMPLES = 16_000    // ~1s before first preview
+        private const val PREVIEW_WINDOW_SAMPLES = 16_000 * 30  // live preview transcribes only the last ~30 s
         const val ACTION_START = "com.thoughtpocket.action.START"
         const val ACTION_STOP = "com.thoughtpocket.action.STOP"
         private const val EXTRA_APPEND_ID = "append_note_id"

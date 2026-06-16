@@ -26,7 +26,7 @@ object MarkdownEngine {
             "- Keep reflective or narrative speech as normal paragraphs; do NOT force it into a list.\n" +
             "- Do not add a heading or title. Do not add or remove information. Do not explain.\n" +
             "Reply with only the Markdown.\n\n" +
-            "Voice note:\n\"\"\"\n${text.take(4000)}\n\"\"\""
+            "Voice note:\n\"\"\"\n${text.take(6000)}\n\"\"\""
 
     private fun clean(raw: String): String {
         var s = raw

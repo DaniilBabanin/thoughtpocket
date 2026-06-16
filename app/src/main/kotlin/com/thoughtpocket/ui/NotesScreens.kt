@@ -156,7 +156,7 @@ private suspend fun recordAndTranscribe(context: Context, prefs: AppPreferences,
     rec.start()
     rec.runUntilStopped()   // returns when the caller stops the recorder
     return WhisperEngine.transcribe(
-        pcm16k = rec.snapshot(), language = prefs.language.ifBlank { null },
+        pcm16k = rec.readAll(), language = prefs.language.ifBlank { null },
         translate = prefs.translateToEnglish, threads = prefs.resolvedThreads(), highQuality = false,
     ).trim()
 }
@@ -194,11 +194,11 @@ fun NotesListScreen(onOpen: (Long) -> Unit, bottomSpace: Dp) {
         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             voicePerm.launch(Manifest.permission.RECORD_AUDIO); return
         }
-        val r = MicRecorder(); micRec = r; listening = true
+        val r = MicRecorder.temp(context); micRec = r; listening = true
         scope.launch {
             try { recordAndTranscribe(context, prefs, r).takeIf { it.isNotBlank() }?.let { query = it } }
             catch (t: Throwable) { Toast.makeText(context, t.message ?: "Voice search failed", Toast.LENGTH_LONG).show() }
-            finally { listening = false; micRec = null }
+            finally { r.discard(); listening = false; micRec = null }
         }
     }
 
@@ -760,11 +760,11 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             micPerm.launch(Manifest.permission.RECORD_AUDIO); return
         }
-        val r = MicRecorder(); micRec = r; listening = true; aiError = null
+        val r = MicRecorder.temp(context); micRec = r; listening = true; aiError = null
         scope.launch {
             try { command = recordAndTranscribe(context, prefs, r).ifBlank { command } }
             catch (t: Throwable) { aiError = "Voice input failed: ${t.message}" }
-            finally { listening = false; micRec = null }
+            finally { r.discard(); listening = false; micRec = null }
         }
     }
 

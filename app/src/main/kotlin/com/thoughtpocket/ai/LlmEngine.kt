@@ -188,7 +188,23 @@ object TaggingEngine {
     suspend fun suggestTags(context: Context, text: String): Result<List<String>> {
         if (text.isBlank()) return Result.success(emptyList())
         val model = LlmEngine.resolve(context, AppPreferences(context).tagModelFilename, "E2B")
-        return LlmEngine.generate(context, buildPrompt(text), model).map { parseTags(it) }
+        val chunks = chunk(text)
+        if (chunks.size == 1) return LlmEngine.generate(context, buildPrompt(chunks[0]), model).map { parseTags(it) }
+        // Long note → tag each window then fold duplicates with canonicalizeTags (map-reduce); the whole
+        // note gets tagged, not just the first 4k chars. ponytail: capped at 5 windows — sampling, not exhaustive.
+        val all = mutableListOf<String>()
+        var anyOk = false
+        for (c in chunks) LlmEngine.generate(context, buildPrompt(c), model)
+            .onSuccess { anyOk = true; all += parseTags(it) }
+        return if (anyOk) Result.success(canonicalizeTags(all, emptyList()).take(5))
+        else Result.failure(IllegalStateException("Tagging failed"))
+    }
+
+    /** At most [max] windows covering the WHOLE text (not just the opening). */
+    private fun chunk(text: String, target: Int = 4000, max: Int = 5): List<String> {
+        if (text.length <= target) return listOf(text)
+        val size = maxOf(target, (text.length + max - 1) / max)
+        return text.chunked(size)
     }
 
     // Plain instruction — LiteRT-LM's Conversation applies the model's chat template itself.
@@ -222,7 +238,7 @@ object TitleEngine {
 
     private fun buildPrompt(text: String): String =
         "Write a short title for this voice note: 3 to 6 words, no quotes, no trailing " +
-            "punctuation. Reply with ONLY the title.\n\nNote:\n\"\"\"\n${text.take(2000)}\n\"\"\""
+            "punctuation. Reply with ONLY the title.\n\nNote:\n\"\"\"\n${text.take(3000)}\n\"\"\""
 
     private fun clean(raw: String): String =
         raw.replace(Regex("(?is)<think.*?</think>"), " ")
