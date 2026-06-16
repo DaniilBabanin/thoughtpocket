@@ -5,6 +5,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.net.Uri
 import android.os.IBinder
 import android.os.SystemClock
 import android.util.Log
@@ -19,11 +20,15 @@ import com.thoughtpocket.ai.TaggingEngine
 import com.thoughtpocket.ai.canonicalizeTags
 import com.thoughtpocket.ai.preserveChecked
 import com.thoughtpocket.ai.TitleEngine
+import com.thoughtpocket.audio.AudioFiles
 import com.thoughtpocket.audio.MicRecorder
 import com.thoughtpocket.data.Note
 import com.thoughtpocket.data.NotesDb
 import com.thoughtpocket.widget.RecordWidget
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -67,6 +72,7 @@ class RecordingService : Service() {
         val model: ModelManager.ModelEntry?,
         val prefs: AppPreferences,
         val appendNoteId: Long = -1L,
+        val createdAt: Long? = null,   // imported files carry the source file's date; null = now
     )
 
     /** Notes that got appended recordings this drain; reformatted in one pass once the queue empties. */
@@ -81,6 +87,7 @@ class RecordingService : Service() {
         when (intent?.action) {
             ACTION_START -> startRecording(intent.getLongExtra(EXTRA_APPEND_ID, -1L))
             ACTION_STOP -> recorder?.stop()
+            ACTION_IMPORT -> startImport()
         }
         return START_NOT_STICKY
     }
@@ -137,6 +144,8 @@ class RecordingService : Service() {
             // Hand the recording (a file on disk) to the background queue and free the mic immediately.
             val n = rec.samples
             if (n > 0) {
+                // Save a playable WAV copy to the user's folder (survives uninstall) BEFORE the .pcm is consumed.
+                if (prefs.saveAudio && prefs.saveAudioFolder.isNotEmpty()) runCatching { saveWav(file, prefs.saveAudioFolder) }
                 RecordState.setPending(pending.incrementAndGet())
                 queue.send(Clip(file, n, model, prefs, appendNoteId))
             } else rec.discard()
@@ -205,7 +214,7 @@ class RecordingService : Service() {
                 val text = transcribe(MicRecorder.readPcm(clip.file), prefs, clip.model, highQuality = prefs.highQuality)
                 val body = text.ifBlank { "(no speech detected)" }
                 val dao = NotesDb.get(this).notes()
-                val note = Note(createdAt = System.currentTimeMillis(), text = body)
+                val note = Note(createdAt = clip.createdAt ?: System.currentTimeMillis(), text = body)
                 val id = dao.insert(note)
                 Notifications.done(this, "Note saved")
 
@@ -283,6 +292,44 @@ class RecordingService : Service() {
     private fun audioDir(): File = File(filesDir, "audio").apply { mkdirs() }
     private fun audioFile(): File = File.createTempFile("rec", ".pcm", audioDir())
 
+    /** Write a recording's int16 PCM as a WAV into the user's picked save folder. */
+    private fun saveWav(pcm: File, treeUriStr: String) {
+        val name = "ThoughtPocket_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())}.wav"
+        AudioFiles.createInTree(this, Uri.parse(treeUriStr), "audio/x-wav", name)?.use { AudioFiles.writeWav(it, pcm) }
+    }
+
+    /** Import: scan the picked folder for audio, decode each new file, transcribe it into a dated note. */
+    private fun startImport() {
+        Notifications.ensureChannel(this)
+        ServiceCompat.startForeground(
+            this, Notifications.ONGOING_ID, Notifications.ongoing(this, "Importing audio…"),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        )
+        ensureConsumer()
+        scope.launch {
+            runCatching { scanImport() }.onFailure { Log.e(TAG, "import scan failed", it) }
+            settleStateAndMaybeStop()
+        }
+    }
+
+    private suspend fun scanImport() {
+        val prefs = AppPreferences(this)
+        val folder = prefs.importFolder.ifEmpty { return }
+        val model = resolveModel(prefs)
+        val done = prefs.importedAudio.toMutableSet()
+        for ((uri, _, modified) in AudioFiles.listAudio(this, Uri.parse(folder))) {
+            val key = uri.toString()
+            if (key in done) continue
+            val pcm = AudioFiles.decode(this, uri)            // → 16 kHz mono float (empty on unsupported)
+            if (pcm.isEmpty()) continue                       // leave unmarked so a fixed/retried file imports later
+            val tmp = File.createTempFile("import", ".pcm", cacheDir)   // cache → not picked up by recoverOrphans
+            AudioFiles.writePcm(tmp, pcm)
+            done.add(key); prefs.importedAudio = done         // optimistic dedup (don't re-decode on the next scan)
+            RecordState.setPending(pending.incrementAndGet())
+            queue.send(Clip(tmp, pcm.size, model, prefs, createdAt = modified))
+        }
+    }
+
     /**
      * Re-queue any .pcm files a previous (killed) session left on disk — once per process, before the
      * first record (so anything present is a genuine orphan). Recovered audio becomes a new note.
@@ -329,7 +376,11 @@ class RecordingService : Service() {
         private const val PREVIEW_WINDOW_SAMPLES = 16_000 * 30  // live preview transcribes only the last ~30 s
         const val ACTION_START = "com.thoughtpocket.action.START"
         const val ACTION_STOP = "com.thoughtpocket.action.STOP"
+        const val ACTION_IMPORT = "com.thoughtpocket.action.IMPORT"
         private const val EXTRA_APPEND_ID = "append_note_id"
+
+        /** Scan the user's import folder and turn any new audio files into transcribed notes. */
+        fun importIntent(ctx: Context) = Intent(ctx, RecordingService::class.java).setAction(ACTION_IMPORT)
 
         /** [appendToNoteId] >= 0 appends the recording to that note instead of creating a new one. */
         fun startIntent(ctx: Context, appendToNoteId: Long = -1L) =

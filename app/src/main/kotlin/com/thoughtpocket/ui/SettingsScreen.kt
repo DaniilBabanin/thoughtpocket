@@ -38,7 +38,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import android.content.Intent
+import android.net.Uri
 import android.provider.OpenableColumns
+import com.thoughtpocket.service.RecordingService
 import androidx.compose.runtime.collectAsState
 import com.thoughtpocket.AppPreferences
 import com.thoughtpocket.ModelManager
@@ -85,6 +88,23 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
     var reformatAppended by remember { mutableStateOf(prefs.reformatAppendedNotes) }
     var liveTranscribe by remember { mutableStateOf(prefs.liveTranscription) }
     var liveNotif by remember { mutableStateOf(prefs.liveTranscribeNotification) }
+    var saveAudio by remember { mutableStateOf(prefs.saveAudio) }
+    var saveFolder by remember { mutableStateOf(prefs.saveAudioFolder) }
+    var importFolder by remember { mutableStateOf(prefs.importFolder) }
+    var importMsg by remember { mutableStateOf<String?>(null) }
+    val pickSaveFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) {
+            runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION) }
+            prefs.saveAudioFolder = uri.toString(); saveFolder = uri.toString(); prefs.saveAudio = true; saveAudio = true
+        }
+    }
+    val pickImportFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) {
+            runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            prefs.importFolder = uri.toString(); importFolder = uri.toString()
+            context.startForegroundService(RecordingService.importIntent(context)); importMsg = "Importing… new notes will appear as files finish."
+        }
+    }
     var aiError by remember { mutableStateOf<String?>(null) }
     var geckoTick by remember { mutableStateOf(0) }
     var geckoPct by remember { mutableStateOf<Int?>(null) }
@@ -408,6 +428,42 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
             }
         }
 
+        // Audio files: save recordings to a folder + import audio from a folder.
+        GlassCard(Modifier.fillMaxWidth()) {
+            SectionTitle("Audio files", Modifier.padding(bottom = 4.dp))
+            SwitchRow(
+                "Save recordings to a folder",
+                if (saveAudio && saveFolder.isNotEmpty()) "Keeping a WAV of every recording in ${folderLabel(saveFolder)} (survives reinstall)."
+                else "Keep a playable WAV of every recording in a folder you choose.",
+                saveAudio,
+            ) { on ->
+                if (on) { if (saveFolder.isEmpty()) pickSaveFolder.launch(null) else { prefs.saveAudio = true; saveAudio = true } }
+                else { prefs.saveAudio = false; saveAudio = false }
+            }
+            if (saveAudio && saveFolder.isNotEmpty()) {
+                TextButton(onClick = { pickSaveFolder.launch(null) }) { Text("Change folder") }
+            }
+
+            SectionTitle("Import audio from a folder", Modifier.padding(top = 10.dp, bottom = 4.dp))
+            Text(
+                if (importFolder.isEmpty()) "Pick a folder of recordings (m4a, mp3, wav, opus…); each becomes a transcribed note dated by the file. Drop more in and tap Scan."
+                else "Importing from ${folderLabel(importFolder)}. Tap Scan after dropping in new files.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { pickImportFolder.launch(null) }, shape = ReachShapes.field) {
+                    Text(if (importFolder.isEmpty()) "Choose folder…" else "Change folder")
+                }
+                if (importFolder.isNotEmpty()) {
+                    Button(onClick = {
+                        context.startForegroundService(RecordingService.importIntent(context)); importMsg = "Importing…"
+                    }, shape = ReachShapes.field) { Text("Scan now") }
+                }
+            }
+            importMsg?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp)) }
+        }
+
         // Export.
         GlassCard(Modifier.fillMaxWidth()) {
             SectionTitle("Export", Modifier.padding(bottom = 4.dp))
@@ -433,6 +489,10 @@ private fun resolveName(files: List<File>, explicit: String, fallbackContains: S
     (files.firstOrNull { it.name == explicit }
         ?: files.firstOrNull { it.name.contains(fallbackContains, ignoreCase = true) }
         ?: files.firstOrNull())?.name
+
+/** Human-ish folder name from a SAF tree URI (e.g. ".../tree/primary%3AMusic%2FMemos" → "Memos"). */
+private fun folderLabel(treeUriStr: String): String =
+    Uri.decode(treeUriStr).substringAfterLast(':').substringAfterLast('/').ifBlank { "the selected folder" }
 
 /** Title + description on the left, a Reach switch on the right. */
 @Composable

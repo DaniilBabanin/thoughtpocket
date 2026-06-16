@@ -81,6 +81,26 @@ class AppPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_LIVE_NOTIF, false)
         set(value) = prefs.edit { putBoolean(KEY_LIVE_NOTIF, value) }
 
+    /** Save every recording as a WAV into [saveAudioFolder] (a picked SAF folder that survives uninstall). */
+    var saveAudio: Boolean
+        get() = prefs.getBoolean(KEY_SAVE_AUDIO, false)
+        set(value) = prefs.edit { putBoolean(KEY_SAVE_AUDIO, value) }
+
+    /** Persisted SAF tree URI to save recordings into; "" = none picked. */
+    var saveAudioFolder: String
+        get() = prefs.getString(KEY_SAVE_FOLDER, "")!!
+        set(value) = prefs.edit { putString(KEY_SAVE_FOLDER, value) }
+
+    /** Persisted SAF tree URI to import audio FROM (separate from the save folder); "" = none. */
+    var importFolder: String
+        get() = prefs.getString(KEY_IMPORT_FOLDER, "")!!
+        set(value) = prefs.edit { putString(KEY_IMPORT_FOLDER, value) }
+
+    /** URIs of audio files already imported (dedup), so a re-scan doesn't re-transcribe them. */
+    var importedAudio: Set<String>
+        get() = prefs.getStringSet(KEY_IMPORTED, emptySet())!!
+        set(value) = prefs.edit { putStringSet(KEY_IMPORTED, value) }
+
     /** Disable non-essential motion (card reveals, glow parallax, pulse). Off by default. */
     var reduceAnimations: Boolean
         get() = prefs.getBoolean(KEY_REDUCE_MOTION, false)
@@ -138,6 +158,10 @@ class AppPreferences(context: Context) {
         private const val KEY_REFORMAT_APPENDED = "reformat_appended_notes"
         private const val KEY_LIVE_TRANSCRIBE = "live_transcription"
         private const val KEY_LIVE_NOTIF = "live_transcribe_notification"
+        private const val KEY_SAVE_AUDIO = "save_audio"
+        private const val KEY_SAVE_FOLDER = "save_audio_folder"
+        private const val KEY_IMPORT_FOLDER = "import_folder"
+        private const val KEY_IMPORTED = "imported_audio"
         private const val KEY_REDUCE_MOTION = "reduce_animations"
         private const val KEY_TAG_MODEL = "tag_model"
         private const val KEY_ANALYSIS_MODEL = "analysis_model"
