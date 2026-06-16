@@ -53,6 +53,7 @@ private fun AppRoot() {
     val prefs = remember { AppPreferences(context) }
     var tab by remember { mutableStateOf(ReachTab.Home) }
     var detailId by remember { mutableStateOf<Long?>(null) }
+    var showLicenses by remember { mutableStateOf(false) }
     var reduceMotion by remember { mutableStateOf(prefs.reduceAnimations) }
 
     val status by RecordState.status.collectAsState()
@@ -85,6 +86,7 @@ private fun AppRoot() {
     }
 
     BackHandler(enabled = detailId != null) { detailId = null }
+    BackHandler(enabled = showLicenses) { showLicenses = false }
 
     // Space the scrollable tab content must leave clear for the floating bar + orb.
     val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -99,7 +101,9 @@ private fun AppRoot() {
     ReachBackground {
         Box(Modifier.fillMaxSize()) {
             val id = detailId
-            if (id != null) {
+            if (showLicenses) {
+                LicensesScreen(onBack = { showLicenses = false })
+            } else if (id != null) {
                 NoteDetailScreen(id = id, onBack = { detailId = null }, onOpen = { detailId = it })
             } else {
                 when (tab) {
@@ -110,6 +114,7 @@ private fun AppRoot() {
                         bottomSpace = bottomSpace,
                         reduceMotion = reduceMotion,
                         onReduceMotion = { reduceMotion = it; prefs.reduceAnimations = it },
+                        onOpenLicenses = { showLicenses = true },
                     )
                 }
                 ReachBottomBar(
