@@ -30,6 +30,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -88,6 +89,7 @@ class RecordingService : Service() {
             ACTION_START -> startRecording(intent.getLongExtra(EXTRA_APPEND_ID, -1L))
             ACTION_STOP -> recorder?.stop()
             ACTION_IMPORT -> startImport()
+            ACTION_RECOVER -> startRecovery()
         }
         return START_NOT_STICKY
     }
@@ -160,7 +162,12 @@ class RecordingService : Service() {
             for (clip in queue) {
                 getSystemService(NotificationManager::class.java)
                     .notify(Notifications.ONGOING_ID, Notifications.ongoing(this@RecordingService, "Transcribing…"))
-                runCatching { transcribeAndSave(clip) }.onFailure { Log.e(TAG, "transcribe failed", it) }
+                runCatching { transcribeAndSave(clip) }.onFailure {
+                    Log.e(TAG, "transcribe failed", it)
+                    // The .pcm is deleted only once the transcript is saved, so on any failure the audio
+                    // is still on disk — tell the user, and recoverOrphans re-queues it on next launch.
+                    Notifications.done(this@RecordingService, "Couldn't transcribe — audio kept, will retry on next launch")
+                }
                 val left = pending.decrementAndGet().coerceAtLeast(0)
                 RecordState.setPending(left)
                 // Queue drained → reformat/retag any notes we appended to, in one pass (still foreground).
@@ -193,8 +200,10 @@ class RecordingService : Service() {
     ): String = whisper.withLock {
         val file = ModelManager.fileFor(this, model)
         if (loadedModelKey != file.path) {
-            if (WhisperEngine.load(file, useGpu = false).isSuccess) loadedModelKey = file.path
-            else return@withLock ""
+            // A present-but-unloadable model (corrupt/OOM) must NOT pass as "" — that would save a fake
+            // "(no speech detected)" note and delete the audio. Throw so the clip is kept for retry.
+            WhisperEngine.load(file, useGpu = false).getOrThrow()
+            loadedModelKey = file.path
         }
         WhisperEngine.transcribe(
             pcm16k = pcm,
@@ -216,27 +225,35 @@ class RecordingService : Service() {
                 val dao = NotesDb.get(this).notes()
                 val note = Note(createdAt = clip.createdAt ?: System.currentTimeMillis(), text = body)
                 val id = dao.insert(note)
+                clip.file.delete()   // transcript is durably saved → release the audio now; enrichment below is best-effort
                 Notifications.done(this, "Note saved")
 
                 // Embed (semantic relate) + title + auto-tag + auto-markdown in the background, then update.
-                val emb = Embedder.embed(this, body)
-                var title = ""
-                var tags = emptyList<String>()
-                var markdown = ""
-                if (text.isNotBlank() && LlmEngine.isModelInstalled(this)) {
-                    title = TitleEngine.suggest(this, body).getOrNull().orEmpty()
-                    if (prefs.autoTag) {
-                        val raw = TaggingEngine.suggestTags(this, body).getOrNull().orEmpty()
-                        // Fold onto existing tags so near-duplicates ("work"/"works") don't accumulate.
-                        val corpus = runCatching { dao.all().first().flatMap { it.tags } }.getOrElse { emptyList() }
-                        tags = canonicalizeTags(raw, corpus)
+                // Best-effort: the note + transcript are already saved, so a failure here (e.g. disk-full on
+                // the enrichment write) must NOT bubble to the consumer's onFailure as "couldn't transcribe".
+                try {
+                    val emb = Embedder.embed(this, body)
+                    var title = ""
+                    var tags = emptyList<String>()
+                    var markdown = ""
+                    if (text.isNotBlank() && LlmEngine.isModelInstalled(this)) {
+                        title = TitleEngine.suggest(this, body).getOrNull().orEmpty()
+                        if (prefs.autoTag) {
+                            val raw = TaggingEngine.suggestTags(this, body).getOrNull().orEmpty()
+                            // Fold onto existing tags so near-duplicates ("work"/"works") don't accumulate.
+                            val corpus = runCatching { dao.all().first().flatMap { it.tags } }.getOrElse { emptyList() }
+                            tags = canonicalizeTags(raw, corpus)
+                        }
+                        if (prefs.autoMarkdown)
+                            markdown = MarkdownEngine.toMarkdown(this, body).getOrNull().orEmpty()
                     }
-                    if (prefs.autoMarkdown)
-                        markdown = MarkdownEngine.toMarkdown(this, body).getOrNull().orEmpty()
+                    if (emb != null || title.isNotEmpty() || tags.isNotEmpty() || markdown.isNotEmpty())
+                        dao.update(note.copy(id = id, title = title, tags = tags, embedding = emb, markdown = markdown))
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    Log.w(TAG, "enrichment failed (note already saved)", e)
                 }
-                if (emb != null || title.isNotEmpty() || tags.isNotEmpty() || markdown.isNotEmpty())
-                    dao.update(note.copy(id = id, title = title, tags = tags, embedding = emb, markdown = markdown))
-                clip.file.delete()   // transcript saved → the audio file is no longer needed
             }
         }
     }
@@ -298,6 +315,21 @@ class RecordingService : Service() {
         AudioFiles.createInTree(this, Uri.parse(treeUriStr), "audio/x-wav", name)?.use { AudioFiles.writeWav(it, pcm) }
     }
 
+    /**
+     * Re-queue + transcribe any recordings a killed session left behind, then stop. No mic. Triggered
+     * at app launch (gated on [hasOrphanRecordings] so the service only starts when there's real work).
+     */
+    private fun startRecovery() {
+        Notifications.ensureChannel(this)
+        ServiceCompat.startForeground(
+            this, Notifications.ONGOING_ID, Notifications.ongoing(this, "Transcribing…"),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        )
+        ensureConsumer()
+        recoverOrphans()
+        settleStateAndMaybeStop()   // nothing to recover (already done this process) → stops immediately
+    }
+
     /** Import: scan the picked folder for audio, decode each new file, transcribe it into a dated note. */
     private fun startImport() {
         Notifications.ensureChannel(this)
@@ -344,6 +376,8 @@ class RecordingService : Service() {
             val n = (f.length() / 2).toInt()
             if (n <= 0) { f.delete(); return@forEach }
             RecordState.setPending(pending.incrementAndGet())
+            // Always a new note (appendNoteId=-1): a clip that died mid-append recovers as its own note —
+            // the thought is preserved, just not re-attached to the original.
             queue.trySend(Clip(f, n, model, prefs))
         }
     }
@@ -377,7 +411,16 @@ class RecordingService : Service() {
         const val ACTION_START = "com.thoughtpocket.action.START"
         const val ACTION_STOP = "com.thoughtpocket.action.STOP"
         const val ACTION_IMPORT = "com.thoughtpocket.action.IMPORT"
+        const val ACTION_RECOVER = "com.thoughtpocket.action.RECOVER"
         private const val EXTRA_APPEND_ID = "append_note_id"
+
+        /** Cheap disk check (call off the main thread): did a killed session leave un-transcribed audio? */
+        fun hasOrphanRecordings(ctx: Context): Boolean =
+            File(ctx.filesDir, "audio").listFiles { f -> f.isFile && f.name.endsWith(".pcm") }?.isNotEmpty() == true
+
+        /** Transcribe recordings a killed session left behind (gate on [hasOrphanRecordings] first). */
+        fun recoverIntent(ctx: Context) =
+            Intent(ctx, RecordingService::class.java).setAction(ACTION_RECOVER)
 
         /** Scan the user's import folder and turn any new audio files into transcribed notes. */
         fun importIntent(ctx: Context) = Intent(ctx, RecordingService::class.java).setAction(ACTION_IMPORT)

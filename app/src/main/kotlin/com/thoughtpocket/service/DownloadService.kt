@@ -12,6 +12,7 @@ import com.thoughtpocket.ModelManager
 import com.thoughtpocket.ai.Embedder
 import com.thoughtpocket.ai.LlmEngine
 import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -68,10 +69,17 @@ class DownloadService : Service() {
         active.incrementAndGet()
         scope.launch {
             ModelDownloads.begin(key)
+            var ok = false
             try {
                 source().collect { ModelDownloads.setPct(key, it) }
+                ok = true
+            } catch (e: CancellationException) {
+                throw e                                   // service teardown — not a download failure
+            } catch (e: Throwable) {
+                Log.w(TAG, "download failed: $key", e)
+                Notifications.done(this@DownloadService, "Download failed — open Settings to retry")
             } finally {
-                ModelDownloads.end(key)
+                ModelDownloads.end(key, completed = ok)   // don't claim completion on failure
                 finished()
             }
         }
@@ -91,6 +99,12 @@ class DownloadService : Service() {
                     collectInto(d.name, LlmEngine.download(this@DownloadService, d))
                 if (!Embedder.isReady(this@DownloadService))
                     collectInto("gecko", Embedder.download(this@DownloadService))
+            } catch (e: CancellationException) {
+                throw e                                   // service teardown — not a download failure
+            } catch (e: Throwable) {
+                // One model failing aborts the rest; "Download all" again resumes (installed ones skip).
+                Log.w(TAG, "download-all failed", e)
+                Notifications.done(this@DownloadService, "Download failed — open Settings to retry")
             } finally {
                 ModelDownloads.end(ModelDownloads.ALL, completed = false)
                 finished()
@@ -100,10 +114,12 @@ class DownloadService : Service() {
 
     private suspend fun collectInto(key: String, source: Flow<Int>) {
         ModelDownloads.begin(key)
+        var ok = false
         try {
             source.collect { ModelDownloads.setPct(key, it) }
+            ok = true
         } finally {
-            ModelDownloads.end(key)
+            ModelDownloads.end(key, completed = ok)   // a failed item must not bump the "recheck disk" tick
         }
     }
 

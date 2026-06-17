@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
 import com.thoughtpocket.AppPreferences
 import com.thoughtpocket.service.RecordState
 import com.thoughtpocket.service.RecordingService
@@ -38,12 +39,27 @@ import com.thoughtpocket.ui.theme.ReachBackground
 import com.thoughtpocket.ui.theme.ReachBottomBar
 import com.thoughtpocket.ui.theme.ReachTab
 import com.thoughtpocket.ui.theme.ThoughtPocketTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent { ThoughtPocketTheme { AppRoot() } }
+        // Recover recordings a killed session left un-transcribed. The disk check runs off the UI thread
+        // and the service starts ONLY when there's something to recover — zero cost on a normal open.
+        lifecycleScope.launch {
+            // If anything's already in flight, that live service owns recovery — and its in-progress
+            // .pcm would otherwise look like an orphan. Only scan from a clean idle start.
+            if (RecordState.status.value.state != RecordState.State.IDLE) return@launch
+            if (withContext(Dispatchers.IO) { RecordingService.hasOrphanRecordings(this@MainActivity) }) {
+                // If we got backgrounded during the disk check, starting an FGS now throws on API 31+.
+                // Swallow it — next-record recovery is the fallback and the audio is still on disk.
+                runCatching { startForegroundService(RecordingService.recoverIntent(this@MainActivity)) }
+            }
+        }
     }
 }
 
