@@ -115,6 +115,14 @@ android {
         noCompress += "tflite"
     }
 
+    lint {
+        // The 2026.05 Compose BOM ships lint rules built against a newer Lint API than AGP 8.7.2's
+        // engine, which crashes lintVitalRelease (IncompatibleClassChangeError) and breaks release
+        // builds. Skip lint on release so the release pipeline works; remove when AGP is bumped (see
+        // the open AGP Dependabot PR). Lint still runs on debug: ./gradlew :app:lintDebug
+        checkReleaseBuilds = false
+    }
+
     packaging {
         resources {
             excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1")
