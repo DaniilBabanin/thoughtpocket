@@ -29,7 +29,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -45,6 +44,7 @@ import android.provider.OpenableColumns
 import com.thoughtpocket.service.RecordingService
 import androidx.compose.runtime.collectAsState
 import com.thoughtpocket.AppPreferences
+import com.thoughtpocket.ModelDownloads
 import com.thoughtpocket.ModelManager
 import com.thoughtpocket.notesToMarkdown
 import com.thoughtpocket.ai.Embedder
@@ -77,8 +77,9 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
     var selected by remember { mutableStateOf(prefs.selectedModelId) }
     var language by remember { mutableStateOf(prefs.language) }
     var translate by remember { mutableStateOf(prefs.translateToEnglish) }
-    val progress = remember { mutableStateMapOf<String, Int>() }
-    var installedTick by remember { mutableStateOf(0) }
+    // Downloads run in a process-lifetime scope so they survive leaving Settings; we just observe.
+    val dl by ModelDownloads.progress.collectAsState()
+    val dlDone by ModelDownloads.completed.collectAsState()
 
     var aiTick by remember { mutableStateOf(0) }
     var importingModel by remember { mutableStateOf(false) }
@@ -107,10 +108,6 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
         }
     }
     var aiError by remember { mutableStateOf<String?>(null) }
-    var geckoTick by remember { mutableStateOf(0) }
-    var geckoPct by remember { mutableStateOf<Int?>(null) }
-    val llmPct = remember { mutableStateMapOf<String, Int>() }
-    var setupStatus by remember { mutableStateOf<String?>(null) }
     val pickGemma = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
             importingModel = true; aiError = null
@@ -149,16 +146,16 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
     }
 
     // All filesystem checks cached, keyed on the tick counters, so they never run during scroll.
-    val installedTranscription = remember(installedTick) {
+    val installedTranscription = remember(dlDone) {
         models.filter { ModelManager.isDownloaded(context, it) }.map { it.id }.toSet()
     }
-    val installedGemma = remember(aiTick) {
+    val installedGemma = remember(aiTick, dlDone) {
         LlmEngine.Downloadable.entries.filter { LlmEngine.isInstalled(context, it) }.map { it.name }.toSet()
     }
-    val installedModels = remember(aiTick) { LlmEngine.installed(context) }
-    val installedSizes = remember(aiTick) { installedModels.associate { it.name to it.length() / 1_000_000 } }
-    val geckoReady = remember(geckoTick) { Embedder.isReady(context) }
-    val needsSetup = remember(installedTick, aiTick, geckoTick) {
+    val installedModels = remember(aiTick, dlDone) { LlmEngine.installed(context) }
+    val installedSizes = remember(aiTick, dlDone) { installedModels.associate { it.name to it.length() / 1_000_000 } }
+    val geckoReady = remember(dlDone) { Embedder.isReady(context) }
+    val needsSetup = remember(aiTick, dlDone) {
         ModelManager.listInstalled(context).isEmpty() ||
             LlmEngine.Downloadable.entries.any { !LlmEngine.isInstalled(context, it) } ||
             !Embedder.isReady(context)
@@ -176,38 +173,15 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
             modifier = Modifier.padding(start = 2.dp, top = 6.dp),
         )
 
-        if (needsSetup || setupStatus != null) {
+        if (needsSetup) {
+            val downloadingAll = ModelDownloads.ALL in dl
             Button(
-                onClick = {
-                    scope.launch {
-                        setupStatus = "Starting…"
-                        if (ModelManager.listInstalled(context).isEmpty()) {
-                            ModelManager.download(context, ModelManager.BuiltInModel.BASE_EN_Q5).collect { p ->
-                                if (p in 0..99) setupStatus = "Transcription model… $p%"
-                            }
-                            installedTick++
-                        }
-                        for (d in LlmEngine.Downloadable.entries) {
-                            if (LlmEngine.isInstalled(context, d)) continue
-                            LlmEngine.download(context, d).collect { p ->
-                                if (p in 0..99) setupStatus = "${LlmEngine.prettyName(d.filename)}… $p%"
-                            }
-                            aiTick++
-                        }
-                        if (!Embedder.isReady(context)) {
-                            Embedder.download(context).collect { p ->
-                                if (p in 0..99) setupStatus = "Search model… $p%"
-                            }
-                            geckoTick++
-                        }
-                        setupStatus = null
-                    }
-                },
-                enabled = setupStatus == null,
+                onClick = { ModelDownloads.all(context) },
+                enabled = !downloadingAll,
                 shape = ReachShapes.field,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(setupStatus ?: "Download all models (~6.4 GB)")
+                Text(if (downloadingAll) "Downloading models…" else "Download all models (~6.4 GB)")
             }
         } else {
             // Tonal "installed" status pill (the design's `.btn.done`).
@@ -236,7 +210,7 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
             SectionTitle("Transcription model", Modifier.padding(bottom = 4.dp))
             models.forEach { m ->
                 val installed = m.id in installedTranscription
-                val pct = progress[m.id]
+                val pct = dl[m.id]
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     ReachRadio(
                         selected = selected == m.id,
@@ -255,14 +229,9 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
                     when {
                         pct != null -> CircularProgressIndicator(progress = { pct / 100f }, modifier = Modifier.size(24.dp))
                         installed -> Icon(Icons.Filled.CheckCircle, "Installed", tint = MaterialTheme.colorScheme.primary)
-                        else -> IconButton(onClick = {
-                            scope.launch {
-                                ModelManager.download(context, m).collect { p ->
-                                    if (p in 0..99) progress[m.id] = p
-                                    else if (p < 0) { progress.remove(m.id); installedTick++ }
-                                }
-                            }
-                        }) { Icon(Icons.Filled.Download, "Download") }
+                        else -> IconButton(onClick = { ModelDownloads.whisper(context, m) }) {
+                            Icon(Icons.Filled.Download, "Download")
+                        }
                     }
                 }
             }
@@ -312,7 +281,7 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
             // Downloadable Gemma bundles (Nextcloud). E2B = default/fast, E4B = deeper.
             LlmEngine.Downloadable.entries.forEach { d ->
                 val installed = d.name in installedGemma
-                val pct = llmPct[d.name]
+                val pct = dl[d.name]
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(LlmEngine.prettyName(d.filename))
@@ -325,15 +294,9 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
                     when {
                         pct != null -> CircularProgressIndicator(progress = { pct / 100f }, modifier = Modifier.size(24.dp))
                         installed -> Icon(Icons.Filled.CheckCircle, "Installed", tint = MaterialTheme.colorScheme.primary)
-                        else -> IconButton(onClick = {
-                            scope.launch {
-                                llmPct[d.name] = 0
-                                LlmEngine.download(context, d).collect { p ->
-                                    if (p in 0..99) llmPct[d.name] = p
-                                    else if (p < 0) { llmPct.remove(d.name); aiTick++ }
-                                }
-                            }
-                        }) { Icon(Icons.Filled.Download, "Download") }
+                        else -> IconButton(onClick = { ModelDownloads.gemma(context, d) }) {
+                            Icon(Icons.Filled.Download, "Download")
+                        }
                     }
                 }
             }
@@ -347,17 +310,13 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                val geckoPct = dl["gecko"]
                 when {
-                    geckoPct != null -> CircularProgressIndicator(progress = { geckoPct!! / 100f }, modifier = Modifier.size(24.dp))
+                    geckoPct != null -> CircularProgressIndicator(progress = { geckoPct / 100f }, modifier = Modifier.size(24.dp))
                     geckoReady -> Icon(Icons.Filled.CheckCircle, "Installed", tint = MaterialTheme.colorScheme.primary)
-                    else -> IconButton(onClick = {
-                        scope.launch {
-                            geckoPct = 0
-                            Embedder.download(context).collect { p ->
-                                if (p in 0..99) geckoPct = p else if (p < 0) { geckoPct = null; geckoTick++ }
-                            }
-                        }
-                    }) { Icon(Icons.Filled.Download, "Download") }
+                    else -> IconButton(onClick = { ModelDownloads.gecko(context) }) {
+                        Icon(Icons.Filled.Download, "Download")
+                    }
                 }
             }
 

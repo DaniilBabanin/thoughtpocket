@@ -52,6 +52,12 @@
             android:exported="false"
             android:foregroundServiceType="microphone|dataSync" />
 
+        <!-- One-time model downloads keep running when the app is backgrounded. -->
+        <service
+            android:name=".service.DownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <service
             android:name=".service.RecordTileService"
             android:exported="true"
