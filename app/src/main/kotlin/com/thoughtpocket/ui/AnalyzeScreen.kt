@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -16,7 +17,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -122,7 +125,9 @@ fun AnalyzeScreen(bottomSpace: Dp) {
             modifier = Modifier.fillMaxWidth(),
         )
         Button(onClick = { run(prompt) }, enabled = !running && scoped.isNotEmpty(), shape = ReachShapes.field, modifier = Modifier.fillMaxWidth()) {
-            if (!running) { Icon(Icons.Filled.AutoAwesome, null); Spacer(Modifier.width(8.dp)) }
+            if (running) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = LocalContentColor.current)
+            else Icon(Icons.Filled.AutoAwesome, null)
+            Spacer(Modifier.width(8.dp))
             Text(if (running) "Thinking…" else "Ask")
         }
 

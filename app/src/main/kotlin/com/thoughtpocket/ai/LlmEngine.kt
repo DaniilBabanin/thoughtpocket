@@ -264,18 +264,27 @@ object NotesAnalysis {
         if (question.isBlank()) return Result.success("")
         // Checklist-aggregation questions ("what did I buy last week", "what's still open") are
         // answered deterministically from the Markdown checkboxes — the LLM only classifies them.
-        ChecklistQuery.tryAnswer(context, notes, question, System.currentTimeMillis())?.let {
+        val now = System.currentTimeMillis()
+        ChecklistQuery.tryAnswer(context, notes, question, now)?.let {
             return Result.success(it)
         }
-        val selected = select(context, notes, question)
+        // A purely-retrospective question ("last Tuesday", "yesterday")? Hard-filter to that window before
+        // RAG, so the answer can't come from topically-similar notes on the wrong day. Present/ongoing
+        // windows ("today", "this week") are NOT filtered — those mean "from my backlog, what's relevant
+        // now", so filtering by creation date would dead-end the query (see TimeWindow.isRetrospective).
+        val win = TimeWindow.parse(question, now)?.takeIf { TimeWindow.isRetrospective(it, now) }
+        val scoped = if (win != null) notes.filter { it.createdAt >= win.start && it.createdAt < win.endExclusive } else notes
+        if (win != null && scoped.isEmpty()) return Result.success("No notes from ${win.label}.")
+        val selected = select(context, scoped, question)
         // Feed the Markdown when present so checklist state ("- [x]" done / "- [ ]" still to do) is visible.
         val joined = selected.joinToString("\n\n") {
             "- (${df.format(Date(it.createdAt))}) ${it.markdown.ifBlank { it.text }}"
         }
-        val coverage = if (selected.size < notes.size)
-            "\n\n(These are the ${selected.size} most relevant of ${notes.size} notes in scope.)" else ""
-        val today = df.format(Date(System.currentTimeMillis()))
-        val prompt = "You are analysing the user's personal voice notes. Today is $today. " +
+        val coverage = if (selected.size < scoped.size)
+            "\n\n(These are the ${selected.size} most relevant of ${scoped.size} notes in scope.)" else ""
+        val today = df.format(Date(now))
+        val window = win?.let { "The question is about ${it.label}, so only notes from then are included. " } ?: ""
+        val prompt = "You are analysing the user's personal voice notes. Today is $today. $window" +
             "In checklists, \"- [x]\" means done or bought and \"- [ ] \" means still to do. " +
             "When the question asks which items, scan EVERY relevant note in the time window and list " +
             "ALL matching items across all of them — do not stop after the first note or summarise. " +
