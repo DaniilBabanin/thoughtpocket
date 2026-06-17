@@ -163,7 +163,7 @@ dependencies {
     implementation("com.google.ai.edge.localagents:localagents-rag:0.3.0")
     // The RAG SDK's generated protos need the protobuf-lite runtime (previously supplied
     // transitively by MediaPipe, now removed) — provide it explicitly.
-    implementation("com.google.protobuf:protobuf-javalite:3.25.5")
+    implementation("com.google.protobuf:protobuf-javalite:4.35.1")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
