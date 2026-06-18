@@ -17,6 +17,9 @@ class ThoughtPocketApp : Application() {
             AppPreferences(this).onGpuCrashed()
             crumb.delete()
         }
+
+        // Background, low-priority notes↔folder sync (no-op unless enabled in Settings). Reconciles on start.
+        NotesSyncEngine.start(this)
     }
 
     companion object {

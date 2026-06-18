@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.thoughtpocket.AppPreferences
+import com.thoughtpocket.NotesSyncEngine
 import com.thoughtpocket.service.RecordState
 import com.thoughtpocket.service.RecordingService
 import com.thoughtpocket.ui.theme.LocalReduceMotion
@@ -60,6 +61,11 @@ class MainActivity : ComponentActivity() {
                 runCatching { startForegroundService(RecordingService.recoverIntent(this@MainActivity)) }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        NotesSyncEngine.requestSync()   // pull any notes that synced into the folder from other devices
     }
 }
 

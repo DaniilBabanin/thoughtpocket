@@ -96,6 +96,16 @@ class AppPreferences(context: Context) {
         get() = prefs.getString(KEY_IMPORT_FOLDER, "")!!
         set(value) = prefs.edit { putString(KEY_IMPORT_FOLDER, value) }
 
+    /** Two-way mirror notes (one .md each) to a folder, e.g. a Nextcloud-synced dir. Off by default. */
+    var syncEnabled: Boolean
+        get() = prefs.getBoolean(KEY_SYNC_ENABLED, false)
+        set(value) = prefs.edit { putBoolean(KEY_SYNC_ENABLED, value) }
+
+    /** Persisted SAF tree URI to sync notes into; "" = none picked. */
+    var syncFolder: String
+        get() = prefs.getString(KEY_SYNC_FOLDER, "")!!
+        set(value) = prefs.edit { putString(KEY_SYNC_FOLDER, value) }
+
     /** URIs of audio files already imported (dedup), so a re-scan doesn't re-transcribe them. */
     var importedAudio: Set<String>
         get() = prefs.getStringSet(KEY_IMPORTED, emptySet())!!
@@ -161,6 +171,8 @@ class AppPreferences(context: Context) {
         private const val KEY_SAVE_AUDIO = "save_audio"
         private const val KEY_SAVE_FOLDER = "save_audio_folder"
         private const val KEY_IMPORT_FOLDER = "import_folder"
+        private const val KEY_SYNC_ENABLED = "sync_enabled"
+        private const val KEY_SYNC_FOLDER = "sync_folder"
         private const val KEY_IMPORTED = "imported_audio"
         private const val KEY_REDUCE_MOTION = "reduce_animations"
         private const val KEY_TAG_MODEL = "tag_model"

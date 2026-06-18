@@ -57,6 +57,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.draw.clip
+import com.thoughtpocket.NotesSyncEngine
 import com.thoughtpocket.ui.theme.GlassCard
 import com.thoughtpocket.ui.theme.GlassTextField
 import com.thoughtpocket.ui.theme.ReachChip
@@ -97,6 +98,8 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
     var saveFolder by remember { mutableStateOf(prefs.saveAudioFolder) }
     var importFolder by remember { mutableStateOf(prefs.importFolder) }
     var importMsg by remember { mutableStateOf<String?>(null) }
+    var syncEnabled by remember { mutableStateOf(prefs.syncEnabled) }
+    var syncFolder by remember { mutableStateOf(prefs.syncFolder) }
     val pickSaveFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) {
             runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION) }
@@ -108,6 +111,14 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
             runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
             prefs.importFolder = uri.toString(); importFolder = uri.toString()
             context.startForegroundService(RecordingService.importIntent(context)); importMsg = "Importing… new notes will appear as files finish."
+        }
+    }
+    val pickSyncFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) {
+            runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION) }
+            prefs.syncFolder = uri.toString(); syncFolder = uri.toString()
+            prefs.syncEnabled = true; syncEnabled = true
+            NotesSyncEngine.requestSync()
         }
     }
     var aiError by remember { mutableStateOf<String?>(null) }
@@ -425,6 +436,27 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
                 }
             }
             importMsg?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp)) }
+        }
+
+        // Two-way notes ↔ folder sync (point it at a Nextcloud-synced folder for backup + multi-device).
+        GlassCard(Modifier.fillMaxWidth()) {
+            SectionTitle("Sync notes to a folder", Modifier.padding(bottom = 4.dp))
+            SwitchRow(
+                "Sync notes to a folder",
+                if (syncEnabled && syncFolder.isNotEmpty())
+                    "Mirroring each note as a Markdown file in ${folderLabel(syncFolder)}, two-way. Point Nextcloud (or similar) at it to back up and sync across devices."
+                else
+                    "Keep one Markdown file per note in a folder you choose — two-way, so notes dropped in are picked up. Point Nextcloud at it for multi-device sync.",
+                syncEnabled,
+            ) { on ->
+                if (on) {
+                    if (syncFolder.isEmpty()) pickSyncFolder.launch(null)
+                    else { prefs.syncEnabled = true; syncEnabled = true; NotesSyncEngine.requestSync() }
+                } else { prefs.syncEnabled = false; syncEnabled = false }
+            }
+            if (syncEnabled && syncFolder.isNotEmpty()) {
+                TextButton(onClick = { pickSyncFolder.launch(null) }) { Text("Change folder") }
+            }
         }
 
         // Export.
