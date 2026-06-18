@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +21,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -491,18 +494,18 @@ fun LicensesScreen(onBack: () -> Unit) {
                 LicenseItem("Protocol Buffers (protobuf-javalite)", "© Google Inc.")
             }
             GlassCard(Modifier.fillMaxWidth()) {
+                SectionTitle("MIT License")
+                LicenseItem("whisper.cpp (incl. ggml)", "© Georgi Gerganov and the ggml-org contributors")
+                LicenseItem("Silero VAD", "© Silero Team")
+            }
+            GlassCard(Modifier.fillMaxWidth()) {
                 SectionTitle("On-device AI models")
                 LicenseItem("Gemma", "© Google — Gemma Terms of Use")
                 LicenseItem("Gecko / Universal Sentence Encoder embeddings", "© Google — Apache License 2.0")
             }
-            GlassCard(Modifier.fillMaxWidth()) {
-                SectionTitle("Apache License 2.0 — full text")
-                Text(APACHE_2_0, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            GlassCard(Modifier.fillMaxWidth()) {
-                SectionTitle("BSD 3-Clause — full text")
-                Text(BSD_3_CLAUSE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            ExpandableLicense("Apache License 2.0 — full text", APACHE_2_0)
+            ExpandableLicense("BSD 3-Clause — full text", BSD_3_CLAUSE)
+            ExpandableLicense("MIT License — full text", MIT_LICENSE)
         }
     }
 }
@@ -512,6 +515,30 @@ private fun LicenseItem(name: String, by: String) {
     Column(Modifier.padding(top = 6.dp)) {
         Text(name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
         Text(by, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** A license whose long full text is collapsed behind a tappable header (keeps the screen short). */
+@Composable
+private fun ExpandableLicense(title: String, text: String) {
+    var expanded by remember { mutableStateOf(false) }
+    GlassCard(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().clickable { expanded = !expanded },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SectionTitle(title, Modifier.weight(1f))
+            Icon(
+                if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                if (expanded) "Collapse" else "Expand",
+            )
+        }
+        if (expanded) Text(
+            text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 6.dp),
+        )
     }
 }
 
@@ -540,6 +567,17 @@ private fun SwitchRow(title: String, description: String, checked: Boolean, onCh
         ReachSwitch(checked = checked, onChange = onChange)
     }
 }
+
+private const val MIT_LICENSE = """MIT License
+
+whisper.cpp (incl. ggml) — Copyright (c) Georgi Gerganov and the ggml-org contributors
+Silero VAD — Copyright (c) Silero Team
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."""
 
 private const val APACHE_2_0 = """Apache License
 Version 2.0, January 2004

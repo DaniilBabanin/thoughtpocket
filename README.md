@@ -47,4 +47,4 @@ JDK 17 and the Android SDK with NDK `27.0.12077973` and CMake `3.22.1`; the firs
 
 ## Tech and license
 
-Kotlin, Jetpack Compose (Material 3), Room, Coroutines/Flow, whisper.cpp (NDK/CMake, CPU), [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM) `0.13.1` for Gemma (GPU with a CPU fallback), AI Edge RAG SDK `0.3.0` for Gecko. Licensed [Apache 2.0](LICENSE); Gemma 4 is Apache 2.0 too, so its weights are re-hosted for in-app download.
+Kotlin, Jetpack Compose (Material 3), Room, Coroutines/Flow, [whisper.cpp](https://github.com/ggml-org/whisper.cpp) (MIT, incl. ggml — NDK/CMake, CPU) with bundled [Silero VAD](https://github.com/snakers4/silero-vad) (MIT) to skip silent stretches, [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM) `0.13.1` for Gemma (GPU with a CPU fallback), AI Edge RAG SDK `0.3.0` for Gecko. The app is licensed [Apache 2.0](LICENSE); Gemma 4 is Apache 2.0 too, so its weights are re-hosted for in-app download.
