@@ -156,6 +156,9 @@ object LlmEngine {
             return eng
         }
 
+        // GPU (OpenCL) with a CPU fallback. NPU was measured on-device (2026-06-18): LiteRT-LM rejects
+        // our generic .litertlm bundles with NOT_FOUND (Backend.NPU needs an NPU-COMPILED model), so it's
+        // not in the chain — it would only waste ~14s of failed init per load before falling back to GPU.
         Log.i(TAG, "Loading LLM: ${model.name} (${model.length() / 1_000_000} MB) on GPU")
         val eng = try {
             make(Backend.GPU(), "gpu")
