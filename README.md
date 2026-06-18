@@ -41,6 +41,10 @@ Three ways to capture a note, all transcribed:
 - **Ask** answers questions across your notes with RAG retrieval (query embedding, time filter, top-K notes), plus exact checklist queries like "what do I still need."
 - **Random task** picks a random open `- [ ]` for when you don't know where to start.
 
+## Sync (optional)
+
+Turn on **Settings → Sync notes to a folder** and pick a folder: each note is mirrored as a plain Markdown file (the formatted body plus the original transcript), and files dropped into that folder are picked up as notes. Point your own Nextcloud — or any folder-sync tool — at that folder to back up your notes and sync them across devices. It's two-way, off by default, and your notes never leave the device unless you turn it on. Deletes move the file to a `.trash` subfolder, so they're recoverable.
+
 ## Building
 
 JDK 17 and the Android SDK with NDK `27.0.12077973` and CMake `3.22.1`; the first build pulls whisper.cpp v1.8.4 over the network, so it's slow. `./gradlew assembleDebug` builds, `testDebugUnitTest` runs the JVM tests, `assembleRelease` produces a signed APK. CI builds and tests on every push to `main`/`master` and publishes a signed release on a `v*` tag; the androidTest suites need a real GPU device and the big models, so they run by hand. The keystore is committed on purpose (password `whispershare`) so builds sign identically with no secrets. Being public, the signature only proves an APK came from official CI, not that it's untampered, so verify the published `dex` hashes if you sideload from elsewhere.
