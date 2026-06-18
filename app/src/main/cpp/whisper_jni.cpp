@@ -125,7 +125,8 @@ Java_com_thoughtpocket_WhisperEngine_nativeTranscribe(
         jboolean translate,
         jint nThreads,
         jboolean useBeam,
-        jobject callback) {
+        jobject callback,
+        jstring vadModelPath) {
 
     auto *ctx = reinterpret_cast<whisper_context *>(ctxPtr);
     if (ctx == nullptr) {
@@ -144,6 +145,7 @@ Java_com_thoughtpocket_WhisperEngine_nativeTranscribe(
     params.translate       = translate;
     params.n_threads       = nThreads;
     params.suppress_blank  = true;
+    params.suppress_nst    = true;   // drop non-speech tokens ([MUSIC], [BLANK_AUDIO]) at the source
     params.no_context      = true;
     params.single_segment  = false;
     if (useBeam) {
@@ -154,6 +156,22 @@ Java_com_thoughtpocket_WhisperEngine_nativeTranscribe(
     if (language != nullptr) {
         lang = env->GetStringUTFChars(language, nullptr);
         if (lang && lang[0] != '\0') params.language = lang;
+    }
+
+    // VAD (Silero): skip silent stretches so thinking-pauses aren't transcribed as [BLANK_AUDIO]/[MUSIC]
+    // (and aren't wasted compute). Tuned to KEEP speech (low threshold + padding) — never drop a soft thought.
+    const char *vadPath = nullptr;
+    if (vadModelPath != nullptr) {
+        vadPath = env->GetStringUTFChars(vadModelPath, nullptr);
+        if (vadPath && vadPath[0] != '\0') {
+            params.vad            = true;
+            params.vad_model_path = vadPath;
+            params.vad_params     = whisper_vad_default_params();
+            params.vad_params.threshold               = 0.30f;  // default 0.50 — more permissive
+            params.vad_params.min_speech_duration_ms  = 100;
+            params.vad_params.min_silence_duration_ms = 600;    // only end a segment after a real pause
+            params.vad_params.speech_pad_ms           = 200;    // don't clip word onsets/offsets
+        }
     }
 
     CallbackCtx cbctx{env, callback, nullptr, nullptr};
@@ -188,6 +206,7 @@ Java_com_thoughtpocket_WhisperEngine_nativeTranscribe(
 
     env->ReleaseFloatArrayElements(pcm, samples, JNI_ABORT);
     if (lang) env->ReleaseStringUTFChars(language, lang);
+    if (vadPath) env->ReleaseStringUTFChars(vadModelPath, vadPath);
 
     if (native_threw) {
         return env->NewStringUTF("");

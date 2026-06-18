@@ -1,5 +1,6 @@
 package com.thoughtpocket
 
+import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -56,6 +57,16 @@ object WhisperEngine {
         loadedPath = null
     }
 
+    private const val VAD_MODEL = "ggml-silero-v5.1.2.bin"
+
+    /** Extract the bundled Silero VAD model to filesDir (once) and return its path; null on failure. */
+    fun ensureVadModel(context: Context): String? = runCatching {
+        val f = File(context.filesDir, VAD_MODEL)
+        if (f.length() < 100_000L)
+            context.assets.open(VAD_MODEL).use { input -> f.outputStream().use { input.copyTo(it) } }
+        f.absolutePath
+    }.onFailure { Log.w(TAG, "VAD model extract failed", it) }.getOrNull()
+
     /**
      * @param pcm16k mono float PCM at 16 kHz, range [-1.0, 1.0]
      * @param language ISO-639-1 like "en", "de"; null = auto-detect
@@ -71,6 +82,7 @@ object WhisperEngine {
         translate: Boolean = false,
         threads: Int = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(2),
         highQuality: Boolean = false,
+        vadModelPath: String? = null,
         onSegment: ((String) -> Unit)? = null,
         onProgress: ((Float) -> Unit)? = null
     ): String = withContext(Dispatchers.Default) {
@@ -82,7 +94,7 @@ object WhisperEngine {
                 this.onProgress = onProgress
             }
         } else null
-        nativeTranscribe(ptr, pcm16k, language ?: "", translate, threads, highQuality, cb)
+        nativeTranscribe(ptr, pcm16k, language ?: "", translate, threads, highQuality, cb, vadModelPath ?: "")
     }
 
     /**
@@ -110,10 +122,36 @@ object WhisperEngine {
         translate: Boolean,
         nThreads: Int,
         useBeam: Boolean,
-        callback: TranscribeCallback?
+        callback: TranscribeCallback?,
+        vadModelPath: String,
     ): String
     private external fun nativeBackendInfo(): String
     private external fun nativeLastError(): String
+}
+
+/**
+ * Strip Whisper non-speech annotations so silence/music/noise never becomes note text: bracketed cues
+ * ([BLANK_AUDIO], [MUSIC PLAYING], [INAUDIBLE]…), starred cues (*laughs*), and a whitelist of
+ * parenthesized non-speech cues. Returns the remaining real speech, or "" when nothing's left (callers
+ * map "" → "(no speech detected)"). Real speech almost never contains [...] so bracket-stripping is safe;
+ * parentheses are only stripped for known non-speech words, to keep genuine asides like "call me (later)".
+ */
+fun stripNonSpeech(raw: String): String {
+    val cleaned = raw
+        .replace(Regex("\\[[^\\]]*]"), " ")
+        .replace(Regex("\\*[^*]*\\*"), " ")
+        .replace(
+            Regex(
+                "(?i)\\(\\s*(?:music|applause|laughter|laughs?|chuckles?|inaudible|silence|no audio|" +
+                    "blank[_ ]?audio|background noise|noise|sighs?|coughs?|breathing|static|beep|wind|" +
+                    "foreign language|speaking (?:in )?(?:a )?foreign language)\\s*\\)"
+            ),
+            " ",
+        )
+        .replace(Regex("\\s+"), " ")
+        .trim()
+    // Whatever survives is real only if it has a letter or digit — drop lone punctuation like "[…]."→".".
+    return if (cleaned.any { it.isLetterOrDigit() }) cleaned else ""
 }
 
 /**

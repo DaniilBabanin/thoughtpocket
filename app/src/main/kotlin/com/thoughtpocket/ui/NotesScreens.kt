@@ -89,6 +89,7 @@ import androidx.compose.ui.unit.sp
 import com.thoughtpocket.AppPreferences
 import com.thoughtpocket.ModelManager
 import com.thoughtpocket.WhisperEngine
+import com.thoughtpocket.stripNonSpeech
 import com.thoughtpocket.ai.Embedder
 import com.thoughtpocket.ai.InteractEngine
 import com.thoughtpocket.ai.InteractOp
@@ -155,10 +156,13 @@ private suspend fun recordAndTranscribe(context: Context, prefs: AppPreferences,
     if (!loaded) throw IllegalStateException("No transcription model — see Settings")
     rec.start()
     rec.runUntilStopped()   // returns when the caller stops the recorder
-    return WhisperEngine.transcribe(
-        pcm16k = rec.readAll(), language = prefs.language.ifBlank { null },
-        translate = prefs.translateToEnglish, threads = prefs.resolvedThreads(), highQuality = false,
-    ).trim()
+    return stripNonSpeech(
+        WhisperEngine.transcribe(
+            pcm16k = rec.readAll(), language = prefs.language.ifBlank { null },
+            translate = prefs.translateToEnglish, threads = prefs.resolvedThreads(), highQuality = false,
+            vadModelPath = WhisperEngine.ensureVadModel(context),
+        )
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)

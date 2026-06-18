@@ -13,6 +13,7 @@ import androidx.core.app.ServiceCompat
 import com.thoughtpocket.AppPreferences
 import com.thoughtpocket.ModelManager
 import com.thoughtpocket.WhisperEngine
+import com.thoughtpocket.stripNonSpeech
 import com.thoughtpocket.ai.Embedder
 import com.thoughtpocket.ai.LlmEngine
 import com.thoughtpocket.ai.MarkdownEngine
@@ -197,6 +198,7 @@ class RecordingService : Service() {
         prefs: AppPreferences,
         model: ModelManager.ModelEntry,
         highQuality: Boolean,
+        useVad: Boolean = false,
     ): String = whisper.withLock {
         val file = ModelManager.fileFor(this, model)
         if (loadedModelKey != file.path) {
@@ -205,12 +207,17 @@ class RecordingService : Service() {
             WhisperEngine.load(file, useGpu = false).getOrThrow()
             loadedModelKey = file.path
         }
-        WhisperEngine.transcribe(
-            pcm16k = pcm,
-            language = prefs.language.ifBlank { null },
-            translate = prefs.translateToEnglish,
-            threads = prefs.resolvedThreads(),
-            highQuality = highQuality,
+        // Strip non-speech artifacts ([BLANK_AUDIO], [MUSIC PLAYING]…) so silence never becomes note text.
+        stripNonSpeech(
+            WhisperEngine.transcribe(
+                pcm16k = pcm,
+                language = prefs.language.ifBlank { null },
+                translate = prefs.translateToEnglish,
+                threads = prefs.resolvedThreads(),
+                highQuality = highQuality,
+                // VAD only on final transcriptions (skip silent thinking-pauses); not on live preview.
+                vadModelPath = if (useVad) WhisperEngine.ensureVadModel(this) else null,
+            )
         )
     }
 
@@ -220,7 +227,7 @@ class RecordingService : Service() {
             clip.model == null -> Notifications.done(this, "No model — open Settings to download one")  // keep file for recovery
             clip.appendNoteId >= 0 -> { appendToNote(clip); clip.file.delete() }
             else -> {
-                val text = transcribe(MicRecorder.readPcm(clip.file), prefs, clip.model, highQuality = prefs.highQuality)
+                val text = transcribe(MicRecorder.readPcm(clip.file), prefs, clip.model, highQuality = prefs.highQuality, useVad = true)
                 val body = text.ifBlank { "(no speech detected)" }
                 val dao = NotesDb.get(this).notes()
                 val note = Note(createdAt = clip.createdAt ?: System.currentTimeMillis(), text = body)
@@ -265,7 +272,7 @@ class RecordingService : Service() {
             Log.w(TAG, "append target ${clip.appendNoteId} gone")
             return
         }
-        val text = transcribe(MicRecorder.readPcm(clip.file), clip.prefs, clip.model!!, highQuality = clip.prefs.highQuality)
+        val text = transcribe(MicRecorder.readPcm(clip.file), clip.prefs, clip.model!!, highQuality = clip.prefs.highQuality, useVad = true)
         val add = text.ifBlank { "(no speech detected)" }
         val combined = if (note.text.isBlank()) add else note.text.trimEnd() + "\n\n" + add
         val emb = Embedder.embed(this, combined) ?: note.embedding
