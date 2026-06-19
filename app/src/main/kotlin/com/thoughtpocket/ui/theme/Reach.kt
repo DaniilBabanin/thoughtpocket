@@ -152,12 +152,18 @@ fun ReachBackground(
                     .graphicsLayer { clip = false; compositingStrategy = CompositingStrategy.Offscreen }
                     .drawWithCache {
                         val c1 = Offset(size.width * 0.12f, 0f)
-                        val b1 = Brush.radialGradient(listOf(primary.copy(alpha = a1), Color.Transparent), center = c1, radius = size.width * 1.20f)
                         val c2 = Offset(size.width * 0.95f, size.height * 0.08f)
-                        val b2 = Brush.radialGradient(listOf(primary.copy(alpha = a2), Color.Transparent), center = c2, radius = size.width * 1.25f)
+                        // Big screens: each glow's radius reaches the OPPOSITE corner, so it fades smoothly
+                        // across the whole screen at ANY size/aspect (portrait, landscape, foldable) with no
+                        // hard edge or vertical squish. Phone (Compact) keeps the exact original look.
+                        val big = size.width >= 600.dp.toPx()
+                        val r1 = if (big) (Offset(size.width, size.height) - c1).getDistance() else size.width * 1.20f
+                        val r2 = if (big) (Offset(0f, size.height) - c2).getDistance() else size.width * 1.25f
+                        val b1 = Brush.radialGradient(listOf(primary.copy(alpha = a1), Color.Transparent), center = c1, radius = r1)
+                        val b2 = Brush.radialGradient(listOf(primary.copy(alpha = a2), Color.Transparent), center = c2, radius = r2)
                         onDrawBehind {
-                            scale(1f, 0.62f, pivot = c1) { drawRect(b1) }
-                            scale(1f, 0.68f, pivot = c2) { drawRect(b2) }
+                            scale(1f, if (big) 1f else 0.62f, pivot = c1) { drawRect(b1) }
+                            scale(1f, if (big) 1f else 0.68f, pivot = c2) { drawRect(b2) }
                         }
                     }
             )

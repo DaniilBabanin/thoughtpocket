@@ -32,10 +32,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -139,12 +140,44 @@ internal fun llmReadyOrToast(context: Context): Boolean {
     return false
 }
 
-private fun greeting(): String = when (java.time.LocalTime.now().hour) {
-    in 5..11 -> "good morning"
-    in 12..17 -> "good afternoon"
-    in 18..21 -> "good evening"
-    else -> "good night"
-}
+/** Playful home-screen flavor text — notes humor, in the spirit of a working-spinner quip. */
+private val NOTE_QUIPS = listOf(
+    "nothing slips today",
+    "out of your head, into your pocket",
+    "your brain, but searchable",
+    "catching thoughts before they bolt",
+    "where shower thoughts live",
+    "down before it slips",
+    "hoarding your best ideas",
+    "remember everything, effortlessly",
+    "a home for half-formed plans",
+    "your second brain, caffeinated",
+    "mental printout in progress",
+    "thoughts captured, chaos contained",
+    "quick — get it down",
+    "externalizing your working memory",
+    "every fleeting idea, kept",
+    "say it before you forget it",
+    "your overflow drive for thoughts",
+    "the good ideas, saved",
+    // Working-spinner style — short/invented gerunds (à la Claude Code), notes-flavored.
+    "pocketing…",
+    "jotting…",
+    "scribbling…",
+    "noodling…",
+    "stashing…",
+    "squirreling…",
+    "marinating…",
+    "percolating…",
+    "memoizing…",
+    "braindumping…",
+    "thinkering…",
+    "synapsing…",
+    "unforgetting…",
+    "crystallizing…",
+)
+
+private fun noteQuip(): String = NOTE_QUIPS.random()
 
 /** Record with [rec] until stopped, then transcribe with the user's Whisper model. Throws if no model. */
 private suspend fun recordAndTranscribe(context: Context, prefs: AppPreferences, rec: MicRecorder): String {
@@ -180,6 +213,7 @@ fun NotesListScreen(onOpen: (Long) -> Unit, bottomSpace: Dp) {
     var filter by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
     var queryVec by remember { mutableStateOf<FloatArray?>(null) }
+    val quip = remember { noteQuip() }   // one random notes-humor line per open
     LaunchedEffect(query) {
         if (query.isBlank()) { queryVec = null } else { delay(200); queryVec = Embedder.embed(context, query, query = true) }
     }
@@ -251,7 +285,7 @@ fun NotesListScreen(onOpen: (Long) -> Unit, bottomSpace: Dp) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(greeting(), style = GreetingStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(quip, style = GreetingStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("ThoughtPocket", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, fontSize = 26.sp)
                 }
                 IconButton(onClick = { pickTask() }) { Icon(Icons.Filled.Casino, "Random task") }
@@ -335,10 +369,13 @@ fun NotesListScreen(onOpen: (Long) -> Unit, bottomSpace: Dp) {
             } else {
                 SectionLabel("Recent", Modifier.padding(start = 18.dp, top = 6.dp, bottom = 8.dp))
                 val reveal = rememberReveal()
-                LazyColumn(
-                    Modifier.fillMaxSize(),
+                // Single column on phone (Adaptive → 1 col at phone width), multi-column on tablet.
+                LazyVerticalStaggeredGrid(
+                    columns = StaggeredGridCells.Adaptive(280.dp),
+                    modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = bottomSpace),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalItemSpacing = 12.dp,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     itemsIndexed(shown, key = { _, it -> it.id }) { index, note ->
                         NoteCard(
@@ -538,10 +575,12 @@ fun ActionItemsScreen(onOpen: (Long) -> Unit, bottomSpace: Dp) {
                 Modifier.padding(start = 18.dp, bottom = 8.dp),
             )
             val reveal = rememberReveal()
-            LazyColumn(
-                Modifier.fillMaxSize(),
+            LazyVerticalStaggeredGrid(
+                columns = StaggeredGridCells.Adaptive(280.dp),
+                modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = bottomSpace),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalItemSpacing = 12.dp,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 itemsIndexed(tasks) { index, t ->
                     val (note, label) = t

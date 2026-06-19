@@ -17,8 +17,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
@@ -45,10 +49,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { ThoughtPocketTheme { AppRoot() } }
+        setContent {
+            val widthClass = calculateWindowSizeClass(this).widthSizeClass
+            ThoughtPocketTheme { AppRoot(widthClass) }
+        }
         // Recover recordings a killed session left un-transcribed. The disk check runs off the UI thread
         // and the service starts ONLY when there's something to recover — zero cost on a normal open.
         lifecycleScope.launch {
@@ -70,9 +78,11 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun AppRoot() {
+private fun AppRoot(widthClass: WindowWidthSizeClass) {
     val context = LocalContext.current
     val prefs = remember { AppPreferences(context) }
+    // Tablet/large-screen adaptations switch on at Medium+ (≥600dp). Compact = phone, untouched.
+    val wide = widthClass != WindowWidthSizeClass.Compact
     var tab by remember { mutableStateOf(ReachTab.Home) }
     var detailId by remember { mutableStateOf<Long?>(null) }
     var showLicenses by remember { mutableStateOf(false) }
@@ -131,12 +141,13 @@ private fun AppRoot() {
                 when (tab) {
                     ReachTab.Home -> NotesListScreen(onOpen = { detailId = it }, bottomSpace = bottomSpace)
                     ReachTab.Tasks -> ActionItemsScreen(onOpen = { detailId = it }, bottomSpace = bottomSpace)
-                    ReachTab.Ask -> AnalyzeScreen(bottomSpace = bottomSpace)
+                    ReachTab.Ask -> AnalyzeScreen(bottomSpace = bottomSpace, wide = wide)
                     ReachTab.Settings -> SettingsScreen(
                         bottomSpace = bottomSpace,
                         reduceMotion = reduceMotion,
                         onReduceMotion = { reduceMotion = it; prefs.reduceAnimations = it },
                         onOpenLicenses = { showLicenses = true },
+                        wide = wide,
                     )
                 }
                 ReachBottomBar(
@@ -149,6 +160,8 @@ private fun AppRoot() {
                     level = RecordState.amplitude,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
+                        // Tablet: cap the bar so it doesn't span the whole width; orb stays centered.
+                        .then(if (wide) Modifier.widthIn(max = 560.dp) else Modifier)
                         .navigationBarsPadding()
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 18.dp),

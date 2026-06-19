@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -72,7 +74,7 @@ import java.io.File
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Boolean) -> Unit, onOpenLicenses: () -> Unit) {
+fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Boolean) -> Unit, onOpenLicenses: () -> Unit, wide: Boolean) {
     val context = LocalContext.current
     val prefs = remember { AppPreferences(context) }
     val scope = rememberCoroutineScope()
@@ -174,11 +176,15 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
             LlmEngine.Downloadable.entries.any { !LlmEngine.isInstalled(context, it) } ||
             !Embedder.isReady(context)
     }
-    Column(
-        Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = bottomSpace),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
+    Box(Modifier.fillMaxSize()) {
+        Column(
+            Modifier.fillMaxSize()
+                .then(if (wide) Modifier.widthIn(max = 640.dp) else Modifier)   // tablet: cap + center
+                .align(Alignment.TopCenter)
+                .statusBarsPadding().verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = bottomSpace),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
         Text(
             "Settings",
             style = MaterialTheme.typography.titleLarge,
@@ -488,6 +494,7 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
             Button(onClick = onOpenLicenses, shape = ReachShapes.field, modifier = Modifier.padding(top = 6.dp)) {
                 Text("Open-source licenses")
             }
+        }
         }
     }
 }

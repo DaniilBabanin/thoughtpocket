@@ -1,6 +1,7 @@
 package com.thoughtpocket.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -29,6 +31,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -49,7 +52,7 @@ private const val DAY = 86_400_000L
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AnalyzeScreen(bottomSpace: Dp) {
+fun AnalyzeScreen(bottomSpace: Dp, wide: Boolean) {
     val context = LocalContext.current
     val dao = remember { NotesDb.get(context).notes() }
     val notes by dao.all().collectAsState(initial = emptyList())
@@ -81,11 +84,15 @@ fun AnalyzeScreen(bottomSpace: Dp) {
         }
     }
 
-    Column(
-        Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = bottomSpace),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
+    Box(Modifier.fillMaxSize()) {
+        Column(
+            Modifier.fillMaxSize()
+                .then(if (wide) Modifier.widthIn(max = 640.dp) else Modifier)   // tablet: cap + center
+                .align(Alignment.TopCenter)
+                .statusBarsPadding().verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = bottomSpace),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
         Text(
             "Ask your notes",
             style = MaterialTheme.typography.titleLarge,
@@ -136,6 +143,7 @@ fun AnalyzeScreen(bottomSpace: Dp) {
             GlassCard(Modifier.fillMaxWidth()) {
                 SelectionContainer { Text(it, style = MaterialTheme.typography.bodyMedium) }
             }
+        }
         }
     }
 }
