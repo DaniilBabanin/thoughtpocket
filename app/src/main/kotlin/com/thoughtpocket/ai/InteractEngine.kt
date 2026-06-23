@@ -9,6 +9,7 @@ sealed interface InteractOp {
     data class Check(val item: String, val on: Boolean) : InteractOp
     data class Add(val item: String, val top: Boolean) : InteractOp
     data class Remove(val item: String) : InteractOp
+    data class SetTitle(val title: String) : InteractOp
     data object Convert : InteractOp
     data object Suggest : InteractOp
     data class Unknown(val raw: String) : InteractOp
@@ -27,7 +28,7 @@ object InteractEngine {
         return LlmEngine.generate(context, prompt(markdown, command), model).map { parse(it) }
     }
 
-    /** Apply a structured op; null when it isn't a direct edit (Suggest/Unknown). */
+    /** Apply a structured op to the Markdown; null when it isn't a Markdown edit (SetTitle/Suggest/Unknown). */
     fun apply(markdown: String, op: InteractOp): String? = when (op) {
         is InteractOp.Check -> setItemChecked(markdown, op.item, op.on)
         is InteractOp.Add -> addItem(markdown, op.item, op.top)
@@ -47,11 +48,15 @@ object InteractEngine {
         "Convert a command about a checklist into ONE JSON action.\n" +
             "Checklist:\n\"\"\"\n${markdown.take(1500)}\n\"\"\"\n" +
             "Command: \"${command.trim()}\"\n" +
-            "Reply with ONLY JSON, e.g. {\"action\":\"check\",\"item\":\"milk\",\"position\":\"bottom\"}.\n" +
+            "Reply with ONLY JSON, e.g. {\"action\":\"check\",\"item\":\"milk\",\"position\":\"bottom\"} " +
+            "or {\"action\":\"title\",\"item\":\"Groceries\"}.\n" +
             "action is one of: check (mark done/bought), uncheck (mark not done yet), add (new item), " +
             "remove (delete an item), convert (turn the whole list or note into a checkbox list), " +
-            "suggest (propose new items), unknown.\n" +
-            "For add, item is the new item text. position is \"top\" or \"bottom\" (default bottom)."
+            "title (set/rename the note's title), suggest (propose new items), unknown.\n" +
+            "For add, item is the new item text. position is \"top\" or \"bottom\" (default bottom).\n" +
+            "For title, item is the new title text. " +
+            "If the command names/titles the note (e.g. \"title\", \"call it\", \"name it\"), " +
+            "use title even when it also mentions making a list."
 
     private fun parse(raw: String): InteractOp {
         val cleaned = raw.replace(Regex("(?is)<think.*?</think>"), " ")
@@ -65,6 +70,7 @@ object InteractEngine {
                 "uncheck" -> InteractOp.Check(item, false)
                 "add" -> InteractOp.Add(item, top)
                 "remove", "delete" -> InteractOp.Remove(item)
+                "title", "heading", "rename" -> InteractOp.SetTitle(item.ifBlank { o.optString("title").trim() })
                 "convert", "checklist", "checkboxes", "checkbox" -> InteractOp.Convert
                 "suggest" -> InteractOp.Suggest
                 else -> InteractOp.Unknown(raw.trim())

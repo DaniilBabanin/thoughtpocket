@@ -723,6 +723,13 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
         showFormatted = true
         scope.launch { dao.update(n.copy(markdown = newMd)) }
     }
+    // Snapshot the current note, then set its title from an AI command (undoable).
+    fun applyTitle(newTitle: String) {
+        if (newTitle.isBlank() || newTitle == title) return
+        undo = n
+        title = newTitle
+        scope.launch { dao.update(n.copy(title = newTitle)) }
+    }
     fun doUndo() {
         val snap = undo ?: return
         markdown = snap.markdown; text = snap.text; title = snap.title; tags = snap.tags
@@ -744,6 +751,11 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
                         val newMd = bulletsToChecklist(markdown.ifBlank { text })
                         if (newMd.isNotBlank() && newMd != markdown) { applyMarkdown(newMd); command = "" }
                         else aiError = "Nothing to convert"
+                    }
+                    is InteractOp.SetTitle -> {
+                        val t = op.title.trim()
+                        if (t.isNotBlank() && t != title) { applyTitle(t); command = "" }
+                        else aiError = "Couldn't set a title from: \"$cmd\""
                     }
                     is InteractOp.Unknown -> aiError = "Didn't understand: \"$cmd\""
                     else -> {
