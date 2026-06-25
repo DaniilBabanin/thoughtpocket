@@ -1,6 +1,6 @@
 # ThoughtPocket
 
-ThoughtPocket is a voice-notes app for Android that runs entirely on your phone, with no account, no cloud, and nothing leaving the device. Tap record, say what's on your mind, and it's down before it slips. Whisper transcribes on-device and then deletes the audio, so what you keep is plain text. Later, instead of scrolling back through everything you've saved, you ask a question and the relevant notes come back. On-device Gemma handles the tagging, formatting, and answering; Gecko embeddings power search. It all works offline after a one-time model download.
+ThoughtPocket is a voice-notes app for Android that runs entirely on your phone, with no account, no cloud, and nothing leaving the device. Tap record, say what's on your mind, and it's down before it slips — the words appear live as you speak. Transcription runs in two on-device passes you can mix and match: an instant streaming pass that captions while you record, and a higher-accuracy Whisper pass that finalizes the note on stop. The audio is deleted either way, so what you keep is plain text. Later, instead of scrolling back through everything you've saved, you ask a question and the relevant notes come back. On-device Gemma handles the tagging, formatting, and answering; Gecko embeddings power search. It all works offline after a one-time model download.
 
 ## Install
 
@@ -23,6 +23,8 @@ Open Settings and tap **Download all models** (about 6.4 GB, once, over Wi-Fi):
 | Gemma 4 E4B | 3.66 GB | Markdown, Q&A |
 | Gecko 110m | 115 MB | semantic search |
 
+For live transcription while you record, add an instant model from **Settings → Instant transcription**: Moonshine Base (286 MB) or Tiny (123 MB), English-only. It's optional and separate from the download above — without it, the live preview falls back to windowed Whisper.
+
 Models download in-app, so there's no ADB or sideloading. You can grab them one at a time or import your own `.litertlm` / whisper `.bin` files from the same screen. Grant microphone and notification permissions on first record.
 
 ## Record
@@ -32,6 +34,15 @@ Three ways to capture a note, all transcribed:
 - The record button on the notes list.
 - A home-screen widget: tap to record, tap to stop.
 - A Quick Settings tile: drag it in, tap to record or stop.
+
+## Transcription
+
+Two passes, each toggled on or off with its own model in **Settings**:
+
+- **Instant (first pass)** streams words into the note while you record — Moonshine (sub-second, English) or windowed Whisper.
+- **Final (quality)** re-transcribes the full audio on stop with Whisper, and that result becomes the saved note.
+
+Run both (watch it live, keep the best), instant-only (fastest — the live transcript is the note), or final-only (no live preview, transcribe on stop). At least one pass is always on.
 
 ## AI features (on-device)
 
@@ -51,4 +62,4 @@ JDK 17 and the Android SDK with NDK `27.0.12077973` and CMake `3.22.1`; the firs
 
 ## Tech and license
 
-Kotlin, Jetpack Compose (Material 3), Room, Coroutines/Flow, [whisper.cpp](https://github.com/ggml-org/whisper.cpp) (MIT, incl. ggml — NDK/CMake, CPU) with bundled [Silero VAD](https://github.com/snakers4/silero-vad) (MIT) to skip silent stretches, [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM) `0.13.1` for Gemma (GPU with a CPU fallback), AI Edge RAG SDK `0.3.0` for Gecko. The app is licensed [Apache 2.0](LICENSE); Gemma 4 is Apache 2.0 too, so its weights are re-hosted for in-app download.
+Kotlin, Jetpack Compose (Material 3), Room, Coroutines/Flow, [whisper.cpp](https://github.com/ggml-org/whisper.cpp) (MIT, incl. ggml — NDK/CMake, CPU) with bundled [Silero VAD](https://github.com/snakers4/silero-vad) (MIT) to skip silent stretches, [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) (Apache 2.0) running [Moonshine](https://github.com/usefulsensors/moonshine) (MIT, English models) on [ONNX Runtime](https://github.com/microsoft/onnxruntime) (MIT) for the instant first pass, [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM) `0.13.1` for Gemma (GPU with a CPU fallback), AI Edge RAG SDK `0.3.0` for Gecko. The app is licensed [Apache 2.0](LICENSE); Gemma 4 (Apache 2.0) and the Moonshine models (MIT) are re-hosted for in-app download.
