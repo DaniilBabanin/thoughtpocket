@@ -99,6 +99,7 @@ import com.thoughtpocket.ai.MarkdownEngine
 import com.thoughtpocket.ai.ReminderEngine
 import com.thoughtpocket.ai.TaggingEngine
 import com.thoughtpocket.ai.TitleEngine
+import com.thoughtpocket.ai.TransformEngine
 import com.thoughtpocket.ai.addItem
 import com.thoughtpocket.ai.bulletsToChecklist
 import com.thoughtpocket.ai.canonicalizeTags
@@ -714,6 +715,7 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
     var listening by remember(n.id) { mutableStateOf(false) }
     var micRec by remember(n.id) { mutableStateOf<MicRecorder?>(null) }
     var itemSuggestions by remember(n.id) { mutableStateOf<List<String>>(emptyList()) }
+    var transforming by remember(n.id) { mutableStateOf(false) }
 
     // Snapshot the current note, then apply an AI change to the markdown (undoable).
     fun applyMarkdown(newMd: String) {
@@ -737,9 +739,19 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
         scope.launch { dao.update(snap) }
         undo = null
     }
+    // Rewrite the body following a free-form instruction (preset chip or typed command), applied
+    // undoably. Caller owns the busy flag + coroutine; this just does the LLM call and the apply.
+    suspend fun doRewrite(instruction: String) {
+        TransformEngine.transformWith(context, markdown.ifBlank { text }, instruction)
+            .onSuccess { out ->
+                if (out.isNotBlank() && out != markdown) applyMarkdown(out)
+                else aiError = "Transform produced no change"
+            }
+            .onFailure { aiError = it.message ?: "Transform failed" }
+    }
     fun runCommand() {
         val cmd = command.trim()
-        if (cmd.isBlank() || interacting) return
+        if (cmd.isBlank() || interacting || transforming) return
         if (!llmReadyOrToast(context)) return
         scope.launch {
             interacting = true; aiError = null
@@ -757,6 +769,7 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
                         if (t.isNotBlank() && t != title) { applyTitle(t); command = "" }
                         else aiError = "Couldn't set a title from: \"$cmd\""
                     }
+                    is InteractOp.Rewrite -> doRewrite(cmd)
                     is InteractOp.Unknown -> aiError = "Didn't understand: \"$cmd\""
                     else -> {
                         val newMd = InteractEngine.apply(markdown, op)
@@ -804,6 +817,20 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
                 }
                 .onFailure { aiError = it.message ?: "Formatting failed" }
             formatting = false
+        }
+    }
+
+    // One-tap transform preset: pre-fill the command box with the instruction (so the user sees what's
+    // running and can tweak it for a re-run), then rewrite the body (E4B), applied undoably. The chip
+    // skips command-parsing — the preset is already an unambiguous instruction.
+    fun applyTransform(preset: TransformEngine.Preset) {
+        if (transforming || formatting || interacting) return
+        if (!llmReadyOrToast(context)) return
+        command = preset.instruction
+        scope.launch {
+            transforming = true; aiError = null
+            doRewrite(preset.instruction)
+            transforming = false
         }
     }
 
@@ -955,6 +982,20 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
                         }
                     },
                 )
+                // One-tap transform presets — quick ways to reshape the body (undoable). A preset is
+                // an unambiguous intent, so these skip command-parsing and call TransformEngine (E4B).
+                if (transforming) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CircularProgressIndicator(Modifier.size(18.dp))
+                        Text("Transforming…", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+                    }
+                } else {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        TransformEngine.Preset.entries.forEach { p ->
+                            ReachChip(p.label, selected = false, onClick = { applyTransform(p) })
+                        }
+                    }
+                }
                 if (itemSuggestions.isNotEmpty()) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                         itemSuggestions.forEach { s ->

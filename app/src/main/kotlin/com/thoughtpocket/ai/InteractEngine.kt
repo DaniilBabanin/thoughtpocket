@@ -12,6 +12,8 @@ sealed interface InteractOp {
     data class SetTitle(val title: String) : InteractOp
     data object Convert : InteractOp
     data object Suggest : InteractOp
+    /** Reword/reshape the whole note as prose (formal, shorter, longer, key points). Applied via the LLM, not [MarkdownOps]. */
+    data object Rewrite : InteractOp
     data class Unknown(val raw: String) : InteractOp
 }
 
@@ -52,6 +54,8 @@ object InteractEngine {
             "or {\"action\":\"title\",\"item\":\"Groceries\"}.\n" +
             "action is one of: check (mark done/bought), uncheck (mark not done yet), add (new item), " +
             "remove (delete an item), convert (turn the whole list or note into a checkbox list), " +
+            "rewrite (reword or reshape the whole note as prose — make it formal, shorter, longer, or " +
+            "into key points/bullets; NOT checkboxes), " +
             "title (set/rename the note's title), suggest (propose new items), unknown.\n" +
             "For add, item is the new item text. position is \"top\" or \"bottom\" (default bottom).\n" +
             "For title, item is the new title text. " +
@@ -72,6 +76,8 @@ object InteractEngine {
                 "remove", "delete" -> InteractOp.Remove(item)
                 "title", "heading", "rename" -> InteractOp.SetTitle(item.ifBlank { o.optString("title").trim() })
                 "convert", "checklist", "checkboxes", "checkbox" -> InteractOp.Convert
+                "rewrite", "reword", "rephrase", "shorten", "summarize", "summarise",
+                "expand", "lengthen", "formal" -> InteractOp.Rewrite
                 "suggest" -> InteractOp.Suggest
                 else -> InteractOp.Unknown(raw.trim())
             }
