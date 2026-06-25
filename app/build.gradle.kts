@@ -183,7 +183,7 @@ dependencies {
     implementation(files("libs/sherpa-onnx-classes.jar"))
 
     testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test:runner:1.7.0")
     // UI smoke tests + scroll-perf driving (300-note list jank regression).
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
