@@ -179,17 +179,33 @@ class RecordingService : Service() {
     }
 
     private suspend fun liveLoop(rec: MicRecorder, prefs: AppPreferences, model: ModelManager.ModelEntry) {
+        var shown = ""   // freshest preview published this recording; also gates the one-shot first-window stream
         while (currentCoroutineContext().isActive) {
             delay(LIVE_INTERVAL_MS)
-            // Only the trailing window — bounded cost regardless of length (the full transcript is built once on stop).
+            // Only the trailing window — bounded cost (the full transcript is rebuilt from audio once on stop).
+            // A short window + fast cadence keeps the preview close to live; the saved note is unaffected.
             val snap = rec.readTail(PREVIEW_WINDOW_SAMPLES)
             if (snap.size < MIN_SAMPLES) continue
-            val text = runCatching { transcribe(snap, prefs, model, highQuality = false) }.getOrNull()
-            if (!text.isNullOrBlank()) {
-                RecordState.setPartial(text)
-                if (prefs.liveTranscribeNotification) updateOngoing("Recording…", text)
-            }
+            // First window only: stream segments as whisper.cpp commits them, so the very first words land
+            // progressively. Later ticks publish the finished window decode — re-streaming a re-slid window
+            // mid-decode would reset the text and flicker.
+            val acc = StringBuilder()
+            val onSeg: ((String) -> Unit)? =
+                if (shown.isEmpty()) { seg ->
+                    acc.append(seg)
+                    Log.i(TAG, "live onSegment fired (${seg.length} chars)")  // spike: confirm in-context firing; remove before ship
+                    val live = stripNonSpeech(acc.toString())
+                    if (live.isNotBlank()) { shown = live; publishPreview(prefs, live) }
+                } else null
+            val text = runCatching { transcribe(snap, prefs, model, highQuality = false, onSegment = onSeg) }.getOrNull()
+            if (!text.isNullOrBlank()) { shown = text; publishPreview(prefs, text) }
         }
+    }
+
+    /** Publish a live-preview transcript: freshest words to the on-screen card, full window text to the shade. */
+    private fun publishPreview(prefs: AppPreferences, full: String) {
+        RecordState.setPartial(previewTail(full, MAX_PREVIEW_WORDS))
+        if (prefs.liveTranscribeNotification) updateOngoing("Recording…", full)
     }
 
     /** All WhisperEngine use goes through here — serialized, with the model loaded once per key. */
@@ -199,6 +215,7 @@ class RecordingService : Service() {
         model: ModelManager.ModelEntry,
         highQuality: Boolean,
         useVad: Boolean = false,
+        onSegment: ((String) -> Unit)? = null,
     ): String = whisper.withLock {
         val file = ModelManager.fileFor(this, model)
         if (loadedModelKey != file.path) {
@@ -217,6 +234,7 @@ class RecordingService : Service() {
                 highQuality = highQuality,
                 // VAD only on final transcriptions (skip silent thinking-pauses); not on live preview.
                 vadModelPath = if (useVad) WhisperEngine.ensureVadModel(this) else null,
+                onSegment = onSegment,
             )
         )
     }
@@ -410,11 +428,14 @@ class RecordingService : Service() {
 
     companion object {
         private const val TAG = "RecordingService"
-        private const val LIVE_INTERVAL_MS = 2500L
+        // The ~2.8 s window decode is itself the pacer (measured) — this is just a small breather between
+        // decodes, NOT the cadence. Lower → latency floor (back-to-back decode); raise → throttle heat/battery.
+        private const val LIVE_INTERVAL_MS = 500L
         private const val LEVEL_INTERVAL_MS = 40L  // ~25 fps mic-level updates for the orb pulse
         private const val LIVE_MAX_MODEL_MB = 200 // tiny/base/small keep up; medium/large don't
         private const val MIN_SAMPLES = 16_000    // ~1s before first preview
-        private const val PREVIEW_WINDOW_SAMPLES = 16_000 * 30  // live preview transcribes only the last ~30 s
+        private const val PREVIEW_WINDOW_SAMPLES = 16_000 * 10  // live preview transcribes only the last ~10 s
+        private const val MAX_PREVIEW_WORDS = 14   // show only the freshest words in the 2–3 line card (tunable)
         const val ACTION_START = "com.thoughtpocket.action.START"
         const val ACTION_STOP = "com.thoughtpocket.action.STOP"
         const val ACTION_IMPORT = "com.thoughtpocket.action.IMPORT"
@@ -441,4 +462,15 @@ class RecordingService : Service() {
         fun stopIntent(ctx: Context) =
             Intent(ctx, RecordingService::class.java).setAction(ACTION_STOP)
     }
+}
+
+/**
+ * Trim a live-preview transcript to its most recent [maxWords] words so the small (2–3 line) recording
+ * card shows the freshest speech instead of ellipsizing it off the end. A leading "…" marks that earlier
+ * words were dropped. Pure + unit-tested; the saved note is always the full re-decode on stop, never this.
+ */
+internal fun previewTail(text: String, maxWords: Int): String {
+    val words = text.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+    if (words.size <= maxWords) return words.joinToString(" ")
+    return "… " + words.takeLast(maxWords).joinToString(" ")
 }

@@ -332,7 +332,7 @@ fun NotesListScreen(onOpen: (Long) -> Unit, bottomSpace: Dp) {
                                     partial,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = lerp(MaterialTheme.colorScheme.onSurface, accent, 0.5f),
-                                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                    maxLines = 3, overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.padding(top = 2.dp),
                                 )
                             } else if (!recording && pending > 0) {
