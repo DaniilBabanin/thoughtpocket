@@ -107,6 +107,9 @@ class MicRecorder(private val file: File) {
     /** The last [maxSamples] samples as float — a bounded window for live preview. */
     fun readTail(maxSamples: Int): FloatArray = readPcm(file, maxSamples)
 
+    /** Samples in [from, to) as float — for an accumulating live preview that commits chunk by chunk. */
+    fun readRange(from: Int, to: Int): FloatArray = readPcmRange(file, from, to)
+
     /** Delete the backing file (throwaway recordings; the queue deletes its own after transcribing). */
     fun discard() { runCatching { file.delete() } }
 
@@ -127,6 +130,29 @@ class MicRecorder(private val file: File) {
                 val count = (avail - start).toInt()
                 if (count <= 0) return FloatArray(0)
                 raf.seek(start * 2)
+                val out = FloatArray(count)
+                val block = ByteArray(1 shl 16)
+                var i = 0
+                while (i < count) {
+                    val toRead = minOf(block.size, (count - i) * 2)
+                    raf.readFully(block, 0, toRead)
+                    val bb = ByteBuffer.wrap(block, 0, toRead).order(ByteOrder.LITTLE_ENDIAN)
+                    val n = toRead / 2
+                    repeat(n) { out[i++] = bb.short.toFloat() / 32768f }
+                }
+                out
+            }
+        }.getOrElse { FloatArray(0) }
+
+        /** Read a little-endian int16 PCM [file] as float [-1,1] for samples in [from, to). Clamped to file. */
+        fun readPcmRange(file: File, from: Int, to: Int): FloatArray = runCatching {
+            if (!file.exists()) return FloatArray(0)
+            RandomAccessFile(file, "r").use { raf ->
+                val avail = (raf.length() / 2).toInt()
+                val start = from.coerceIn(0, avail)
+                val count = to.coerceIn(start, avail) - start
+                if (count <= 0) return FloatArray(0)
+                raf.seek(start.toLong() * 2)
                 val out = FloatArray(count)
                 val block = ByteArray(1 shl 16)
                 var i = 0

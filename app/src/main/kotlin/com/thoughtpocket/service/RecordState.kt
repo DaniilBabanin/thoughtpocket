@@ -16,9 +16,13 @@ object RecordState {
     private val _status = MutableStateFlow(Status(State.IDLE))
     val status: StateFlow<Status> = _status
 
-    /** Live transcript-so-far while recording; "" otherwise. */
+    /** Live transcript-so-far while recording, trimmed to the freshest words for the card; "" otherwise. */
     private val _partial = MutableStateFlow("")
     val partial: StateFlow<String> = _partial
+
+    /** Same live preview but untrimmed (full window text) — for inline display in an editor; "" otherwise. */
+    private val _partialFull = MutableStateFlow("")
+    val partialFull: StateFlow<String> = _partialFull
 
     /** Recordings still transcribing in the background — lets a new recording start immediately. */
     private val _pending = MutableStateFlow(0)
@@ -31,15 +35,16 @@ object RecordState {
     fun set(state: State, startedAtElapsedRealtime: Long = 0L) {
         _status.value = Status(state, startedAtElapsedRealtime)
         // Live partial + level belong only to an active recording; clear them on any other transition.
-        if (state != State.RECORDING) { _partial.value = ""; _amplitude.value = 0f }
+        if (state != State.RECORDING) { _partial.value = ""; _partialFull.value = ""; _amplitude.value = 0f }
     }
 
     fun setAmplitude(level: Float) {
         _amplitude.value = level
     }
 
-    fun setPartial(text: String) {
-        _partial.value = text
+    fun setPartial(tail: String, full: String) {
+        _partial.value = tail
+        _partialFull.value = full
     }
 
     fun setPending(count: Int) {

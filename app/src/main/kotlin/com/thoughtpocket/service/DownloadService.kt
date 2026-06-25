@@ -54,6 +54,9 @@ class DownloadService : Service() {
             KIND_WHISPER -> intent.getStringExtra(EXTRA_ID)?.let { id ->
                 ModelManager.BuiltInModel.entries.find { it.id == id }?.let { m -> runOne(m.id) { ModelManager.download(this, m) } }
             }
+            KIND_MOONSHINE -> intent.getStringExtra(EXTRA_ID)?.let { id ->
+                ModelManager.StreamingModel.entries.find { it.id == id }?.let { m -> runOne(m.id) { ModelManager.downloadMoonshine(this, m) } }
+            }
             KIND_GEMMA -> intent.getStringExtra(EXTRA_ID)?.let { id ->
                 LlmEngine.Downloadable.entries.find { it.name == id }?.let { d -> runOne(d.name) { LlmEngine.download(this, d) } }
             }
@@ -142,6 +145,7 @@ class DownloadService : Service() {
     companion object {
         private const val TAG = "DownloadService"
         const val KIND_WHISPER = "whisper"
+        const val KIND_MOONSHINE = "moonshine"
         const val KIND_GEMMA = "gemma"
         const val KIND_GECKO = "gecko"
         const val KIND_ALL = "all"

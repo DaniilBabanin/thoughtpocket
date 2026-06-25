@@ -183,7 +183,9 @@ private fun noteQuip(): String = NOTE_QUIPS.random()
 /** Record with [rec] until stopped, then transcribe with the user's Whisper model. Throws if no model. */
 private suspend fun recordAndTranscribe(context: Context, prefs: AppPreferences, rec: MicRecorder): String {
     val loaded = withContext(Dispatchers.IO) {
-        val entry = ModelManager.entryById(context, prefs.selectedModelId)?.takeIf { ModelManager.isDownloaded(context, it) }
+        // Voice-to-textfield dictation (search / command boxes) — use the maintained final-pass Whisper model.
+        val entry = ModelManager.entryById(context, prefs.finalPassModelId)?.takeIf { ModelManager.isDownloaded(context, it) }
+            ?: ModelManager.listInstalled(context).firstOrNull { it.engine == ModelManager.EngineKind.WHISPER }
             ?: ModelManager.listInstalled(context).firstOrNull()
         entry != null && WhisperEngine.load(ModelManager.fileFor(context, entry), useGpu = false).isSuccess
     }
@@ -868,6 +870,7 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
     // Append-by-recording: the docked orb on this screen records into THIS note (background queue appends
     // the transcript; once the recordings finish it reformats + retags in one pass, if enabled in Settings).
     val recStatus by RecordState.status.collectAsState()
+    val livePreview by RecordState.partialFull.collectAsState()
     val recording = recStatus.state == RecordState.State.RECORDING
     val recPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { res ->
         if (res[Manifest.permission.RECORD_AUDIO] == true)
@@ -952,15 +955,25 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
                             },
                         )
                     }
-                    else -> GlassTextField(
-                        value = text,
-                        onValueChange = { text = it },
-                        placeholder = "Transcript",
-                        label = "Transcript",
-                        singleLine = false,
-                        minLines = 4,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    else -> {
+                        // While appending into this note, show the live first-pass transcript growing in the
+                        // field itself (read-only so the ephemeral preview can't be edited or saved). It's the
+                        // rolling preview window; on stop the final pass appends the real text to `text`.
+                        val showLive = recording && livePreview.isNotBlank()
+                        val body = if (showLive)
+                            (if (text.isBlank()) livePreview else text.trimEnd() + "\n\n" + livePreview)
+                        else text
+                        GlassTextField(
+                            value = body,
+                            onValueChange = { if (!recording) text = it },
+                            placeholder = "Transcript",
+                            label = "Transcript",
+                            singleLine = false,
+                            minLines = 4,
+                            readOnly = recording,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
 
                 // Interact.

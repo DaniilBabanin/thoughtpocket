@@ -174,6 +174,14 @@ dependencies {
     // transitively by MediaPipe, now removed) — provide it explicitly.
     implementation("com.google.protobuf:protobuf-javalite:4.35.1")
 
+    // sherpa-onnx (k2-fsa) runtime for the Moonshine streaming (first-pass) engine. The official AAR
+    // isn't on Maven Central, and the community republish's gradle metadata / flat `files(aar)` both
+    // compile-but-don't-dex. So the self-contained AAR is split: its classes.jar (the genuine
+    // com.k2fsa.sherpa.onnx API) is vendored here as a JAR (dexes cleanly), and the matching native libs
+    // — libsherpa-onnx-jni.so + libonnxruntime.so (NOT statically linked: the JNI .so has a DT_NEEDED on
+    // libonnxruntime.so) — are vendored under src/main/jniLibs/{arm64-v8a,x86_64} (auto-packaged).
+    implementation(files("libs/sherpa-onnx-classes.jar"))
+
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.7.0")

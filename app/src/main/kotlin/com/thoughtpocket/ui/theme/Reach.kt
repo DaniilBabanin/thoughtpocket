@@ -577,6 +577,7 @@ fun GlassTextField(
     singleLine: Boolean = true,
     minLines: Int = 1,
     flat: Boolean = false,
+    readOnly: Boolean = false,
     leading: @Composable (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
 ) {
@@ -602,6 +603,7 @@ fun GlassTextField(
             BasicTextField(
                 value = value,
                 onValueChange = onValueChange,
+                readOnly = readOnly,
                 singleLine = singleLine,
                 minLines = minLines,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = cs.onSurface),

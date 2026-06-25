@@ -29,6 +29,7 @@ object ModelDownloads {
     fun isRunning(key: String) = _progress.value.containsKey(key)
 
     fun whisper(context: Context, model: ModelManager.BuiltInModel) = start(context, DownloadService.KIND_WHISPER, model.id)
+    fun moonshine(context: Context, model: ModelManager.StreamingModel) = start(context, DownloadService.KIND_MOONSHINE, model.id)
     fun gemma(context: Context, d: LlmEngine.Downloadable) = start(context, DownloadService.KIND_GEMMA, d.name)
     fun gecko(context: Context) = start(context, DownloadService.KIND_GECKO, null)
     fun all(context: Context) = start(context, DownloadService.KIND_ALL, null)

@@ -51,6 +51,9 @@ import androidx.compose.runtime.collectAsState
 import com.thoughtpocket.AppPreferences
 import com.thoughtpocket.ModelDownloads
 import com.thoughtpocket.ModelManager
+import com.thoughtpocket.coercePasses
+import com.thoughtpocket.finalPassEligible
+import com.thoughtpocket.firstPassEligible
 import com.thoughtpocket.notesToMarkdown
 import com.thoughtpocket.ai.Embedder
 import com.thoughtpocket.ai.LlmEngine
@@ -80,7 +83,12 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
     val scope = rememberCoroutineScope()
     val models = remember { ModelManager.BuiltInModel.entries.toList() }
 
-    var selected by remember { mutableStateOf(prefs.selectedModelId) }
+    // Two-pass transcription: an instant first pass (live) and a quality final pass, each with its own model.
+    var firstEnabled by remember { mutableStateOf(prefs.firstPassEnabled) }
+    var firstModel by remember { mutableStateOf(prefs.firstPassModelId) }
+    var finalEnabled by remember { mutableStateOf(prefs.finalPassEnabled) }
+    var finalModel by remember { mutableStateOf(prefs.finalPassModelId) }
+    var highQuality by remember { mutableStateOf(prefs.highQuality) }
     var language by remember { mutableStateOf(prefs.language) }
     var translate by remember { mutableStateOf(prefs.translateToEnglish) }
     // Downloads run in a process-lifetime scope so they survive leaving Settings; we just observe.
@@ -94,7 +102,6 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
     var autoTag by remember { mutableStateOf(prefs.autoTag) }
     var autoMarkdown by remember { mutableStateOf(prefs.autoMarkdown) }
     var reformatAppended by remember { mutableStateOf(prefs.reformatAppendedNotes) }
-    var liveTranscribe by remember { mutableStateOf(prefs.liveTranscription) }
     var liveNotif by remember { mutableStateOf(prefs.liveTranscribeNotification) }
     var saveAudio by remember { mutableStateOf(prefs.saveAudio) }
     var saveFolder by remember { mutableStateOf(prefs.saveAudioFolder) }
@@ -165,6 +172,9 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
     val installedTranscription = remember(dlDone) {
         models.filter { ModelManager.isDownloaded(context, it) }.map { it.id }.toSet()
     }
+    val installedMoonshine = remember(dlDone) {
+        ModelManager.StreamingModel.entries.filter { ModelManager.isDownloaded(context, it) }.map { it.id }.toSet()
+    }
     val installedGemma = remember(aiTick, dlDone) {
         LlmEngine.Downloadable.entries.filter { LlmEngine.isInstalled(context, it) }.map { it.name }.toSet()
     }
@@ -225,36 +235,74 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
             SwitchRow("Reduce animations", "Turn off card reveals, glow and pulse motion.", reduceMotion, onReduceMotion)
         }
 
-        // Transcription model.
+        // Instant transcription — the live first pass (streams words while recording).
         GlassCard(Modifier.fillMaxWidth()) {
-            SectionTitle("Transcription model", Modifier.padding(bottom = 4.dp))
-            models.forEach { m ->
-                val installed = m.id in installedTranscription
-                val pct = dl[m.id]
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    ReachRadio(
-                        selected = selected == m.id,
-                        enabled = installed,
-                        onClick = { selected = m.id; prefs.selectedModelId = m.id },
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(m.displayName)
-                        Text(
-                            "${m.approxSizeMb} MB",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    when {
-                        pct != null -> CircularProgressIndicator(progress = { pct / 100f }, modifier = Modifier.size(24.dp))
-                        installed -> Icon(Icons.Filled.CheckCircle, "Installed", tint = MaterialTheme.colorScheme.primary)
-                        else -> IconButton(onClick = { ModelDownloads.whisper(context, m) }) {
-                            Icon(Icons.Filled.Download, "Download")
-                        }
-                    }
-                }
+            SectionTitle("Instant transcription (first pass)", Modifier.padding(bottom = 4.dp))
+            SwitchRow(
+                "Stream words as you speak",
+                "A live preview while recording. Moonshine is fastest (instant, English-only); a Whisper model also works (slower preview, no extra download).",
+                firstEnabled,
+            ) { want ->
+                val (f, fin) = coercePasses(want, finalEnabled, keepFinalOnConflict = true)
+                firstEnabled = f; finalEnabled = fin
+                prefs.firstPassEnabled = f; prefs.finalPassEnabled = fin
             }
+            if (firstEnabled) {
+                (ModelManager.StreamingModel.entries.toList<ModelManager.ModelEntry>() + models)
+                    .filter { it.firstPassEligible }.forEach { m ->
+                    ModelChoiceRow(
+                        name = m.displayName, sizeMb = m.approxSizeMb,
+                        selected = firstModel == m.id,
+                        installed = m.id in installedMoonshine || m.id in installedTranscription,
+                        pct = dl[m.id],
+                        onSelect = { firstModel = m.id; prefs.firstPassModelId = m.id },
+                        onDownload = {
+                            if (m is ModelManager.StreamingModel) ModelDownloads.moonshine(context, m)
+                            else (m as? ModelManager.BuiltInModel)?.let { ModelDownloads.whisper(context, it) }
+                        },
+                    )
+                }
+                SwitchRow(
+                    "Live transcript in notification",
+                    "Show the live preview in the notification shade while recording.",
+                    liveNotif,
+                ) { liveNotif = it; prefs.liveTranscribeNotification = it }
+            }
+        }
+
+        // Final transcript — the quality batch pass that owns the durable note.
+        GlassCard(Modifier.fillMaxWidth()) {
+            SectionTitle("Final transcript (final pass)", Modifier.padding(bottom = 4.dp))
+            SwitchRow(
+                "Re-transcribe on stop for the best note",
+                "One high-quality batch pass over the whole recording when you stop (Whisper). Off = the instant transcript becomes the note.",
+                finalEnabled,
+            ) { want ->
+                val (f, fin) = coercePasses(firstEnabled, want, keepFinalOnConflict = false)
+                firstEnabled = f; finalEnabled = fin
+                prefs.firstPassEnabled = f; prefs.finalPassEnabled = fin
+            }
+            if (finalEnabled) {
+                models.filter { it.finalPassEligible }.forEach { m ->
+                    ModelChoiceRow(
+                        name = m.displayName, sizeMb = m.approxSizeMb,
+                        selected = finalModel == m.id, installed = m.id in installedTranscription, pct = dl[m.id],
+                        onSelect = { finalModel = m.id; prefs.finalPassModelId = m.id },
+                        onDownload = { ModelDownloads.whisper(context, m) },
+                    )
+                }
+                SwitchRow(
+                    "Higher quality (beam search)",
+                    "Slower but more accurate on noisy or accented speech.",
+                    highQuality,
+                ) { highQuality = it; prefs.highQuality = it }
+            }
+            Text(
+                "Use one or both. Instant-only saves the live transcript; final-only is the classic high-quality note; both shows a live preview and saves the best.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
         }
 
         // Language.
@@ -273,16 +321,6 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
                 "Transcribe non-English speech but output it in English.",
                 translate,
             ) { translate = it; prefs.translateToEnglish = it }
-            SwitchRow(
-                "Live transcription",
-                "Show text as you speak. Turn off to save battery on long recordings.",
-                liveTranscribe,
-            ) { liveTranscribe = it; prefs.liveTranscription = it }
-            SwitchRow(
-                "Live transcript in notification",
-                "Show the transcription in the notification shade while recording.",
-                liveNotif,
-            ) { liveNotif = it; prefs.liveTranscribeNotification = it }
             Text(
                 "Transcription runs fully on-device. A model downloads once over the internet, then everything is offline.",
                 style = MaterialTheme.typography.bodySmall,
@@ -527,6 +565,7 @@ fun LicensesScreen(onBack: () -> Unit) {
                 LicenseItem("Kotlin & kotlinx.coroutines", "© JetBrains s.r.o. and contributors")
                 LicenseItem("Google AI Edge — LiteRT-LM", "© Google")
                 LicenseItem("Google AI Edge — On-device RAG (localagents)", "© Google")
+                LicenseItem("sherpa-onnx (k2-fsa)", "© Xiaomi Corporation")
             }
             GlassCard(Modifier.fillMaxWidth()) {
                 SectionTitle("BSD 3-Clause")
@@ -535,12 +574,14 @@ fun LicensesScreen(onBack: () -> Unit) {
             GlassCard(Modifier.fillMaxWidth()) {
                 SectionTitle("MIT License")
                 LicenseItem("whisper.cpp (incl. ggml)", "© Georgi Gerganov and the ggml-org contributors")
+                LicenseItem("ONNX Runtime", "© Microsoft Corporation")
                 LicenseItem("Silero VAD", "© Silero Team")
             }
             GlassCard(Modifier.fillMaxWidth()) {
                 SectionTitle("On-device AI models")
                 LicenseItem("Gemma", "© Google — Gemma Terms of Use")
                 LicenseItem("Gecko / Universal Sentence Encoder embeddings", "© Google — Apache License 2.0")
+                LicenseItem("Moonshine (English models)", "© Useful Sensors, Inc. (Moonshine AI) — MIT License")
             }
             ExpandableLicense("Apache License 2.0 — full text", APACHE_2_0)
             ExpandableLicense("BSD 3-Clause — full text", BSD_3_CLAUSE)
@@ -607,10 +648,42 @@ private fun SwitchRow(title: String, description: String, checked: Boolean, onCh
     }
 }
 
+/** A selectable transcription-model row: radio + name/size + install/download/progress affordance. */
+@Composable
+private fun ModelChoiceRow(
+    name: String,
+    sizeMb: Int,
+    selected: Boolean,
+    installed: Boolean,
+    pct: Int?,
+    onSelect: () -> Unit,
+    onDownload: () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        ReachRadio(selected = selected, enabled = installed, onClick = onSelect)
+        Spacer(Modifier.width(4.dp))
+        Column(Modifier.weight(1f)) {
+            Text(name)
+            Text(
+                "$sizeMb MB",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        when {
+            pct != null -> CircularProgressIndicator(progress = { pct / 100f }, modifier = Modifier.size(24.dp))
+            installed -> Icon(Icons.Filled.CheckCircle, "Installed", tint = MaterialTheme.colorScheme.primary)
+            else -> IconButton(onClick = onDownload) { Icon(Icons.Filled.Download, "Download") }
+        }
+    }
+}
+
 private const val MIT_LICENSE = """MIT License
 
 whisper.cpp (incl. ggml) — Copyright (c) Georgi Gerganov and the ggml-org contributors
+ONNX Runtime — Copyright (c) Microsoft Corporation
 Silero VAD — Copyright (c) Silero Team
+Moonshine (English models) — Copyright (c) 2025 Useful Sensors, Inc. (dba Moonshine AI)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 

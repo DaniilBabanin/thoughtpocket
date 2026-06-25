@@ -7,6 +7,8 @@ class AppPreferences(context: Context) {
 
     private val prefs = context.getSharedPreferences("thoughtpocket", Context.MODE_PRIVATE)
 
+    init { migrateTwoPassPrefs() }
+
     /**
      * Stable id of the selected model: "builtin:BASE_Q5" or "custom:<filename>".
      * Migrates legacy values that stored the bare enum name (e.g. "BASE_Q5").
@@ -71,10 +73,50 @@ class AppPreferences(context: Context) {
     /**
      * Transcribe progressively while recording (live preview). On by default. Turning it off saves
      * battery/heat and avoids re-transcribing a growing buffer on long recordings.
+     *
+     * Legacy: superseded by [firstPassEnabled] (the two-pass model). Kept only as the migration source and
+     * still read here so a pre-migration value seeds the first pass; new code uses [firstPassEnabled].
      */
     var liveTranscription: Boolean
         get() = prefs.getBoolean(KEY_LIVE_TRANSCRIBE, true)
         set(value) = prefs.edit { putBoolean(KEY_LIVE_TRANSCRIBE, value) }
+
+    // ---- Two-pass transcription (instant first pass + quality final pass) ----
+    // Each pass has its own on/off + model. Migration (see [migrateTwoPassPrefs]) preserves today's
+    // behavior: final on with the old model; first mirrors the old liveTranscription, same model.
+
+    /** Instant/live first pass — streams a windowed preview while recording (and IS the note in first-only). */
+    var firstPassEnabled: Boolean
+        get() = prefs.getBoolean(KEY_FIRST_ENABLED, liveTranscription)
+        set(value) = prefs.edit { putBoolean(KEY_FIRST_ENABLED, value) }
+
+    /** Model id for the first pass (a STREAMING-eligible entry: windowed-Whisper or Moonshine). */
+    var firstPassModelId: String
+        get() = prefs.getString(KEY_FIRST_MODEL, selectedModelId) ?: selectedModelId
+        set(value) = prefs.edit { putString(KEY_FIRST_MODEL, value) }
+
+    /** Quality final pass — one batch transcribe on stop; owns the durable note when enabled. */
+    var finalPassEnabled: Boolean
+        get() = prefs.getBoolean(KEY_FINAL_ENABLED, true)
+        set(value) = prefs.edit { putBoolean(KEY_FINAL_ENABLED, value) }
+
+    /** Model id for the final pass (a BATCH-eligible entry: a Whisper variant). */
+    var finalPassModelId: String
+        get() = prefs.getString(KEY_FINAL_MODEL, selectedModelId) ?: selectedModelId
+        set(value) = prefs.edit { putString(KEY_FINAL_MODEL, value) }
+
+    /** One-shot: seed the four two-pass keys from the legacy single-model + live-preview prefs. */
+    private fun migrateTwoPassPrefs() {
+        if (prefs.getBoolean(KEY_TWOPASS_MIGRATED, false)) return
+        val c = migrateTwoPass(selectedModelId, liveTranscription)
+        prefs.edit {
+            putBoolean(KEY_FIRST_ENABLED, c.firstEnabled)
+            putString(KEY_FIRST_MODEL, c.firstModelId)
+            putBoolean(KEY_FINAL_ENABLED, c.finalEnabled)
+            putString(KEY_FINAL_MODEL, c.finalModelId)
+            putBoolean(KEY_TWOPASS_MIGRATED, true)
+        }
+    }
 
     /** Show the live transcription in the ongoing notification (visible from the shade). Off by default. */
     var liveTranscribeNotification: Boolean
@@ -168,6 +210,11 @@ class AppPreferences(context: Context) {
         private const val KEY_REFORMAT_APPENDED = "reformat_appended_notes"
         private const val KEY_LIVE_TRANSCRIBE = "live_transcription"
         private const val KEY_LIVE_NOTIF = "live_transcribe_notification"
+        private const val KEY_FIRST_ENABLED = "first_pass_enabled"
+        private const val KEY_FIRST_MODEL = "first_pass_model"
+        private const val KEY_FINAL_ENABLED = "final_pass_enabled"
+        private const val KEY_FINAL_MODEL = "final_pass_model"
+        private const val KEY_TWOPASS_MIGRATED = "two_pass_migrated"
         private const val KEY_SAVE_AUDIO = "save_audio"
         private const val KEY_SAVE_FOLDER = "save_audio_folder"
         private const val KEY_IMPORT_FOLDER = "import_folder"
@@ -189,3 +236,35 @@ class AppPreferences(context: Context) {
         private const val DEFAULT_USE_GPU = false
     }
 }
+
+/** The two-pass settings derived for a user (first = instant/live, final = quality/batch). */
+data class TwoPassConfig(
+    val firstEnabled: Boolean,
+    val firstModelId: String,
+    val finalEnabled: Boolean,
+    val finalModelId: String,
+)
+
+/**
+ * Migrate the legacy single-model + live-preview prefs to the two-pass model, preserving today's behavior:
+ * the final (Whisper batch) pass stays on with the old model; the first (live preview) pass mirrors the old
+ * [liveTranscription] toggle and reuses the same model (windowed-Whisper — no extra download needed).
+ */
+fun migrateTwoPass(selectedModelId: String, liveTranscription: Boolean) = TwoPassConfig(
+    firstEnabled = liveTranscription,
+    firstModelId = selectedModelId,
+    finalEnabled = true,
+    finalModelId = selectedModelId,
+)
+
+/**
+ * Enforce the invariant "at least one pass is enabled". Given the user's desired flags, if BOTH would be
+ * off, keep one on ([keepFinalOnConflict] picks which). Returns the coerced (first, final) pair. The Settings
+ * UI calls this so toggling off the last active pass is a no-op rather than leaving transcription dead.
+ */
+fun coercePasses(first: Boolean, final: Boolean, keepFinalOnConflict: Boolean = true): Pair<Boolean, Boolean> =
+    when {
+        first || final -> first to final
+        keepFinalOnConflict -> false to true
+        else -> true to false
+    }

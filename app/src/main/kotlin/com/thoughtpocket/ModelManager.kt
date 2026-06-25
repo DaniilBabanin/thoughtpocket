@@ -31,10 +31,16 @@ object ModelManager {
 
     private const val TAG = "ModelManager"
     private const val HF_BASE = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main"
+    // Moonshine ORT files, hosted on the project's Nextcloud (no-auth public DAV) alongside Gemma/Gecko —
+    // see LlmEngine.NEXTCLOUD. One subfolder per model (base/ tiny/), each holding the 5 MOONSHINE_FILES.
+    private const val NEXTCLOUD_MOONSHINE = "https://next.babanin.de/public.php/dav/files/cQz6gaz6H4tGyRP/moonshine"
     private const val MANIFEST_FILE = "custom_models.json"
     private const val CUSTOM_PREFIX = "custom_"
 
     // ---------- public types ----------
+
+    /** The on-device runtime that backs a model — selects the [TranscriptionEngine] impl. */
+    enum class EngineKind { WHISPER, MOONSHINE }
 
     sealed interface ModelEntry {
         val id: String
@@ -42,6 +48,8 @@ object ModelManager {
         val filename: String
         val multilingual: Boolean
         val approxSizeMb: Int
+        /** Defaults to whisper.cpp; streaming entries (Moonshine) override. */
+        val engine: EngineKind get() = EngineKind.WHISPER
     }
 
     enum class BuiltInModel(
@@ -138,9 +146,34 @@ object ModelManager {
         override val id: String get() = "custom:$filename"
     }
 
-    /** For UI: keep BuiltIn maintained in source order, then customs. */
+    /**
+     * sherpa-onnx Moonshine — the streaming-class first-pass engine. Unlike a single ggml file, each is a
+     * directory of ORT files ([MOONSHINE_FILES]) that live under externalFilesDir/[filename]. English-only.
+     * [filename] is the subdir name (there is no single model file). Hosted file-by-file on Nextcloud.
+     */
+    enum class StreamingModel(
+        override val displayName: String,
+        override val filename: String,   // = the model subdir under externalFilesDir
+        val cloudDir: String,            // = the model subfolder under NEXTCLOUD_MOONSHINE
+        override val approxSizeMb: Int,
+    ) : ModelEntry {
+        MOONSHINE_BASE("Moonshine Base (instant, English)", "moonshine", "base", 286),
+        MOONSHINE_TINY("Moonshine Tiny (instant, English, smaller)", "moonshine-tiny", "tiny", 123);
+
+        override val multilingual: Boolean get() = false
+        override val engine: EngineKind get() = EngineKind.MOONSHINE
+        override val id: String get() = "moonshine:$name"
+        fun fileUrl(file: String): String = "$NEXTCLOUD_MOONSHINE/$cloudDir/$file"
+    }
+
+    /** The ORT files a Moonshine model dir must contain (sherpa-onnx OfflineMoonshineModelConfig + tokens). */
+    val MOONSHINE_FILES = listOf(
+        "preprocess.onnx", "encode.int8.onnx", "uncached_decode.int8.onnx", "cached_decode.int8.onnx", "tokens.txt"
+    )
+
+    /** For UI: keep BuiltIn maintained in source order, then streaming, then customs. */
     fun listAll(context: Context): List<ModelEntry> =
-        BuiltInModel.entries.toList<ModelEntry>() + readCustomManifest(context)
+        BuiltInModel.entries.toList<ModelEntry>() + StreamingModel.entries + readCustomManifest(context)
 
     fun listInstalled(context: Context): List<ModelEntry> =
         listAll(context).filter { isDownloaded(context, it) }
@@ -156,8 +189,17 @@ object ModelManager {
     fun fileFor(context: Context, entry: ModelEntry): File =
         File(modelsDir(context), entry.filename)
 
-    fun isDownloaded(context: Context, entry: ModelEntry): Boolean =
-        fileFor(context, entry).let { it.exists() && it.length() > 1_000_000 }
+    /**
+     * Directory holding a [StreamingModel]'s ORT files. On external files dir (like Gecko) so the large
+     * int8 ONNX set doesn't bloat internal storage; falls back to filesDir if external is unavailable.
+     */
+    fun moonshineDir(context: Context, entry: ModelEntry): File =
+        (context.getExternalFilesDir(entry.filename) ?: File(context.filesDir, entry.filename)).apply { mkdirs() }
+
+    fun isDownloaded(context: Context, entry: ModelEntry): Boolean = when (entry) {
+        is StreamingModel -> moonshineDir(context, entry).let { d -> MOONSHINE_FILES.all { File(d, it).length() > 1_000L } }
+        else -> fileFor(context, entry).let { it.exists() && it.length() > 1_000_000 }
+    }
 
     // ---------- download (built-ins only) ----------
 
@@ -237,9 +279,54 @@ object ModelManager {
         }
     }.flowOn(Dispatchers.IO)
 
+    /**
+     * Download a [StreamingModel]'s ORT files one by one into its dir (resuming any already present).
+     * Emits a coarse 0..99 (each file an equal slice), then 100, then -1 — same contract as [download].
+     */
+    fun downloadMoonshine(context: Context, model: StreamingModel): Flow<Int> = flow {
+        val dir = moonshineDir(context, model)
+        val n = MOONSHINE_FILES.size
+        MOONSHINE_FILES.forEachIndexed { i, name ->
+            val target = File(dir, name)
+            if (target.length() > 1_000L) { emit((((i + 1) * 100) / n).coerceIn(0, 99)); return@forEachIndexed }
+            fetch(URL(model.fileUrl(name)), target) { p -> emit(((i * 100 + p) / n).coerceIn(0, 99)) }
+        }
+        emit(100); emit(-1)
+    }.flowOn(Dispatchers.IO)
+
+    /** Download [url] → [target] with progress (0..100), via a .part temp + completeness guard. */
+    private suspend inline fun fetch(url: URL, target: File, onPct: (Int) -> Unit) {
+        val tmp = File(target.absolutePath + ".part")
+        val conn = (url.openConnection() as HttpURLConnection).apply {
+            connectTimeout = 15_000; readTimeout = 60_000; instanceFollowRedirects = true; requestMethod = "GET"
+        }
+        try {
+            conn.connect()
+            val total = conn.contentLengthLong
+            var done = 0L; var last = -1
+            conn.inputStream.use { input ->
+                FileOutputStream(tmp).use { out ->
+                    val buf = ByteArray(64 * 1024)
+                    while (true) {
+                        val r = input.read(buf); if (r <= 0) break
+                        out.write(buf, 0, r); done += r
+                        if (total > 0) { val p = ((done * 100) / total).toInt(); if (p != last) { last = p; onPct(p) } }
+                    }
+                }
+            }
+            if (total > 0 && done != total) { tmp.delete(); throw IllegalStateException("Incomplete download: $done/$total") }
+            if (!tmp.renameTo(target)) { tmp.copyTo(target, overwrite = true); tmp.delete() }
+        } finally {
+            conn.disconnect(); if (tmp.exists()) tmp.delete()
+        }
+    }
+
     fun delete(context: Context, entry: ModelEntry) {
-        fileFor(context, entry).delete()
-        if (entry is CustomModel) removeFromManifest(context, entry)
+        when (entry) {
+            is StreamingModel -> moonshineDir(context, entry).deleteRecursively()
+            is CustomModel -> { fileFor(context, entry).delete(); removeFromManifest(context, entry) }
+            else -> fileFor(context, entry).delete()
+        }
     }
 
     // ---------- custom import ----------

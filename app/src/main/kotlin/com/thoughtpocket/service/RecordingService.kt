@@ -12,8 +12,7 @@ import android.util.Log
 import androidx.core.app.ServiceCompat
 import com.thoughtpocket.AppPreferences
 import com.thoughtpocket.ModelManager
-import com.thoughtpocket.WhisperEngine
-import com.thoughtpocket.stripNonSpeech
+import com.thoughtpocket.Transcription
 import com.thoughtpocket.ai.Embedder
 import com.thoughtpocket.ai.LlmEngine
 import com.thoughtpocket.ai.MarkdownEngine
@@ -44,8 +43,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 /**
  * Foreground (microphone) service owning the pipeline: record → transcribe on-device → save Note.
@@ -61,13 +58,14 @@ class RecordingService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var recorder: MicRecorder? = null
 
-    private val whisper = Mutex()
-    private var loadedModelKey: String? = null
     private val queue = Channel<Clip>(Channel.UNLIMITED)
     private var consumer: Job? = null
     private val pending = AtomicInteger(0)
 
-    /** [appendNoteId] >= 0 → append this clip's transcript to that note instead of creating a new one. */
+    /**
+     * [model] is the model that produces the SAVED transcript (the final/Whisper model when the final pass is
+     * on, else the first-pass model). [appendNoteId] >= 0 → append this clip's transcript to that note.
+     */
     private data class Clip(
         val file: File,
         val samples: Int,
@@ -75,7 +73,18 @@ class RecordingService : Service() {
         val prefs: AppPreferences,
         val appendNoteId: Long = -1L,
         val createdAt: Long? = null,   // imported files carry the source file's date; null = now
+        // First-pass-only: the live accumulator already decoded the audio chunk-by-chunk into [firstPassText]
+        // (up to [firstPassSamples]); the note reuses it + a single decode of the remaining tail, instead of
+        // a full re-decode that can truncate a long clip. null → normal batch decode (both / final-only).
+        val firstPassText: String? = null,
+        val firstPassSamples: Int = 0,
     )
+
+    /** Live first-pass transcript built during recording; in first-only it becomes the saved note. */
+    private class LivePass {
+        val committed = StringBuilder()
+        @Volatile var committedSamples = 0
+    }
 
     /** Notes that got appended recordings this drain; reformatted in one pass once the queue empties. */
     private val appendedIds = mutableSetOf<Long>()
@@ -114,7 +123,8 @@ class RecordingService : Service() {
 
         scope.launch {
             val prefs = AppPreferences(this@RecordingService)
-            val model = resolveModel(prefs)
+            val noteModel = resolveNoteModel(prefs)       // owns the saved transcript (final, or first in first-only)
+            val previewModel = resolvePreviewModel(prefs) // live-preview engine for ALL modes, or null if none fits
 
             try {
                 rec.start()
@@ -125,10 +135,12 @@ class RecordingService : Service() {
                 return@launch
             }
 
-            // Live preview while recording — opt-out, and only for models fast enough to keep up.
+            // Live accumulating preview while recording — runs in every pass mode (incl. final-only), as long
+            // as some installed model can keep up. Skipped only when no live-capable model is available.
+            val livePass = LivePass()
             val liveJob: Job? =
-                if (prefs.liveTranscription && model != null && model.approxSizeMb <= LIVE_MAX_MODEL_MB)
-                    launch { liveLoop(rec, prefs, model) }
+                if (previewModel != null && canLive(previewModel))
+                    launch { liveLoop(rec, prefs, previewModel, livePass) }
                 else null
 
             // Publish smoothed mic loudness so the orb pulse reacts to what it hears.
@@ -150,7 +162,15 @@ class RecordingService : Service() {
                 // Save a playable WAV copy to the user's folder (survives uninstall) BEFORE the .pcm is consumed.
                 if (prefs.saveAudio && prefs.saveAudioFolder.isNotEmpty()) runCatching { saveWav(file, prefs.saveAudioFolder) }
                 RecordState.setPending(pending.incrementAndGet())
-                queue.send(Clip(file, n, model, prefs, appendNoteId))
+                // First-pass-only: the note IS the live accumulator (+ tail finalize), not a re-decode. Only
+                // when the live pass actually ran — its model equals the note model in first-only.
+                val firstOnly = liveJob != null && !prefs.finalPassEnabled
+                queue.send(
+                    if (firstOnly)
+                        Clip(file, n, noteModel, prefs, appendNoteId,
+                            firstPassText = livePass.committed.toString(), firstPassSamples = livePass.committedSamples)
+                    else Clip(file, n, noteModel, prefs, appendNoteId)
+                )
             } else rec.discard()
             settleStateAndMaybeStop()
         }
@@ -178,65 +198,83 @@ class RecordingService : Service() {
         }
     }
 
-    private suspend fun liveLoop(rec: MicRecorder, prefs: AppPreferences, model: ModelManager.ModelEntry) {
-        var shown = ""   // freshest preview published this recording; also gates the one-shot first-window stream
+    private suspend fun liveLoop(rec: MicRecorder, prefs: AppPreferences, model: ModelManager.ModelEntry, pass: LivePass) {
+        val engine = Transcription.engineFor(model)
+        val moonshine = model.engine == ModelManager.EngineKind.MOONSHINE
+        // Accumulate a FULL transcript (not a rolling window): commit completed ~segment chunks into
+        // `pass.committed` and re-decode only the still-uncommitted tail each tick. Per-tick cost stays ~one
+        // chunk decode regardless of total length (same cost as the old window) — the difference is the
+        // committed prefix is kept so the preview grows instead of scrolling. In first-only the kept prefix
+        // also BECOMES the note (finalized by [finalizeFirstPass]), so the chunk-by-chunk decode is done once
+        // and never re-run. Non-overlapping commits can rarely split a boundary word — the accepted trade for
+        // the fast model. Moonshine = short chunk/fast cadence; Whisper pays its ~2.8 s encoder floor per
+        // decode either way, so a longer chunk buys context for free.
+        val segment = if (moonshine) MOON_WINDOW_SAMPLES else PREVIEW_WINDOW_SAMPLES
+        val interval = if (moonshine) MOON_INTERVAL_MS else LIVE_INTERVAL_MS
         while (currentCoroutineContext().isActive) {
-            delay(LIVE_INTERVAL_MS)
-            // Only the trailing window — bounded cost (the full transcript is rebuilt from audio once on stop).
-            // A short window + fast cadence keeps the preview close to live; the saved note is unaffected.
-            val snap = rec.readTail(PREVIEW_WINDOW_SAMPLES)
-            if (snap.size < MIN_SAMPLES) continue
-            // First window only: stream segments as whisper.cpp commits them, so the very first words land
-            // progressively. Later ticks publish the finished window decode — re-streaming a re-slid window
-            // mid-decode would reset the text and flicker.
-            val acc = StringBuilder()
-            val onSeg: ((String) -> Unit)? =
-                if (shown.isEmpty()) { seg ->
-                    acc.append(seg)
-                    Log.i(TAG, "live onSegment fired (${seg.length} chars)")  // spike: confirm in-context firing; remove before ship
-                    val live = stripNonSpeech(acc.toString())
-                    if (live.isNotBlank()) { shown = live; publishPreview(prefs, live) }
-                } else null
-            val text = runCatching { transcribe(snap, prefs, model, highQuality = false, onSegment = onSeg) }.getOrNull()
-            if (!text.isNullOrBlank()) { shown = text; publishPreview(prefs, text) }
+            delay(interval)
+            // Read+advance by what's actually on disk, NOT rec.samples: the recorder's in-memory counter runs
+            // ahead of the file (BufferedOutputStream flushes ~every 2 s), so tail.size is the only honest
+            // length. Advancing by it leaves the not-yet-flushed remainder for the next tick instead of
+            // skipping it.
+            val tail = rec.readRange(pass.committedSamples, rec.samples)
+            if (tail.size < MIN_SAMPLES) continue
+            val tailText = runCatching {
+                engine.transcribe(this, model, tail, prefs, highQuality = false, useVad = false)
+            }.getOrNull()?.trim().orEmpty()
+            val full = when {
+                pass.committed.isEmpty() -> tailText
+                tailText.isEmpty() -> pass.committed.toString()
+                else -> "${pass.committed} $tailText"
+            }
+            if (full.isNotBlank()) publishPreview(prefs, full)
+            // Tail grew past a chunk → fold its decode into the committed prefix and advance (reuses the
+            // decode just done, so this costs nothing extra). Advance even on an empty (silent) chunk so the
+            // tail can't grow unbounded across a long pause.
+            if (tail.size >= segment) {
+                if (tailText.isNotEmpty()) {
+                    if (pass.committed.isNotEmpty()) pass.committed.append(' ')
+                    pass.committed.append(tailText)
+                }
+                pass.committedSamples += tail.size
+            }
         }
     }
 
     /** Publish a live-preview transcript: freshest words to the on-screen card, full window text to the shade. */
     private fun publishPreview(prefs: AppPreferences, full: String) {
-        RecordState.setPartial(previewTail(full, MAX_PREVIEW_WORDS))
+        RecordState.setPartial(previewTail(full, MAX_PREVIEW_WORDS), full)
         if (prefs.liveTranscribeNotification) updateOngoing("Recording…", full)
     }
 
-    /** All WhisperEngine use goes through here — serialized, with the model loaded once per key. */
-    private suspend fun transcribe(
-        pcm: FloatArray,
-        prefs: AppPreferences,
-        model: ModelManager.ModelEntry,
-        highQuality: Boolean,
-        useVad: Boolean = false,
-        onSegment: ((String) -> Unit)? = null,
-    ): String = whisper.withLock {
-        val file = ModelManager.fileFor(this, model)
-        if (loadedModelKey != file.path) {
-            // A present-but-unloadable model (corrupt/OOM) must NOT pass as "" — that would save a fake
-            // "(no speech detected)" note and delete the audio. Throw so the clip is kept for retry.
-            WhisperEngine.load(file, useGpu = false).getOrThrow()
-            loadedModelKey = file.path
+    /**
+     * Produce the saved transcript for a clip through its resolved engine. The engine owns serialization +
+     * lazy load and applies [stripNonSpeech]; VAD/highQuality are honoured by Whisper and ignored by Moonshine.
+     */
+    private suspend fun transcribeForNote(pcm: FloatArray, prefs: AppPreferences, model: ModelManager.ModelEntry): String =
+        Transcription.engineFor(model).transcribe(this, model, pcm, prefs, highQuality = prefs.highQuality, useVad = true)
+
+    /**
+     * The transcript that becomes the note. First-pass-only ([Clip.firstPassText] non-null): reuse the live
+     * accumulator and decode ONLY the remaining tail once — the first pass already transcribed the rest
+     * chunk-by-chunk while recording, so we never re-decode the whole clip (a single long decode by a
+     * short-segment model like Moonshine can emit EOS early and drop the last sentence). Otherwise (both /
+     * final-only): one full batch decode by the note model.
+     */
+    private suspend fun noteTranscript(clip: Clip): String {
+        val model = clip.model!!
+        val committed = clip.firstPassText ?: return transcribeForNote(MicRecorder.readPcm(clip.file), clip.prefs, model)
+        val tail = MicRecorder.readPcmRange(clip.file, clip.firstPassSamples, clip.samples)
+        val tailText = if (tail.isNotEmpty())
+            runCatching {
+                Transcription.engineFor(model).transcribe(this, model, tail, clip.prefs, highQuality = false, useVad = false)
+            }.getOrNull()?.trim().orEmpty()
+        else ""
+        return when {
+            committed.isEmpty() -> tailText
+            tailText.isEmpty() -> committed
+            else -> "$committed $tailText"
         }
-        // Strip non-speech artifacts ([BLANK_AUDIO], [MUSIC PLAYING]…) so silence never becomes note text.
-        stripNonSpeech(
-            WhisperEngine.transcribe(
-                pcm16k = pcm,
-                language = prefs.language.ifBlank { null },
-                translate = prefs.translateToEnglish,
-                threads = prefs.resolvedThreads(),
-                highQuality = highQuality,
-                // VAD only on final transcriptions (skip silent thinking-pauses); not on live preview.
-                vadModelPath = if (useVad) WhisperEngine.ensureVadModel(this) else null,
-                onSegment = onSegment,
-            )
-        )
     }
 
     private suspend fun transcribeAndSave(clip: Clip) {
@@ -245,7 +283,7 @@ class RecordingService : Service() {
             clip.model == null -> Notifications.done(this, "No model — open Settings to download one")  // keep file for recovery
             clip.appendNoteId >= 0 -> { appendToNote(clip); clip.file.delete() }
             else -> {
-                val text = transcribe(MicRecorder.readPcm(clip.file), prefs, clip.model, highQuality = prefs.highQuality, useVad = true)
+                val text = noteTranscript(clip)
                 val body = text.ifBlank { "(no speech detected)" }
                 val dao = NotesDb.get(this).notes()
                 val note = Note(createdAt = clip.createdAt ?: System.currentTimeMillis(), text = body)
@@ -290,7 +328,7 @@ class RecordingService : Service() {
             Log.w(TAG, "append target ${clip.appendNoteId} gone")
             return
         }
-        val text = transcribe(MicRecorder.readPcm(clip.file), clip.prefs, clip.model!!, highQuality = clip.prefs.highQuality, useVad = true)
+        val text = noteTranscript(clip)
         val add = text.ifBlank { "(no speech detected)" }
         val combined = if (note.text.isBlank()) add else note.text.trimEnd() + "\n\n" + add
         val emb = Embedder.embed(this, combined) ?: note.embedding
@@ -326,9 +364,32 @@ class RecordingService : Service() {
             .notify(Notifications.ONGOING_ID, Notifications.ongoing(this, status, body))
     }
 
-    private fun resolveModel(prefs: AppPreferences): ModelManager.ModelEntry? =
-        ModelManager.entryById(this, prefs.selectedModelId)?.takeIf { ModelManager.isDownloaded(this, it) }
+    /**
+     * The model that produces the SAVED transcript: the final (Whisper) model when the final pass is on,
+     * else the first-pass model (first-only). Falls back to any installed model so a note still gets made.
+     */
+    private fun resolveNoteModel(prefs: AppPreferences): ModelManager.ModelEntry? {
+        val id = if (prefs.finalPassEnabled) prefs.finalPassModelId else prefs.firstPassModelId
+        return ModelManager.entryById(this, id)?.takeIf { ModelManager.isDownloaded(this, it) }
             ?: ModelManager.listInstalled(this).firstOrNull()
+    }
+
+    /** The first-pass (live preview) model, or null when the first pass is off / its model isn't installed. */
+    private fun resolveFirstModel(prefs: AppPreferences): ModelManager.ModelEntry? =
+        ModelManager.entryById(this, prefs.firstPassModelId)?.takeIf { ModelManager.isDownloaded(this, it) }
+
+    /**
+     * The model that drives the live accumulating preview, in EVERY pass mode: the first-pass model when the
+     * first pass is enabled (its installed model), otherwise the saved-note (final) model — so the transcript
+     * still appears live in final-only mode. [canLive] then gates whether it actually runs (a large Whisper
+     * final model can't keep up live, so there's simply no preview in that case).
+     */
+    private fun resolvePreviewModel(prefs: AppPreferences): ModelManager.ModelEntry? =
+        (if (prefs.firstPassEnabled) resolveFirstModel(prefs) else null) ?: resolveNoteModel(prefs)
+
+    /** Can this engine keep up as a live preview? Moonshine always; Whisper only on small models. */
+    private fun canLive(model: ModelManager.ModelEntry): Boolean =
+        model.engine == ModelManager.EngineKind.MOONSHINE || model.approxSizeMb <= LIVE_MAX_MODEL_MB
 
     /** Durable dir for in-flight recordings — filesDir (NOT cache, which the OS may purge). */
     private fun audioDir(): File = File(filesDir, "audio").apply { mkdirs() }
@@ -372,7 +433,7 @@ class RecordingService : Service() {
     private suspend fun scanImport() {
         val prefs = AppPreferences(this)
         val folder = prefs.importFolder.ifEmpty { return }
-        val model = resolveModel(prefs)
+        val model = resolveNoteModel(prefs)
         val done = prefs.importedAudio.toMutableSet()
         for ((uri, _, modified) in AudioFiles.listAudio(this, Uri.parse(folder))) {
             val key = uri.toString()
@@ -396,7 +457,7 @@ class RecordingService : Service() {
         if (recovered) return
         recovered = true
         val prefs = AppPreferences(this)
-        val model = resolveModel(prefs)
+        val model = resolveNoteModel(prefs)
         audioDir().listFiles { f -> f.isFile && f.name.endsWith(".pcm") }?.forEach { f ->
             val n = (f.length() / 2).toInt()
             if (n <= 0) { f.delete(); return@forEach }
@@ -432,9 +493,13 @@ class RecordingService : Service() {
         // decodes, NOT the cadence. Lower → latency floor (back-to-back decode); raise → throttle heat/battery.
         private const val LIVE_INTERVAL_MS = 500L
         private const val LEVEL_INTERVAL_MS = 40L  // ~25 fps mic-level updates for the orb pulse
-        private const val LIVE_MAX_MODEL_MB = 200 // tiny/base/small keep up; medium/large don't
+        private const val LIVE_MAX_MODEL_MB = 200 // (windowed-Whisper) tiny/base/small keep up; medium/large don't
         private const val MIN_SAMPLES = 16_000    // ~1s before first preview
-        private const val PREVIEW_WINDOW_SAMPLES = 16_000 * 10  // live preview transcribes only the last ~10 s
+        private const val PREVIEW_WINDOW_SAMPLES = 16_000 * 10  // windowed-Whisper preview: last ~10 s
+        // Moonshine decodes a short window in ~hundreds of ms, so use a small window + fast cadence for the
+        // instant live-caption feel (the decode time is the real pacer). Tuned on device; safe to adjust.
+        private const val MOON_WINDOW_SAMPLES = 16_000 * 4   // Moonshine preview: last ~4 s
+        private const val MOON_INTERVAL_MS = 250L
         private const val MAX_PREVIEW_WORDS = 14   // show only the freshest words in the 2–3 line card (tunable)
         const val ACTION_START = "com.thoughtpocket.action.START"
         const val ACTION_STOP = "com.thoughtpocket.action.STOP"
