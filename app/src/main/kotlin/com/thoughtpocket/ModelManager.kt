@@ -117,20 +117,6 @@ object ModelManager {
             "ggml-medium-q5_0.bin",
             539, true,
             null
-        ),
-        LARGE_TURBO_Q5(
-            "Large v3 Turbo (multilingual, fast & accurate)",
-            "ggml-large-v3-turbo-q5_0.bin",
-            "ggml-large-v3-turbo-q5_0.bin",
-            574, true,
-            null
-        ),
-        LARGE_V3_Q5(
-            "Large v3 (multilingual, most accurate, slow)",
-            "ggml-large-v3-q5_0.bin",
-            "ggml-large-v3-q5_0.bin",
-            1080, true,
-            null
         );
 
         override val id: String get() = "builtin:$name"
