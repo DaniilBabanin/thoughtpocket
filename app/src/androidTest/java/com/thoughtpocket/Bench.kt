@@ -28,23 +28,6 @@ object Bench {
         "and so my fellow americans ask not what your country can do for you " +
             "ask what you can do for your country"
 
-    private fun norm(s: String) = s.lowercase()
-        .replace(Regex("[^a-z0-9 ]"), " ")
-        .replace(Regex("\\s+"), " ")
-        .trim()
-
-    /** Word error rate (word-level Levenshtein / ref length) after case/punct normalization. */
-    fun wer(ref: String, hyp: String): Double {
-        val r = norm(ref).split(" ").filter { it.isNotBlank() }
-        val h = norm(hyp).split(" ").filter { it.isNotBlank() }
-        if (r.isEmpty()) return if (h.isEmpty()) 0.0 else 1.0
-        val d = Array(r.size + 1) { IntArray(h.size + 1) }
-        for (i in 0..r.size) d[i][0] = i
-        for (j in 0..h.size) d[0][j] = j
-        for (i in 1..r.size) for (j in 1..h.size) {
-            val cost = if (r[i - 1] == h[j - 1]) 0 else 1
-            d[i][j] = minOf(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost)
-        }
-        return d[r.size][h.size].toDouble() / r.size
-    }
+    /** Word error rate after case/punct normalization — delegates to the shared, unit-tested [Wer] ruler. */
+    fun wer(ref: String, hyp: String): Double = Wer.rate(ref, hyp)
 }

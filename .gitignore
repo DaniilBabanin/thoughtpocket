@@ -41,3 +41,6 @@ tmp-gecko/
 
 # HTML/CSS reference prototype for the Reach redesign — kept on disk, never committed.
 /design/
+
+# Long-form benchmark audio (public-domain speeches, ~60MB) — fetched via tools/fetch-bench-audio.sh.
+/bench-audio/
