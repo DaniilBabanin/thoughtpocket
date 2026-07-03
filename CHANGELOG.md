@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.7-pre
+
+- **Reliability: recordings can no longer be silently lost** — appending to a note that was deleted mid-transcription now saves a new note instead of discarding the audio; a failed final decode keeps the recording for retry; failed audio imports are retried on the next scan.
+- **Fix a crash on Android 12/13** when extracting a calendar reminder from a note.
+- **Smaller downloads:** releases now ship per-device APKs — arm64 phones no longer download ~35 MB of emulator-only code (install `app-arm64-v8a-release.apk`).
+- Interrupted model downloads are detected and rejected instead of being treated as complete.
+
 ## v0.1.6
 
 - **Two-pass transcription:** instant streaming first pass (Moonshine via sherpa-onnx) + quality Whisper final pass, each with its own on/off toggle and model in Settings; Moonshine models download in-app from the project's Nextcloud.
