@@ -9,10 +9,11 @@
 # so the models survive across runs.
 #
 # Usage: tools/run-scaletest.sh [scale|tuning] [adb-serial]
+# JAVA_HOME may be set in the environment; defaults to the project's pinned JDK 17.
 set -euo pipefail
 METHOD="${1:-scale}"
-SER="${2:-48171FDAS004EU}"
-ADB=(adb -s "$SER")
+SER="${2:-}"
+ADB=(adb); [ -n "$SER" ] && ADB=(adb -s "$SER")
 export JAVA_HOME="${JAVA_HOME:-/home/db/jdk/jdk-17.0.13+11}"
 DST=/sdcard/Android/data/com.thoughtpocket/files/llm
 APK=app/build/outputs/apk/debug/app-debug.apk

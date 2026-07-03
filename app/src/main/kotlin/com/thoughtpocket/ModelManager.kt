@@ -208,7 +208,10 @@ object ModelManager {
 
         try {
             conn.connect()
-            val total = conn.contentLengthLong.takeIf { it > 0 } ?: -1L
+            val total = conn.contentLengthLong
+            // No Content-Length → truncation would be indistinguishable from success; refuse
+            // rather than risk promoting a partial file (HF always sends it for these blobs).
+            if (total <= 0) throw IllegalStateException("Missing Content-Length for ${model.filename}")
             var downloaded = 0L
             var lastEmitted = -1
 
@@ -220,19 +223,17 @@ object ModelManager {
                         if (n <= 0) break
                         output.write(buf, 0, n)
                         downloaded += n
-                        if (total > 0) {
-                            val pct = ((downloaded * 100) / total).toInt().coerceIn(0, 99)
-                            if (pct != lastEmitted) {
-                                lastEmitted = pct
-                                emit(pct)
-                            }
+                        val pct = ((downloaded * 100) / total).toInt().coerceIn(0, 99)
+                        if (pct != lastEmitted) {
+                            lastEmitted = pct
+                            emit(pct)
                         }
                     }
                 }
             }
 
             // Truncated download guard (covers models without a curated SHA-256).
-            if (total > 0 && downloaded != total) {
+            if (downloaded != total) {
                 tmp.delete()
                 throw IllegalStateException(
                     "Incomplete download for ${model.filename}: $downloaded/$total bytes"
@@ -289,6 +290,9 @@ object ModelManager {
         try {
             conn.connect()
             val total = conn.contentLengthLong
+            // Unknown length would skip the completeness guard below → a truncated file could be
+            // promoted to "complete". Nextcloud DAV always sends Content-Length for these blobs.
+            if (total <= 0) throw IllegalStateException("Missing Content-Length for $url")
             var done = 0L; var last = -1
             conn.inputStream.use { input ->
                 FileOutputStream(tmp).use { out ->
@@ -296,11 +300,11 @@ object ModelManager {
                     while (true) {
                         val r = input.read(buf); if (r <= 0) break
                         out.write(buf, 0, r); done += r
-                        if (total > 0) { val p = ((done * 100) / total).toInt(); if (p != last) { last = p; onPct(p) } }
+                        val p = ((done * 100) / total).toInt(); if (p != last) { last = p; onPct(p) }
                     }
                 }
             }
-            if (total > 0 && done != total) { tmp.delete(); throw IllegalStateException("Incomplete download: $done/$total") }
+            if (done != total) { tmp.delete(); throw IllegalStateException("Incomplete download: $done/$total") }
             if (!tmp.renameTo(target)) { tmp.copyTo(target, overwrite = true); tmp.delete() }
         } finally {
             conn.disconnect(); if (tmp.exists()) tmp.delete()

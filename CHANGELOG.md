@@ -1,5 +1,33 @@
 # Changelog
 
+## v0.1.6
+
+- **Two-pass transcription:** instant streaming first pass (Moonshine via sherpa-onnx) + quality Whisper final pass, each with its own on/off toggle and model in Settings; Moonshine models download in-app from the project's Nextcloud.
+- **One-tap transform presets** on a note (Key Points / Formal / Short / Long) — pre-fill the Interact command box and rewrite the body, undoable like any command.
+
+## v0.1.5-pre
+
+- **AI "set title" command** for notes via the Interact box.
+
+## v0.1.4-pre
+
+- **Adaptive tablet layout**; random home-screen quips.
+
+## v0.1.3-pre
+
+- **Opt-in two-way notes ↔ folder sync** (one Markdown file per note, Nextcloud-friendly): tombstoned deletes, last-write-wins conflicts; a vanished file never deletes a note.
+
+## v0.1.2-pre
+
+- **Stop turning silence into notes:** non-speech-token suppression + Silero VAD + transcription-artifact stripping.
+- Licenses screen: attribute whisper.cpp/ggml and Silero VAD (MIT); collapse full license texts.
+
+## v0.1.1-pre
+
+- **Recover recordings killed mid-transcription**; transcription and model-download failures are surfaced instead of silently dropped.
+- **Ask:** time-window precision for date-anchored questions + a loading state.
+- Dependency updates (Compose BOM 2026.05, protobuf-javalite 4.35, AndroidX test runner 1.7).
+
 ## v0.1.0 — first release
 
 First public build. Privacy-first, fully on-device voice notes.

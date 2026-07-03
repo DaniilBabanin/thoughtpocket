@@ -167,11 +167,6 @@ class AppPreferences(context: Context) {
         get() = prefs.getString(KEY_ANALYSIS_MODEL, "")!!
         set(value) = prefs.edit { putString(KEY_ANALYSIS_MODEL, value) }
 
-    /** Optional HuggingFace token for downloading licence-gated Gemma models. */
-    var hfToken: String
-        get() = prefs.getString(KEY_HF_TOKEN, "")!!
-        set(value) = prefs.edit { putString(KEY_HF_TOKEN, value.trim()) }
-
     /** Reveals advanced controls (thread slider, benchmark). Toggled by tapping the home tip. */
     var developerMode: Boolean
         get() = prefs.getBoolean(KEY_DEV_MODE, false)
@@ -224,7 +219,6 @@ class AppPreferences(context: Context) {
         private const val KEY_REDUCE_MOTION = "reduce_animations"
         private const val KEY_TAG_MODEL = "tag_model"
         private const val KEY_ANALYSIS_MODEL = "analysis_model"
-        private const val KEY_HF_TOKEN = "hf_token"
         private const val KEY_DEV_MODE = "developer_mode"
         private const val KEY_SKIP_VERIFY = "skip_model_verification"
         private const val KEY_GPU_CRASHED = "gpu_crashed_notice"

@@ -7,6 +7,7 @@ import com.thoughtpocket.data.Note
 import com.thoughtpocket.data.NotesDb
 import com.thoughtpocket.service.RecordState
 import java.io.File
+import java.security.MessageDigest
 import java.util.concurrent.Executors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
@@ -35,17 +36,23 @@ object NotesFolderSync {
     enum class Action { EXPORT, IMPORT, DELETE_NOTE, TRASH_FILE, NONE }
 
     /** What we recorded for a key at the end of the last reconcile. */
-    data class State(val fingerprint: Int, val mtime: Long)
+    data class State(val fingerprint: String, val mtime: Long)
 
-    /** Stable change-fingerprint of a note's syncable content (title/text/markdown/tags; not the id/embedding). */
-    fun fingerprint(n: Note): Int = NoteFile.serialize(n).hashCode()
+    /**
+     * Stable change-fingerprint of a note's syncable content (title/text/markdown/tags; not the id/embedding).
+     * SHA-256 hex (was 32-bit String.hashCode, where a collision is a silent sync miss). The algorithm
+     * change makes every stored fingerprint mismatch once → a one-time benign full re-reconcile.
+     */
+    fun fingerprint(n: Note): String =
+        MessageDigest.getInstance("SHA-256").digest(NoteFile.serialize(n).toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
 
     fun decide(
-        dbFingerprint: Int?,     // null → no note in DB for this key
-        fileFingerprint: Int?,   // null → no file in the folder for this key
-        fileMtime: Long,         // folder file's last-modified (0 if no file)
-        tombstoned: Boolean,     // a tombstone exists in .trash for this key
-        last: State?,            // sync-state from the previous reconcile (null → never synced)
+        dbFingerprint: String?,   // null → no note in DB for this key
+        fileFingerprint: String?, // null → no file in the folder for this key
+        fileMtime: Long,          // folder file's last-modified (0 if no file)
+        tombstoned: Boolean,      // a tombstone exists in .trash for this key
+        last: State?,             // sync-state from the previous reconcile (null → never synced)
     ): Action {
         // A delete was made (somewhere) and tombstoned → propagate it (delete wins over a stale edit).
         if (tombstoned) return if (dbFingerprint != null) Action.DELETE_NOTE else Action.NONE
@@ -186,7 +193,7 @@ object NotesSyncEngine {
         return runCatching {
             val o = JSONObject(f.readText())
             val m = HashMap<Long, NotesFolderSync.State>()
-            o.keys().forEach { k -> val v = o.getJSONObject(k); m[k.toLong()] = NotesFolderSync.State(v.getInt("fp"), v.getLong("mt")) }
+            o.keys().forEach { k -> val v = o.getJSONObject(k); m[k.toLong()] = NotesFolderSync.State(v.getString("fp"), v.getLong("mt")) }
             m
         }.getOrElse { HashMap() }
     }

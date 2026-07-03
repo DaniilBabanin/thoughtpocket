@@ -30,7 +30,26 @@ data class Note(
     val tags: List<String> = emptyList(),
     // Semantic embedding (Universal Sentence Encoder); null until computed.
     val embedding: FloatArray? = null,
-)
+) {
+    // The generated data-class equals compares FloatArray by identity, so re-queried notes never
+    // compare equal and distinctUntilChanged/Compose skipping is defeated. Compare embedding by
+    // content instead (not excluded: the UI must still see the null→vector backfill emission).
+    override fun equals(other: Any?): Boolean = other is Note &&
+        id == other.id && createdAt == other.createdAt && text == other.text &&
+        title == other.title && markdown == other.markdown && tags == other.tags &&
+        embedding contentEquals other.embedding
+
+    override fun hashCode(): Int {
+        var h = id.hashCode()
+        h = 31 * h + createdAt.hashCode()
+        h = 31 * h + text.hashCode()
+        h = 31 * h + title.hashCode()
+        h = 31 * h + markdown.hashCode()
+        h = 31 * h + tags.hashCode()
+        h = 31 * h + embedding.contentHashCode()
+        return h
+    }
+}
 
 /** Tags stored as a single delimited column; embedding as a little-endian float BLOB. */
 class Converters {
