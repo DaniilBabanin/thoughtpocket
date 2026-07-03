@@ -1,6 +1,8 @@
 package com.thoughtpocket.ui
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -50,11 +52,13 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -886,6 +890,23 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
     LaunchedEffect(n.markdown) { if (n.markdown != markdown) markdown = n.markdown }
     LaunchedEffect(n.tags) { if (n.tags != tags) tags = n.tags }
 
+    // Share/copy operate on what's on screen: the formatted body or the raw transcript.
+    fun shownText() = if (markdown.isNotBlank() && showFormatted) markdown else text
+    fun copyShown() {
+        context.getSystemService(ClipboardManager::class.java)
+            .setPrimaryClip(ClipData.newPlainText(title.ifBlank { "Note" }, shownText()))
+        // Android 13+ shows its own "copied" overlay; only 12 needs feedback.
+        if (Build.VERSION.SDK_INT < 33) Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+    }
+    fun shareShown() {
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            if (title.isNotBlank()) putExtra(Intent.EXTRA_SUBJECT, title)
+            putExtra(Intent.EXTRA_TEXT, shownText())
+        }
+        context.startActivity(Intent.createChooser(send, null))
+    }
+
     val cs = MaterialTheme.colorScheme
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -896,6 +917,7 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
             ) {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                 Text("Note", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                IconButton(onClick = { shareShown() }) { Icon(Icons.Filled.Share, "Share") }
                 IconButton(onClick = { reformat() }, enabled = !formatting) {
                     Icon(Icons.Filled.AutoAwesome, "Reformat (AI)", tint = cs.primary)
                 }
@@ -944,6 +966,11 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
                                 scope.launch { dao.update(n.copy(markdown = md)) }
                             },
                         )
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            IconButton(onClick = { copyShown() }, modifier = Modifier.size(28.dp)) {
+                                Icon(Icons.Filled.ContentCopy, "Copy", tint = cs.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                            }
+                        }
                     }
                     else -> {
                         // While appending into this note, show the live first-pass transcript growing in the
@@ -962,6 +989,11 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
                             minLines = 4,
                             readOnly = recording,
                             modifier = Modifier.fillMaxWidth(),
+                            trailing = {
+                                IconButton(onClick = { copyShown() }, modifier = Modifier.size(24.dp)) {
+                                    Icon(Icons.Filled.ContentCopy, "Copy", tint = cs.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                                }
+                            },
                         )
                     }
                 }
