@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.8-pre
+
+- **Share and copy a note:** share button on the note screen (Android share sheet) plus a copy-to-clipboard button in both views — each sends what's on screen, the formatted body or the raw transcript.
+- **Fix broken Moonshine downloads:** the server gzipped `tokens.txt`, which dropped the Content-Length the download-completeness guard requires; downloads now request uncompressed bytes.
+
 ## v0.1.7-pre
 
 - **Reliability: recordings can no longer be silently lost** — appending to a note that was deleted mid-transcription now saves a new note instead of discarding the audio; a failed final decode keeps the recording for retry; failed audio imports are retried on the next scan.
