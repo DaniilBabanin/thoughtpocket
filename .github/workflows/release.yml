@@ -41,17 +41,21 @@ jobs:
 
       # Signed automatically by the committed app/release.keystore (see
       # app/build.gradle.kts signingConfigs — public keystore, no secrets).
-      - name: Build release APK + AAB
-        run: ./gradlew assembleRelease bundleRelease --stacktrace
+      # -PabiSplits builds per-ABI APKs (arm64-v8a for phones, x86_64 for the
+      # desktop emulator) so sideloaders skip ~35 MB of foreign-ABI native libs.
+      # The AAB is unaffected — Play does its own splitting.
+      - name: Build release APKs + AAB
+        run: ./gradlew assembleRelease bundleRelease -PabiSplits --stacktrace
 
       # Assert the signed APK's certificate matches the value pinned in
       # tools/release/expected-signing-cert.sha256. Any keystore swap
       # (accidental or otherwise) fails the release here before publish.
+      # Both ABI APKs share the signing config; verifying arm64 covers it.
       - name: Verify APK signing-cert fingerprint
         run: |
           set -euo pipefail
           BUILD_TOOLS="$ANDROID_HOME/build-tools/35.0.0"
-          APK="app/build/outputs/apk/release/app-release.apk"
+          APK="app/build/outputs/apk/release/app-arm64-v8a-release.apk"
           EXPECTED="$(tr -d '[:space:]' < tools/release/expected-signing-cert.sha256)"
           if [ -z "$EXPECTED" ]; then
             echo "::error::tools/release/expected-signing-cert.sha256 is empty"; exit 1
@@ -67,11 +71,13 @@ jobs:
 
       # dex SHA-256 witnesses let an external rebuilder verify the compiled
       # bytecode matches the published APK without trusting the signature.
+      # ABI splits only differ in native libs — classes*.dex are identical,
+      # so the arm64 witnesses cover both APKs.
       - name: Emit dex SHA-256 witnesses
         id: dex_witness
         run: |
           set -euo pipefail
-          APK="app/build/outputs/apk/release/app-release.apk"
+          APK="app/build/outputs/apk/release/app-arm64-v8a-release.apk"
           mkdir -p /tmp/apk-witness
           (cd /tmp/apk-witness && unzip -qq -o "$GITHUB_WORKSPACE/$APK" 'classes*.dex')
           DEX_HASHES=$(cd /tmp/apk-witness && sha256sum classes*.dex | sort)
@@ -88,11 +94,17 @@ jobs:
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
-            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/apk/release/app-arm64-v8a-release.apk
+            app/build/outputs/apk/release/app-x86_64-release.apk
             app/build/outputs/bundle/release/app-release.aab
           generate_release_notes: true
           append_body: true
           body: |
+            ### Which file?
+
+            Sideloading on a phone or tablet: install `app-arm64-v8a-release.apk`.
+            The `x86_64` APK is for desktop emulators only.
+
             ### Build integrity
 
             Signing-cert SHA-256 (pinned in `tools/release/expected-signing-cert.sha256`):

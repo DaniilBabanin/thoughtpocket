@@ -4,13 +4,13 @@ ThoughtPocket is a voice-notes app for Android that runs entirely on your phone,
 
 ## Install
 
-Download `app-release.apk` from [Releases](../../releases), enable "Install from unknown sources," then:
+Download `app-arm64-v8a-release.apk` from [Releases](../../releases), enable "Install from unknown sources," then:
 
 ```bash
-adb install app-release.apk
+adb install app-arm64-v8a-release.apk
 ```
 
-Needs Android 12+ (minSdk 31), arm64. The APK also ships an x86_64 slice for desktop emulators.
+Needs Android 12+ (minSdk 31), arm64. Releases also include an `app-x86_64-release.apk` for desktop emulators.
 
 ## First-time setup
 

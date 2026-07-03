@@ -9,6 +9,8 @@ plugins {
 }
 
 val useVulkan = project.findProperty("whispershare.vulkan")?.toString()?.toBoolean() ?: false
+// Per-ABI APKs (see splits block). Opt-in because splits rename every variant's outputs.
+val abiSplits = project.hasProperty("abiSplits")
 
 // The AI Edge RAG SDK (Gecko spike) needs Guava >= 28 (Futures.submit), but a transitive
 // dep pins guava strictly to 27.0.1. Force a modern Guava so the SDK resolves at runtime.
@@ -32,8 +34,9 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
-            // arm64 for devices; x86_64 so it also runs on a desktop emulator.
-            abiFilters += listOf("arm64-v8a", "x86_64")
+            // arm64 for devices; x86_64 so it also runs on a desktop emulator. With
+            // -PabiSplits the same set comes from splits.abi (AGP forbids setting both).
+            if (!abiSplits) abiFilters += listOf("arm64-v8a", "x86_64")
         }
 
         externalNativeBuild {
@@ -88,6 +91,19 @@ android {
         }
     }
 
+    // Per-ABI APKs so arm64 phones don't sideload the ~35 MB x86_64 onnxruntime/sherpa libs.
+    // Opt-in via -PabiSplits (release.yml + CI's release job) because splits rename every
+    // variant's outputs — the plain app-debug.apk path used by local installs must survive.
+    // The AAB is unaffected (Play does its own splitting).
+    splits {
+        abi {
+            isEnable = abiSplits
+            reset()
+            include("arm64-v8a", "x86_64")
+            isUniversalApk = false
+        }
+    }
+
     externalNativeBuild {
         cmake {
             path = file("CMakeLists.txt")
@@ -121,6 +137,9 @@ android {
         // builds. Skip lint on release so the release pipeline works; remove when AGP is bumped (see
         // the open AGP Dependabot PR). Lint still runs on debug: ./gradlew :app:lintDebug
         checkReleaseBuilds = false
+        // Same API mismatch crashes this androidx.lifecycle detector on lintDebug too
+        // (KaCallableMemberCall class-vs-interface); re-enable with the AGP bump above.
+        disable += "NullSafeMutableLiveData"
     }
 
     packaging {
