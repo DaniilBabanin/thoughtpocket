@@ -28,7 +28,7 @@ object MarkdownEngine {
             "Reply with only the Markdown.\n\n" +
             "Voice note:\n\"\"\"\n${text.take(6000)}\n\"\"\""
 
-    private fun clean(raw: String): String {
+    internal fun clean(raw: String): String {
         var s = raw
             .replace(Regex("(?is)<think.*?</think>"), " ")
             .replace(Regex("(?is)</?think[^>]*>"), " ")

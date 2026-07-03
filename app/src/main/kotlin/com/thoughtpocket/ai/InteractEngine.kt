@@ -62,7 +62,7 @@ object InteractEngine {
             "If the command names/titles the note (e.g. \"title\", \"call it\", \"name it\"), " +
             "use title even when it also mentions making a list."
 
-    private fun parse(raw: String): InteractOp {
+    internal fun parse(raw: String): InteractOp {
         val cleaned = raw.replace(Regex("(?is)<think.*?</think>"), " ")
         val json = Regex("(?s)\\{.*\\}").find(cleaned)?.value ?: return InteractOp.Unknown(raw.trim())
         return runCatching {

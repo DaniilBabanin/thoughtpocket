@@ -61,7 +61,7 @@ object ChecklistQuery {
         }.getOrNull()
     }
 
-    private fun windowDays(w: String): Int? = when (w.lowercase().trim()) {
+    internal fun windowDays(w: String): Int? = when (w.lowercase().trim()) {
         "today" -> 1
         "yesterday" -> 2
         "this_week", "last_week", "week" -> 7
