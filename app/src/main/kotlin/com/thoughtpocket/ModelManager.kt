@@ -204,6 +204,9 @@ object ModelManager {
             readTimeout = 60_000
             instanceFollowRedirects = true
             requestMethod = "GET"
+            // Disable transparent gzip: a compressed response drops Content-Length, which the
+            // completeness guard below requires (Nextcloud gzips text-typed blobs like tokens.txt).
+            setRequestProperty("Accept-Encoding", "identity")
         }
 
         try {
@@ -286,6 +289,8 @@ object ModelManager {
         val tmp = File(target.absolutePath + ".part")
         val conn = (url.openConnection() as HttpURLConnection).apply {
             connectTimeout = 15_000; readTimeout = 60_000; instanceFollowRedirects = true; requestMethod = "GET"
+            // Same identity trick as [download]: gzip would drop the Content-Length this guard needs.
+            setRequestProperty("Accept-Encoding", "identity")
         }
         try {
             conn.connect()
