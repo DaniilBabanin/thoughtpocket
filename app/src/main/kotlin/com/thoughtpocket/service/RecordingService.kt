@@ -24,6 +24,7 @@ import com.thoughtpocket.audio.AudioFiles
 import com.thoughtpocket.audio.MicRecorder
 import com.thoughtpocket.data.Note
 import com.thoughtpocket.data.NotesDb
+import com.thoughtpocket.mergeTranscript
 import com.thoughtpocket.widget.RecordWidget
 import java.io.File
 import java.text.SimpleDateFormat
@@ -56,7 +57,8 @@ import kotlinx.coroutines.launch
 class RecordingService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private var recorder: MicRecorder? = null
+    // Written on main (startRecording) and Dispatchers.Default (nulled after stop), read on main.
+    @Volatile private var recorder: MicRecorder? = null
 
     private val queue = Channel<Clip>(Channel.UNLIMITED)
     private var consumer: Job? = null
@@ -73,6 +75,7 @@ class RecordingService : Service() {
         val prefs: AppPreferences,
         val appendNoteId: Long = -1L,
         val createdAt: Long? = null,   // imported files carry the source file's date; null = now
+        val importKey: String? = null, // imported files: mark this key done in prefs only AFTER the note saves
         // First-pass-only: the live accumulator already decoded the audio chunk-by-chunk into [firstPassText]
         // (up to [firstPassSamples]); the note reuses it + a single decode of the remaining tail, instead of
         // a full re-decode that can truncate a long clip. null → normal batch decode (both / final-only).
@@ -222,11 +225,7 @@ class RecordingService : Service() {
             val tailText = runCatching {
                 engine.transcribe(this, model, tail, prefs, highQuality = false, useVad = false)
             }.getOrNull()?.trim().orEmpty()
-            val full = when {
-                pass.committed.isEmpty() -> tailText
-                tailText.isEmpty() -> pass.committed.toString()
-                else -> "${pass.committed} $tailText"
-            }
+            val full = mergeTranscript(pass.committed.toString(), tailText)
             if (full.isNotBlank()) publishPreview(prefs, full)
             // Tail grew past a chunk → fold its decode into the committed prefix and advance (reuses the
             // decode just done, so this costs nothing extra). Advance even on an empty (silent) chunk so the
@@ -265,68 +264,74 @@ class RecordingService : Service() {
         val model = clip.model!!
         val committed = clip.firstPassText ?: return transcribeForNote(MicRecorder.readPcm(clip.file), clip.prefs, model)
         val tail = MicRecorder.readPcmRange(clip.file, clip.firstPassSamples, clip.samples)
+        // A tail-decode failure must PROPAGATE (like the batch path): swallowing it would silently drop
+        // the last chunk and then delete the audio. On throw the consumer keeps the .pcm for retry.
         val tailText = if (tail.isNotEmpty())
-            runCatching {
-                Transcription.engineFor(model).transcribe(this, model, tail, clip.prefs, highQuality = false, useVad = false)
-            }.getOrNull()?.trim().orEmpty()
+            Transcription.engineFor(model).transcribe(this, model, tail, clip.prefs, highQuality = false, useVad = false).trim()
         else ""
-        return when {
-            committed.isEmpty() -> tailText
-            tailText.isEmpty() -> committed
-            else -> "$committed $tailText"
-        }
+        return mergeTranscript(committed, tailText)
     }
 
     private suspend fun transcribeAndSave(clip: Clip) {
-        val prefs = clip.prefs
         when {
             clip.model == null -> Notifications.done(this, "No model — open Settings to download one")  // keep file for recovery
-            clip.appendNoteId >= 0 -> { appendToNote(clip); clip.file.delete() }
-            else -> {
-                val text = noteTranscript(clip)
-                val body = text.ifBlank { "(no speech detected)" }
-                val dao = NotesDb.get(this).notes()
-                val note = Note(createdAt = clip.createdAt ?: System.currentTimeMillis(), text = body)
-                val id = dao.insert(note)
-                clip.file.delete()   // transcript is durably saved → release the audio now; enrichment below is best-effort
-                Notifications.done(this, "Note saved")
-
-                // Embed (semantic relate) + title + auto-tag + auto-markdown in the background, then update.
-                // Best-effort: the note + transcript are already saved, so a failure here (e.g. disk-full on
-                // the enrichment write) must NOT bubble to the consumer's onFailure as "couldn't transcribe".
-                try {
-                    val emb = Embedder.embed(this, body)
-                    var title = ""
-                    var tags = emptyList<String>()
-                    var markdown = ""
-                    if (text.isNotBlank() && LlmEngine.isModelInstalled(this)) {
-                        title = TitleEngine.suggest(this, body).getOrNull().orEmpty()
-                        if (prefs.autoTag) {
-                            val raw = TaggingEngine.suggestTags(this, body).getOrNull().orEmpty()
-                            // Fold onto existing tags so near-duplicates ("work"/"works") don't accumulate.
-                            val corpus = runCatching { dao.all().first().flatMap { it.tags } }.getOrElse { emptyList() }
-                            tags = canonicalizeTags(raw, corpus)
-                        }
-                        if (prefs.autoMarkdown)
-                            markdown = MarkdownEngine.toMarkdown(this, body).getOrNull().orEmpty()
-                    }
-                    if (emb != null || title.isNotEmpty() || tags.isNotEmpty() || markdown.isNotEmpty())
-                        dao.update(note.copy(id = id, title = title, tags = tags, embedding = emb, markdown = markdown))
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Throwable) {
-                    Log.w(TAG, "enrichment failed (note already saved)", e)
-                }
-            }
+            // Append target deleted before transcription → fall back to a new note so the recording isn't lost.
+            clip.appendNoteId >= 0 -> if (appendToNote(clip)) clip.file.delete() else saveAsNewNote(clip)
+            else -> saveAsNewNote(clip)
         }
     }
 
-    /** Append a recording's raw transcript to an existing note (+ re-embed); reformat is deferred to drain. */
-    private suspend fun appendToNote(clip: Clip) {
+    /** Transcribe [clip] into a brand-new note; the audio is deleted only once the note is durably saved. */
+    private suspend fun saveAsNewNote(clip: Clip) {
+        val prefs = clip.prefs
+        val text = noteTranscript(clip)
+        val body = text.ifBlank { "(no speech detected)" }
+        val dao = NotesDb.get(this).notes()
+        val note = Note(createdAt = clip.createdAt ?: System.currentTimeMillis(), text = body)
+        val id = dao.insert(note)
+        clip.file.delete()   // transcript is durably saved → release the audio now; enrichment below is best-effort
+        // Imported files are marked done only now (post-save), so a failed transcription is re-imported later.
+        clip.importKey?.let { prefs.importedAudio = prefs.importedAudio + it }
+        Notifications.done(this, "Note saved")
+
+        // Embed (semantic relate) + title + auto-tag + auto-markdown in the background, then update.
+        // Best-effort: the note + transcript are already saved, so a failure here (e.g. disk-full on
+        // the enrichment write) must NOT bubble to the consumer's onFailure as "couldn't transcribe".
+        try {
+            val emb = Embedder.embed(this, body)
+            var title = ""
+            var tags = emptyList<String>()
+            var markdown = ""
+            if (text.isNotBlank() && LlmEngine.isModelInstalled(this)) {
+                title = TitleEngine.suggest(this, body).getOrNull().orEmpty()
+                if (prefs.autoTag) {
+                    val raw = TaggingEngine.suggestTags(this, body).getOrNull().orEmpty()
+                    // Fold onto existing tags so near-duplicates ("work"/"works") don't accumulate.
+                    val corpus = runCatching { dao.all().first().flatMap { it.tags } }.getOrElse { emptyList() }
+                    tags = canonicalizeTags(raw, corpus)
+                }
+                if (prefs.autoMarkdown)
+                    markdown = MarkdownEngine.toMarkdown(this, body).getOrNull().orEmpty()
+            }
+            if (emb != null || title.isNotEmpty() || tags.isNotEmpty() || markdown.isNotEmpty())
+                dao.update(note.copy(id = id, title = title, tags = tags, embedding = emb, markdown = markdown))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            Log.w(TAG, "enrichment failed (note already saved)", e)
+        }
+    }
+
+    /**
+     * Append a recording's raw transcript to an existing note (+ re-embed); reformat is deferred to drain.
+     * Returns false when the target note no longer exists (deleted while queued) — the caller then saves
+     * the clip as a new note instead, so the recording is never lost.
+     */
+    private suspend fun appendToNote(clip: Clip): Boolean {
         val dao = NotesDb.get(this).notes()
         val note = dao.getById(clip.appendNoteId) ?: run {
-            Log.w(TAG, "append target ${clip.appendNoteId} gone")
-            return
+            Log.w(TAG, "append target ${clip.appendNoteId} gone — saving as new note")
+            return false
         }
         val text = noteTranscript(clip)
         val add = text.ifBlank { "(no speech detected)" }
@@ -335,6 +340,7 @@ class RecordingService : Service() {
         dao.update(note.copy(text = combined, embedding = emb))
         synchronized(appendedIds) { appendedIds.add(note.id) }
         Notifications.done(this, "Added to note")
+        return true
     }
 
     /** Queue drained → reformat Markdown + refresh tags for the notes we appended to, in one pass. */
@@ -442,9 +448,11 @@ class RecordingService : Service() {
             if (pcm.isEmpty()) continue                       // leave unmarked so a fixed/retried file imports later
             val tmp = File.createTempFile("import", ".pcm", cacheDir)   // cache → not picked up by recoverOrphans
             AudioFiles.writePcm(tmp, pcm)
-            done.add(key); prefs.importedAudio = done         // optimistic dedup (don't re-decode on the next scan)
+            // In-scan dedup only; the key is persisted by the consumer AFTER the note saves, so a failed
+            // transcription (whose temp .pcm in cache isn't recovered) is re-imported on a later scan.
+            done.add(key)
             RecordState.setPending(pending.incrementAndGet())
-            queue.send(Clip(tmp, pcm.size, model, prefs, createdAt = modified))
+            queue.send(Clip(tmp, pcm.size, model, prefs, createdAt = modified, importKey = key))
         }
     }
 

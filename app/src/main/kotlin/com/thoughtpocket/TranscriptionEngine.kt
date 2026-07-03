@@ -59,6 +59,22 @@ val ModelManager.ModelEntry.firstPassEligible: Boolean get() = true
 val ModelManager.ModelEntry.finalPassEligible: Boolean
     get() = engine == ModelManager.EngineKind.WHISPER
 
+/**
+ * Join a committed transcript prefix with a freshly decoded tail. Pure + JVM-tested because this builds
+ * the text that becomes the saved note (the audio is deleted after save). Both sides are trimmed first so
+ * a whitespace-only merge is exactly "" — stray-space output could slip past isEmpty checks and persist
+ * as note text.
+ */
+internal fun mergeTranscript(committed: String, tail: String): String {
+    val head = committed.trim()
+    val add = tail.trim()
+    return when {
+        head.isEmpty() -> add
+        add.isEmpty() -> head
+        else -> "$head $add"
+    }
+}
+
 // ---------------------------------------------------------------------------------------------------
 
 /** whisper.cpp behind the [TranscriptionEngine] interface. Wraps the shared [WhisperEngine] object. */
@@ -135,14 +151,15 @@ object MoonshineTranscriber : TranscriptionEngine {
             // and join. Clean per-window output makes naive concatenation acceptable (boundary word-splits
             // are rare); the durable note still comes from Whisper unless the user picks first-only.
             if (pcm16k.size <= MAX_DECODE_SAMPLES) decodeOne(rec, pcm16k)
-            else buildString {
+            else {
+                var acc = ""
                 var off = 0
                 while (off < pcm16k.size) {
                     val end = minOf(off + MAX_DECODE_SAMPLES, pcm16k.size)
-                    val part = decodeOne(rec, pcm16k.copyOfRange(off, end))
-                    if (part.isNotBlank()) { if (isNotEmpty()) append(' '); append(part) }
+                    acc = mergeTranscript(acc, decodeOne(rec, pcm16k.copyOfRange(off, end)))
                     off = end
                 }
+                acc
             }
         }
     }

@@ -89,8 +89,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.thoughtpocket.AppPreferences
 import com.thoughtpocket.ModelManager
-import com.thoughtpocket.WhisperEngine
-import com.thoughtpocket.stripNonSpeech
+import com.thoughtpocket.Transcription
 import com.thoughtpocket.ai.Embedder
 import com.thoughtpocket.ai.InteractEngine
 import com.thoughtpocket.ai.InteractOp
@@ -129,10 +128,8 @@ import com.thoughtpocket.ui.theme.revealItem
 import com.thoughtpocket.ui.theme.WaveBars
 import kotlin.math.roundToInt
 import kotlin.random.Random
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /** True if a Gemma model is installed; otherwise shows a toast pointing the user to Settings. */
 internal fun llmReadyOrToast(context: Context): Boolean {
@@ -182,23 +179,16 @@ private fun noteQuip(): String = NOTE_QUIPS.random()
 
 /** Record with [rec] until stopped, then transcribe with the user's Whisper model. Throws if no model. */
 private suspend fun recordAndTranscribe(context: Context, prefs: AppPreferences, rec: MicRecorder): String {
-    val loaded = withContext(Dispatchers.IO) {
-        // Voice-to-textfield dictation (search / command boxes) — use the maintained final-pass Whisper model.
-        val entry = ModelManager.entryById(context, prefs.finalPassModelId)?.takeIf { ModelManager.isDownloaded(context, it) }
-            ?: ModelManager.listInstalled(context).firstOrNull { it.engine == ModelManager.EngineKind.WHISPER }
-            ?: ModelManager.listInstalled(context).firstOrNull()
-        entry != null && WhisperEngine.load(ModelManager.fileFor(context, entry), useGpu = false).isSuccess
-    }
-    if (!loaded) throw IllegalStateException("No transcription model — see Settings")
+    // Voice-to-textfield dictation (search / command boxes) — use the maintained final-pass Whisper model.
+    val entry = ModelManager.entryById(context, prefs.finalPassModelId)?.takeIf { ModelManager.isDownloaded(context, it) }
+        ?: ModelManager.listInstalled(context).firstOrNull { it.engine == ModelManager.EngineKind.WHISPER }
+        ?: ModelManager.listInstalled(context).firstOrNull()
+        ?: throw IllegalStateException("No transcription model — see Settings")
     rec.start()
     rec.runUntilStopped()   // returns when the caller stops the recorder
-    return stripNonSpeech(
-        WhisperEngine.transcribe(
-            pcm16k = rec.readAll(), language = prefs.language.ifBlank { null },
-            translate = prefs.translateToEnglish, threads = prefs.resolvedThreads(), highQuality = false,
-            vadModelPath = WhisperEngine.ensureVadModel(context),
-        )
-    )
+    // Through the engine wrapper, NOT WhisperEngine directly: it shares the lock with the background
+    // transcription consumer, so this can't race a concurrent load/release of the one native context.
+    return Transcription.engineFor(entry).transcribe(context, entry, rec.readAll(), prefs, highQuality = false, useVad = true)
 }
 
 @OptIn(ExperimentalFoundationApi::class)

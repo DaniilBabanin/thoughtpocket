@@ -60,13 +60,22 @@ class MicRecorder(private val file: File) {
         check(min != AudioRecord.ERROR_BAD_VALUE) { "AudioRecord params unsupported" }
         file.parentFile?.mkdirs()
         out = BufferedOutputStream(FileOutputStream(file), 1 shl 16)
-        ar = AudioRecord(
-            MediaRecorder.AudioSource.MIC,
-            sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
-            maxOf(min, frame * 2 * 4)
-        ).also { check(it.state == AudioRecord.STATE_INITIALIZED) { "AudioRecord init failed" } }
-        recording = true
-        ar!!.startRecording()
+        try {
+            ar = AudioRecord(
+                MediaRecorder.AudioSource.MIC,
+                sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
+                maxOf(min, frame * 2 * 4)
+            ).also { check(it.state == AudioRecord.STATE_INITIALIZED) { "AudioRecord init failed" } }
+            recording = true
+            ar!!.startRecording()
+        } catch (t: Throwable) {
+            // Mic busy is a normal failure here — release the fd + mic session instead of leaking them
+            // (runUntilStopped's cleanup never runs when start throws).
+            recording = false
+            runCatching { out?.close() }; out = null
+            runCatching { ar?.release() }; ar = null
+            throw t
+        }
     }
 
     fun stop() { recording = false }
