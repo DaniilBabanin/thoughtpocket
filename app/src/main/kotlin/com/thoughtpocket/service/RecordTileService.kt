@@ -1,6 +1,7 @@
 package com.thoughtpocket.service
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -40,6 +41,9 @@ class RecordTileService : TileService() {
         }
     }
 
+    // Lint flags the < UPSIDE_DOWN_CAKE fallback below even though it's version-guarded and the
+    // Intent overload is the only one that exists there; the PendingIntent path covers 34+.
+    @SuppressLint("StartActivityAndCollapseDeprecated")
     private fun startRecording() {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
             startForegroundService(RecordingService.startIntent(this))

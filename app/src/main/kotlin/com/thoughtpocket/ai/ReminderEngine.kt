@@ -25,7 +25,8 @@ object ReminderEngine {
     suspend fun extract(context: Context, noteText: String, todayMillis: Long): Result<Reminder> {
         if (noteText.isBlank()) return Result.success(Reminder("", null, false))
         val zone = ZoneId.systemDefault()
-        val today = LocalDate.ofInstant(Instant.ofEpochMilli(todayMillis), zone)
+        // Not LocalDate.ofInstant: that overload is API 34+ (NoSuchMethodError on minSdk 31 devices).
+        val today = Instant.ofEpochMilli(todayMillis).atZone(zone).toLocalDate()
         val model = LlmEngine.resolve(context, AppPreferences(context).tagModelFilename, "E2B")
         return LlmEngine.generate(context, prompt(noteText, today), model).map { parse(it, zone) }
     }
