@@ -1,6 +1,11 @@
 # whisper.cpp JNI entry points must not be renamed
 -keep class com.thoughtpocket.WhisperEngine { *; }
 -keep class com.thoughtpocket.TranscribeCallback { *; }
+
+# llama.cpp JNI (coder feature): same situation — native methods resolved by
+# mangled class name, and onToken looked up via a cached MethodID.
+-keep class com.thoughtpocket.ai.coder.LlamaEngine { *; }
+-keep class com.thoughtpocket.ai.coder.LlamaEngine$TokenCallback { *; }
 -keepclasseswithmembernames class * {
     native <methods>;
 }
