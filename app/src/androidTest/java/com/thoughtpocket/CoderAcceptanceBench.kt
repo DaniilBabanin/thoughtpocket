@@ -109,7 +109,9 @@ class CoderAcceptanceBench {
             "L10-checklist", "Packing list",
             "- [x] passport\n- [x] tickets\n- [ ] adapter\n- [x] meds\n- [ ] sunscreen\n- [x] headphones\n- [x] charger\n- [ ] book",
             "Parse the checklist: how many done vs open, completion percentage, and the longest streak of consecutive done items.",
-            expect = listOf("5", "3", "62", "4"),
+            // Streaks in x,x,_,x,_,x,x,_ are 2/1/2 → longest 2. (First run shipped a
+            // wrong oracle of 4; the model was right and the check was wrong.)
+            expect = listOf("5", "3", "62", "2"),
         ),
     )
 
