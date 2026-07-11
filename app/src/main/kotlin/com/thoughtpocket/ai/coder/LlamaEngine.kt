@@ -25,7 +25,7 @@ object LlamaEngine {
     val isLoaded: Boolean get() = handle.get() != 0L
 
     /** Idempotent for the same path; swaps (release+init) for a different one. */
-    suspend fun load(path: String, nCtx: Int = 4096, nThreads: Int = 6): Result<Unit> =
+    suspend fun load(path: String, nCtx: Int = 4096, nThreads: Int = 4): Result<Unit> =
         withContext(Dispatchers.IO) {
             if (handle.get() != 0L && loadedPath == path) return@withContext Result.success(Unit)
             release()

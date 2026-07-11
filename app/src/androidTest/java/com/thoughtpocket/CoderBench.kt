@@ -41,6 +41,10 @@ class CoderBench {
     @Test
     fun generateAndMeasure() = runBlocking<Unit> {
         val m = model() ?: run { Log.i("BENCH", "SKIP: no .gguf in files/coder"); return@runBlocking }
+        // Foreground the app like the real feature does (CoderRunService is a
+        // foreground service): a backgrounded process is cpuset-parked on the
+        // little cores and measures ~0.2 tok/s instead of ~4.5 (Pixel, 2026-07-11).
+        val scenario = androidx.test.core.app.ActivityScenario.launch(com.thoughtpocket.ui.MainActivity::class.java)
         val t0 = SystemClock.elapsedRealtime()
         LlamaEngine.load(m.absolutePath).getOrThrow()
         Log.i("BENCH", "load ${m.name}: ${SystemClock.elapsedRealtime() - t0}ms, rss=${rssMb()}MB")
@@ -62,6 +66,7 @@ class CoderBench {
         Log.i("BENCH", "output: ${out.take(300)}")
         check(out.isNotBlank())
         LlamaEngine.release()
+        scenario.close()
     }
 
     @Test

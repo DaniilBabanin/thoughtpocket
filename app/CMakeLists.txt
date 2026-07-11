@@ -65,6 +65,12 @@ endif()
 set(GGML_NATIVE OFF CACHE BOOL "" FORCE)
 if(ANDROID_ABI STREQUAL "arm64-v8a")
     add_compile_options(-march=armv8.2-a+fp16+dotprod)
+    # llama b9964's ggml ignores inherited flags: with GGML_NATIVE=OFF it only
+    # emits SIMD kernels when GGML_CPU_ARM_ARCH is set (else armv8-a baseline —
+    # measured 0.16 tok/s vs 4.6 for the prebuilt on Pixel 9 Pro XL, 2026-07-11).
+    # No +i8mm: armv8.2 devices (Pixel 6 class) would SIGILL, and whisper shares
+    # this ggml.
+    set(GGML_CPU_ARM_ARCH "armv8.2-a+fp16+dotprod" CACHE STRING "" FORCE)
 endif()
 
 # --- llama.cpp (coder feature spike) ---------------------------------------

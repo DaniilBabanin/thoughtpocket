@@ -21,9 +21,10 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 object CoderEngine {
     private const val TAG = "CoderEngine"
-    // Tab S11 sweet spot (docs/coder-throughput.md): decode is bandwidth-bound,
-    // more threads only help prefill and hurt decode.
-    private const val N_THREADS = 6
+    // 4 threads: Pixel 9 Pro XL has only 4 big cores — 6 threads spill onto
+    // A520s and per-op sync drags decode (4.6 vs 3.8 tok/s, llama-bench
+    // 2026-07-11). Tab S11 loses ~11% vs 6 threads; the Pixel gain outweighs it.
+    private const val N_THREADS = 4
     private const val N_CTX = 4096
 
     private val active = AtomicBoolean(false)
