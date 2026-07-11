@@ -65,6 +65,16 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- Coder feature: executes LLM-generated Python out-of-process so a hung
+             script is killable (same-UID Process.killProcess from the client).
+             isolatedProcess was spiked and is a hard no: Chaquopy's AndroidPlatform
+             needs SharedPreferences, which isolated processes cannot access
+             ("UserManager is not available") — see docs/coder-throughput.md. -->
+        <service
+            android:name=".coder.PyRunnerService"
+            android:exported="false"
+            android:process=":coder" />
+
         <service
             android:name=".service.RecordTileService"
             android:exported="true"

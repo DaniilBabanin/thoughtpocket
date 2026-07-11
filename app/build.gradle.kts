@@ -6,6 +6,16 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
+    id("com.chaquo.python")
+}
+
+// Embedded CPython for the experimental coder feature (executes LLM-generated
+// scripts). 3.13 = newest Python with broad Android wheel coverage on PyPI.
+chaquopy {
+    defaultConfig {
+        version = "3.13"
+        buildPython("python3.13")
+    }
 }
 
 val useVulkan = project.findProperty("whispershare.vulkan")?.toString()?.toBoolean() ?: false
