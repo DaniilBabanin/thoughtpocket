@@ -2,6 +2,8 @@
 #include <string>
 #include <vector>
 #include <exception>
+#include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <android/log.h>
 #include "whisper.h"
@@ -116,25 +118,19 @@ Java_com_thoughtpocket_WhisperEngine_nativeFreeContext(
     }
 }
 
-JNIEXPORT jstring JNICALL
-Java_com_thoughtpocket_WhisperEngine_nativeTranscribe(
-        JNIEnv *env, jobject /*thiz*/,
-        jlong ctxPtr,
-        jfloatArray pcm,
+// Shared whisper_full run for the array and file entry points — params, VAD, callbacks, error stash
+// must stay identical between the two, so they live here once.
+static jstring transcribe_pcm(
+        JNIEnv *env,
+        whisper_context *ctx,
+        const float *samples,
+        jsize n,
         jstring language,
         jboolean translate,
         jint nThreads,
         jboolean useBeam,
         jobject callback,
         jstring vadModelPath) {
-
-    auto *ctx = reinterpret_cast<whisper_context *>(ctxPtr);
-    if (ctx == nullptr) {
-        return env->NewStringUTF("");
-    }
-
-    jsize n = env->GetArrayLength(pcm);
-    jfloat *samples = env->GetFloatArrayElements(pcm, nullptr);
 
     whisper_full_params params = whisper_full_default_params(
             useBeam ? WHISPER_SAMPLING_BEAM_SEARCH : WHISPER_SAMPLING_GREEDY);
@@ -204,7 +200,6 @@ Java_com_thoughtpocket_WhisperEngine_nativeTranscribe(
         LOGE("%s", g_last_error.c_str());
     }
 
-    env->ReleaseFloatArrayElements(pcm, samples, JNI_ABORT);
     if (lang) env->ReleaseStringUTFChars(language, lang);
     if (vadPath) env->ReleaseStringUTFChars(vadModelPath, vadPath);
 
@@ -227,6 +222,88 @@ Java_com_thoughtpocket_WhisperEngine_nativeTranscribe(
     size_t start = out.find_first_not_of(" \t\n");
     if (start != std::string::npos) out = out.substr(start);
     return env->NewStringUTF(out.c_str());
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_thoughtpocket_WhisperEngine_nativeTranscribe(
+        JNIEnv *env, jobject /*thiz*/,
+        jlong ctxPtr,
+        jfloatArray pcm,
+        jstring language,
+        jboolean translate,
+        jint nThreads,
+        jboolean useBeam,
+        jobject callback,
+        jstring vadModelPath) {
+
+    auto *ctx = reinterpret_cast<whisper_context *>(ctxPtr);
+    if (ctx == nullptr) {
+        return env->NewStringUTF("");
+    }
+
+    jsize n = env->GetArrayLength(pcm);
+    jfloat *samples = env->GetFloatArrayElements(pcm, nullptr);
+    jstring out = transcribe_pcm(env, ctx, samples, n, language, translate, nThreads, useBeam,
+                                 callback, vadModelPath);
+    env->ReleaseFloatArrayElements(pcm, samples, JNI_ABORT);
+    return out;
+}
+
+// Final-pass entry point: reads int16 LE PCM straight from disk into a native buffer, so a long
+// recording never materializes as a Kotlin FloatArray + a second JNI pin/copy. endSample -1 = to EOF.
+JNIEXPORT jstring JNICALL
+Java_com_thoughtpocket_WhisperEngine_nativeTranscribeFile(
+        JNIEnv *env, jobject /*thiz*/,
+        jlong ctxPtr,
+        jstring pcmPath,
+        jlong startSample,
+        jlong endSample,
+        jstring language,
+        jboolean translate,
+        jint nThreads,
+        jboolean useBeam,
+        jobject callback,
+        jstring vadModelPath) {
+
+    auto *ctx = reinterpret_cast<whisper_context *>(ctxPtr);
+    if (ctx == nullptr) {
+        return env->NewStringUTF("");
+    }
+
+    const char *path = env->GetStringUTFChars(pcmPath, nullptr);
+    FILE *f = path ? fopen(path, "rb") : nullptr;
+    if (path) env->ReleaseStringUTFChars(pcmPath, path);
+    if (f == nullptr) {
+        g_last_error = "pcm file open failed";
+        LOGE("%s", g_last_error.c_str());
+        return env->NewStringUTF("");
+    }
+
+    fseek(f, 0, SEEK_END);
+    const long file_samples = ftell(f) / 2;
+    long start = startSample < 0 ? 0 : (long) startSample;
+    if (start > file_samples) start = file_samples;
+    long end = (endSample < 0 || (long) endSample > file_samples) ? file_samples : (long) endSample;
+    if (end < start) end = start;
+    fseek(f, start * 2, SEEK_SET);
+
+    // int16 → float: s / 32768.0f, the exact conversion MicRecorder.readPcm / shortsToFloat use.
+    std::vector<float> samples;
+    samples.reserve((size_t) (end - start));
+    int16_t buf[32 * 1024];   // 64 KB blocks, matching readPcm's block size
+    const long buf_samples = (long) (sizeof(buf) / sizeof(buf[0]));
+    long remaining = end - start;
+    while (remaining > 0) {
+        size_t want = (size_t) (remaining < buf_samples ? remaining : buf_samples);
+        size_t got = fread(buf, 2, want, f);
+        if (got == 0) break;
+        for (size_t i = 0; i < got; ++i) samples.push_back(buf[i] / 32768.0f);
+        remaining -= (long) got;
+    }
+    fclose(f);
+
+    return transcribe_pcm(env, ctx, samples.data(), (jsize) samples.size(), language, translate,
+                          nThreads, useBeam, callback, vadModelPath);
 }
 
 JNIEXPORT jstring JNICALL

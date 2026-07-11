@@ -8,6 +8,38 @@ val BULLET = Regex("^(\\s*)[-*] (.*)$")
 val ORDERED = Regex("^(\\s*)(\\d+)\\. (.*)$")
 val HEADING = Regex("^(#{1,6}) (.*)$")
 
+/** One classified Markdown line, precomputed so the renderer doesn't re-run regexes per composition. */
+sealed class MdLine {
+    data class Checkbox(val indent: String, val checked: Boolean, val label: String) : MdLine()
+    data class Heading(val level: Int, val text: String) : MdLine()
+    data class Ordered(val indent: String, val number: String, val text: String) : MdLine()
+    data class Bullet(val indent: String, val text: String) : MdLine()
+    object Blank : MdLine()
+    data class Plain(val text: String) : MdLine()
+}
+
+/**
+ * Classify [markdown] line by line (same regex cascade the renderer used inline). One entry per input
+ * line — including blanks — so a list index is also the line index [toggleCheckbox] expects.
+ */
+fun parseMarkdown(markdown: String): List<MdLine> = markdown.split("\n").map { line ->
+    val cb = CHECKBOX.find(line)
+    val head = if (cb == null) HEADING.find(line) else null
+    val ord = if (cb == null && head == null) ORDERED.find(line) else null
+    val bul = if (cb == null && head == null && ord == null) BULLET.find(line) else null
+    when {
+        cb != null -> {
+            val (ws, mark, label) = cb.destructured
+            MdLine.Checkbox(ws, mark.equals("x", ignoreCase = true), label)
+        }
+        head != null -> MdLine.Heading(head.groupValues[1].length, head.groupValues[2])
+        ord != null -> MdLine.Ordered(ord.groupValues[1], ord.groupValues[2], ord.groupValues[3])
+        bul != null -> MdLine.Bullet(bul.groupValues[1], bul.groupValues[2])
+        line.isBlank() -> MdLine.Blank
+        else -> MdLine.Plain(line)
+    }
+}
+
 private fun matches(label: String, item: String): Boolean {
     val a = label.trim().lowercase()
     val b = item.trim().lowercase()

@@ -60,6 +60,25 @@ class EmbedderTest {
         assertEquals(Embedder.cosine(a, b), Embedder.cosineCentered(a, b, floatArrayOf(0f, 0f)), eps)
     }
 
+    @Test fun centeredMatchesNaiveCenteredCopyFormula() {
+        // Reference values from the naive materialize-centered-copies formula the impl replaced.
+        val a = floatArrayOf(0.3f, -1.2f, 2.5f, 0f)
+        val b = floatArrayOf(-0.7f, 0.4f, 1.1f, 3f)
+        val mean = floatArrayOf(0.1f, -0.2f, 1.8f, 1f)
+        val ca = FloatArray(a.size) { a[it] - mean[it] }
+        val cb = FloatArray(b.size) { b[it] - mean[it] }
+        assertEquals(Embedder.cosine(ca, cb), Embedder.cosineCentered(a, b, mean), eps)
+    }
+
+    @Test fun centeredZeroVectorIsZeroNotNaN() {
+        // a == mean → centered a is all zeros → 0, not NaN
+        assertEquals(0f, Embedder.cosineCentered(floatArrayOf(1f, 2f), floatArrayOf(3f, 4f), floatArrayOf(1f, 2f)), 0f)
+    }
+
+    @Test fun centeredMismatchedSizesAreZeroNotCrash() {
+        assertEquals(0f, Embedder.cosineCentered(floatArrayOf(1f, 2f), floatArrayOf(1f, 2f, 3f), floatArrayOf(0f, 0f, 0f)), 0f)
+    }
+
     @Test fun centeredCosineRanksWhereRawCosineCannot() {
         // All vectors share a big common component (10,10); raw cosine compresses both docs
         // to ~1 for the query, but subtracting the corpus mean makes the ranking decisive.

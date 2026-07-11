@@ -7,6 +7,7 @@ import com.k2fsa.sherpa.onnx.OfflineModelConfig
 import com.k2fsa.sherpa.onnx.OfflineMoonshineModelConfig
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
+import com.thoughtpocket.audio.MicRecorder
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -39,6 +40,27 @@ interface TranscriptionEngine {
         useVad: Boolean = false,
         onSegment: ((String) -> Unit)? = null,
     ): String
+
+    /**
+     * Transcribe a sample range of an int16 PCM [file] ([endSample] -1 = to end). The final pass uses
+     * this so a long recording streams disk→native instead of materializing as one Kotlin FloatArray.
+     * The default delegates to the in-memory path for engines without a native file reader (Moonshine).
+     */
+    suspend fun transcribeFile(
+        context: Context,
+        model: ModelManager.ModelEntry,
+        file: File,
+        prefs: AppPreferences,
+        highQuality: Boolean,
+        useVad: Boolean = false,
+        onSegment: ((String) -> Unit)? = null,
+        startSample: Long = 0,
+        endSample: Long = -1,
+    ): String = transcribe(
+        context, model,
+        MicRecorder.readPcmRange(file, startSample.toInt(), if (endSample < 0) Int.MAX_VALUE else endSample.toInt()),
+        prefs, highQuality, useVad, onSegment,
+    )
 
     /** Free the native context (process teardown / model switch). */
     fun release()
@@ -107,6 +129,38 @@ object WhisperTranscriber : TranscriptionEngine {
                 threads = prefs.resolvedThreads(),
                 highQuality = highQuality,
                 // VAD only on final transcriptions (skip silent thinking-pauses); not on live preview.
+                vadModelPath = if (useVad) WhisperEngine.ensureVadModel(context) else null,
+                onSegment = onSegment,
+            )
+        )
+    }
+
+    override suspend fun transcribeFile(
+        context: Context,
+        model: ModelManager.ModelEntry,
+        file: File,
+        prefs: AppPreferences,
+        highQuality: Boolean,
+        useVad: Boolean,
+        onSegment: ((String) -> Unit)?,
+        startSample: Long,
+        endSample: Long,
+    ): String = lock.withLock {
+        val modelFile = ModelManager.fileFor(context, model)
+        if (loadedKey != modelFile.path) {
+            // Same load contract as the array path: an unloadable model throws so the clip is retried.
+            WhisperEngine.load(modelFile, useGpu = false).getOrThrow()
+            loadedKey = modelFile.path
+        }
+        stripNonSpeech(
+            WhisperEngine.transcribeFile(
+                file = file,
+                startSample = startSample,
+                endSample = endSample,
+                language = prefs.language.ifBlank { null },
+                translate = prefs.translateToEnglish,
+                threads = prefs.resolvedThreads(),
+                highQuality = highQuality,
                 vadModelPath = if (useVad) WhisperEngine.ensureVadModel(context) else null,
                 onSegment = onSegment,
             )

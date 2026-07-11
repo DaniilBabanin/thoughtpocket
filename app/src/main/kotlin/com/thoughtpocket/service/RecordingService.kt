@@ -92,6 +92,9 @@ class RecordingService : Service() {
     /** Notes that got appended recordings this drain; reformatted in one pass once the queue empties. */
     private val appendedIds = mutableSetOf<Long>()
 
+    /** New notes whose auto-Markdown (E4B) is deferred; formatted in one batch once the queue empties. */
+    private val pendingMarkdown = mutableSetOf<Long>()
+
     /** One-shot: re-queue recordings a killed session left on disk, before this process's first record. */
     @Volatile private var recovered = false
 
@@ -195,7 +198,12 @@ class RecordingService : Service() {
                 val left = pending.decrementAndGet().coerceAtLeast(0)
                 RecordState.setPending(left)
                 // Queue drained → reformat/retag any notes we appended to, in one pass (still foreground).
-                if (left == 0) runCatching { enrichAppended() }.onFailure { Log.e(TAG, "enrich failed", it) }
+                if (left == 0) {
+                    runCatching { enrichAppended() }.onFailure { Log.e(TAG, "enrich failed", it) }
+                    // Deferred auto-Markdown last: enrichAppended ends on E4B, so this batch (also E4B)
+                    // never forces another engine swap.
+                    runCatching { formatPending() }.onFailure { Log.e(TAG, "markdown batch failed", it) }
+                }
                 settleStateAndMaybeStop()
             }
         }
@@ -248,10 +256,11 @@ class RecordingService : Service() {
 
     /**
      * Produce the saved transcript for a clip through its resolved engine. The engine owns serialization +
-     * lazy load and applies [stripNonSpeech]; VAD/highQuality are honoured by Whisper and ignored by Moonshine.
+     * lazy load and applies [stripNonSpeech]; VAD/highQuality are honoured by Whisper and ignored by
+     * Moonshine. File-based so a long recording streams disk→native instead of landing on the Kotlin heap.
      */
-    private suspend fun transcribeForNote(pcm: FloatArray, prefs: AppPreferences, model: ModelManager.ModelEntry): String =
-        Transcription.engineFor(model).transcribe(this, model, pcm, prefs, highQuality = prefs.highQuality, useVad = true)
+    private suspend fun transcribeForNote(file: File, prefs: AppPreferences, model: ModelManager.ModelEntry): String =
+        Transcription.engineFor(model).transcribeFile(this, model, file, prefs, highQuality = prefs.highQuality, useVad = true)
 
     /**
      * The transcript that becomes the note. First-pass-only ([Clip.firstPassText] non-null): reuse the live
@@ -262,7 +271,7 @@ class RecordingService : Service() {
      */
     private suspend fun noteTranscript(clip: Clip): String {
         val model = clip.model!!
-        val committed = clip.firstPassText ?: return transcribeForNote(MicRecorder.readPcm(clip.file), clip.prefs, model)
+        val committed = clip.firstPassText ?: return transcribeForNote(clip.file, clip.prefs, model)
         val tail = MicRecorder.readPcmRange(clip.file, clip.firstPassSamples, clip.samples)
         // A tail-decode failure must PROPAGATE (like the batch path): swallowing it would silently drop
         // the last chunk and then delete the audio. On throw the consumer keeps the .pcm for retry.
@@ -301,7 +310,6 @@ class RecordingService : Service() {
             val emb = Embedder.embed(this, body)
             var title = ""
             var tags = emptyList<String>()
-            var markdown = ""
             if (text.isNotBlank() && LlmEngine.isModelInstalled(this)) {
                 title = TitleEngine.suggest(this, body).getOrNull().orEmpty()
                 if (prefs.autoTag) {
@@ -310,11 +318,13 @@ class RecordingService : Service() {
                     val corpus = runCatching { dao.all().first().flatMap { it.tags } }.getOrElse { emptyList() }
                     tags = canonicalizeTags(raw, corpus)
                 }
-                if (prefs.autoMarkdown)
-                    markdown = MarkdownEngine.toMarkdown(this, body).getOrNull().orEmpty()
+                // Markdown needs the E4B bundle while title/tags run on E2B — defer it to the drain
+                // batch (like enrichAppended) so N queued notes don't cost N multi-GB engine swaps.
+                // Until then the UI renders the raw transcript (its normal empty-markdown fallback).
+                if (prefs.autoMarkdown) synchronized(pendingMarkdown) { pendingMarkdown.add(id) }
             }
-            if (emb != null || title.isNotEmpty() || tags.isNotEmpty() || markdown.isNotEmpty())
-                dao.update(note.copy(id = id, title = title, tags = tags, embedding = emb, markdown = markdown))
+            if (emb != null || title.isNotEmpty() || tags.isNotEmpty())
+                dao.update(note.copy(id = id, title = title, tags = tags, embedding = emb))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
@@ -353,14 +363,38 @@ class RecordingService : Service() {
             .notify(Notifications.ONGOING_ID, Notifications.ongoing(this, "Formatting…"))
         val dao = NotesDb.get(this).notes()
         val corpus = runCatching { dao.all().first().flatMap { it.tags } }.getOrElse { emptyList() }
+        // Tags (E2B) for every note first, then Markdown (E4B) — grouped by bundle so the shared LLM
+        // engine swaps models once per drain instead of twice per note.
+        val newTags = HashMap<Long, List<String>>()
+        for (id in ids) {
+            val note = dao.getById(id) ?: continue
+            if (note.text.isBlank()) continue
+            newTags[id] = if (prefs.autoTag) TaggingEngine.suggestTags(this, note.text).getOrNull().orEmpty() else emptyList()
+        }
         for (id in ids) {
             val note = dao.getById(id) ?: continue
             if (note.text.isBlank()) continue
             // Reformat regenerates everything unchecked — carry over the items the user had ticked.
             val md = MarkdownEngine.toMarkdown(this, note.text).getOrNull()
                 ?.let { preserveChecked(note.markdown, it) }
-            val newTags = if (prefs.autoTag) TaggingEngine.suggestTags(this, note.text).getOrNull().orEmpty() else emptyList()
-            dao.update(note.copy(markdown = md ?: note.markdown, tags = canonicalizeTags(note.tags + newTags, corpus)))
+            dao.update(note.copy(markdown = md ?: note.markdown, tags = canonicalizeTags(note.tags + (newTags[id] ?: emptyList()), corpus)))
+        }
+    }
+
+    /** Queue drained → run this drain's deferred auto-Markdown (E4B) in one batch. Best-effort like the
+     *  rest of enrichment: a failed format just leaves the raw transcript rendering. */
+    private suspend fun formatPending() {
+        val ids = synchronized(pendingMarkdown) { val c = pendingMarkdown.toList(); pendingMarkdown.clear(); c }
+        if (ids.isEmpty() || !LlmEngine.isModelInstalled(this)) return
+        if (ids.size > 1) Log.i(TAG, "formatting deferred markdown batch of ${ids.size} notes")
+        getSystemService(NotificationManager::class.java)
+            .notify(Notifications.ONGOING_ID, Notifications.ongoing(this, "Formatting…"))
+        val dao = NotesDb.get(this).notes()
+        for (id in ids) {
+            val note = dao.getById(id) ?: continue
+            if (note.text.isBlank()) continue
+            val md = MarkdownEngine.toMarkdown(this, note.text).getOrNull() ?: continue
+            dao.update(note.copy(markdown = md))
         }
     }
 

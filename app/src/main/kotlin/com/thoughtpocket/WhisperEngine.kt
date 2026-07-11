@@ -98,6 +98,34 @@ object WhisperEngine {
     }
 
     /**
+     * Like [transcribe], but streams the int16 PCM straight from [file] disk→native (samples in
+     * [startSample, endSample); [endSample] -1 = to end of file). The final pass uses this so a long
+     * recording never materializes as a Kotlin FloatArray plus a second JNI pin/copy.
+     */
+    suspend fun transcribeFile(
+        file: File,
+        startSample: Long = 0,
+        endSample: Long = -1,
+        language: String? = null,
+        translate: Boolean = false,
+        threads: Int = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(2),
+        highQuality: Boolean = false,
+        vadModelPath: String? = null,
+        onSegment: ((String) -> Unit)? = null,
+        onProgress: ((Float) -> Unit)? = null
+    ): String = withContext(Dispatchers.Default) {
+        val ptr = ctxPtr.get()
+        check(ptr != 0L) { "WhisperEngine not loaded — call load() first" }
+        val cb = if (onSegment != null || onProgress != null) {
+            TranscribeCallback().apply {
+                this.onSegment = onSegment
+                this.onProgress = onProgress
+            }
+        } else null
+        nativeTranscribeFile(ptr, file.absolutePath, startSample, endSample, language ?: "", translate, threads, highQuality, cb, vadModelPath ?: "")
+    }
+
+    /**
      * Convenience: full load → transcribe → keep loaded. Used by [Benchmark] which
      * iterates many (model, gpu) combinations.
      */
@@ -118,6 +146,18 @@ object WhisperEngine {
     private external fun nativeTranscribe(
         ctxPtr: Long,
         pcm: FloatArray,
+        language: String,
+        translate: Boolean,
+        nThreads: Int,
+        useBeam: Boolean,
+        callback: TranscribeCallback?,
+        vadModelPath: String,
+    ): String
+    private external fun nativeTranscribeFile(
+        ctxPtr: Long,
+        pcmPath: String,
+        startSample: Long,
+        endSample: Long,
         language: String,
         translate: Boolean,
         nThreads: Int,

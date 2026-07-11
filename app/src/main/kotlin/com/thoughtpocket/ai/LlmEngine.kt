@@ -8,6 +8,7 @@ import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Message
 import com.thoughtpocket.AppPreferences
+import com.thoughtpocket.ThoughtPocketApp
 import com.thoughtpocket.data.Note
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -139,7 +140,17 @@ object LlmEngine {
             mutex.withLock {
                 runCatching {
                     val eng = ensureLoaded(context, model)
-                    eng.createConversation().use { conv -> conv.sendMessage(prompt).plainText() }
+                    // GPU inference can abort the whole process (driver crash), so leave a crumb only
+                    // while one is in flight — ThoughtPocketApp forces CPU on the next launch if it
+                    // survives. A handled failure is not a crash: the crumb must not outlive this call.
+                    val crumb = if (activeBackend == "gpu")
+                        File(context.filesDir, ThoughtPocketApp.GPU_CRUMB_FILE).also { it.createNewFile() }
+                    else null
+                    try {
+                        eng.createConversation().use { conv -> conv.sendMessage(prompt).plainText() }
+                    } finally {
+                        crumb?.delete()
+                    }
                 }
             }
         }
@@ -160,9 +171,14 @@ object LlmEngine {
         // our generic .litertlm bundles with NOT_FOUND (Backend.NPU needs an NPU-COMPILED model), so it's
         // not in the chain — it would only waste ~14s of failed init per load before falling back to GPU.
         Log.i(TAG, "Loading LLM: ${model.name} (${model.length() / 1_000_000} MB) on GPU")
+        // Same crumb bracket as GPU generation: a GPU init that kills the process leaves it behind;
+        // a caught init failure deletes it before the CPU fallback (which must never carry a crumb).
+        val crumb = File(context.filesDir, ThoughtPocketApp.GPU_CRUMB_FILE)
         val eng = try {
-            make(Backend.GPU(), "gpu")
+            crumb.createNewFile()
+            make(Backend.GPU(), "gpu").also { crumb.delete() }
         } catch (t: Throwable) {
+            crumb.delete()
             Log.w(TAG, "GPU backend failed, falling back to CPU", t)
             make(Backend.CPU(), "cpu")
         }

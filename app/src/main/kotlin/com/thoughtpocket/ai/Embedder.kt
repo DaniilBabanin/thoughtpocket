@@ -142,11 +142,18 @@ object Embedder {
         return m
     }
 
-    /** Cosine after subtracting [mean] from both — sharpens the similarity range. */
+    /** Cosine after subtracting [mean] from both — sharpens the similarity range. Runs per note per
+     *  keystroke in search, so it centers in-loop instead of materializing copies. */
     fun cosineCentered(a: FloatArray, b: FloatArray, mean: FloatArray): Float {
-        val ca = FloatArray(a.size) { a[it] - mean[it] }
-        val cb = FloatArray(b.size) { b[it] - mean[it] }
-        return cosine(ca, cb)
+        if (a.size != b.size) return 0f
+        var dot = 0f; var na = 0f; var nb = 0f
+        for (i in a.indices) {
+            val ca = a[i] - mean[i]
+            val cb = b[i] - mean[i]
+            dot += ca * cb; na += ca * ca; nb += cb * cb
+        }
+        val d = sqrt(na) * sqrt(nb)
+        return if (d == 0f) 0f else dot / d
     }
 }
 

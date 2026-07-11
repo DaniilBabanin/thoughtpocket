@@ -245,20 +245,24 @@ fun NotesListScreen(onOpen: (Long) -> Unit, bottomSpace: Dp) {
     // Corpus mean to subtract: USE cosines are compressed; centering restores contrast.
     val noteMean = remember(notes) { Embedder.mean(notes.mapNotNull { it.embedding }) }
     val q = query.trim()
-    val shown = if (q.isEmpty()) {
-        filter?.let { f -> notes.filter { f in it.tags } } ?: notes
-    } else {
-        // Semantic search: rank by centered query↔note cosine, keep lexical matches too. Ignores tag filter.
-        val qv = queryVec
-        notes.map { note ->
-            val sem = if (qv != null && note.embedding != null && noteMean != null)
-                Embedder.cosineCentered(qv, note.embedding, noteMean) else 0f
-            val lex = note.text.contains(q, true) || note.title.contains(q, true) ||
-                note.tags.any { it.contains(q, true) }
-            Triple(note, sem, lex)
-        }.filter { it.second >= 0.20f || it.third }
-            .sortedByDescending { it.second }
-            .map { it.first }
+    // Scoring every note is O(n·dim); keyed so it reruns only when a real input changes, not on every
+    // recomposition (the live-recording card recomposes constantly). noteMean is derived from notes.
+    val shown = remember(notes, q, queryVec, filter) {
+        if (q.isEmpty()) {
+            filter?.let { f -> notes.filter { f in it.tags } } ?: notes
+        } else {
+            // Semantic search: rank by centered query↔note cosine, keep lexical matches too. Ignores tag filter.
+            val qv = queryVec
+            notes.map { note ->
+                val sem = if (qv != null && note.embedding != null && noteMean != null)
+                    Embedder.cosineCentered(qv, note.embedding, noteMean) else 0f
+                val lex = note.text.contains(q, true) || note.title.contains(q, true) ||
+                    note.tags.any { it.contains(q, true) }
+                Triple(note, sem, lex)
+            }.filter { it.second >= 0.20f || it.third }
+                .sortedByDescending { it.second }
+                .map { it.first }
+        }
     }
 
     // Random task is drawn from what's currently shown — an active tag filter or search scopes it.
