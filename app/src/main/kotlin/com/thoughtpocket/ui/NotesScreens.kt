@@ -48,6 +48,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Check
@@ -289,6 +290,11 @@ fun NotesListScreen(onOpen: (Long) -> Unit, bottomSpace: Dp) {
                     Text(quip, style = GreetingStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("ThoughtPocket", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, fontSize = 26.sp)
                 }
+                // Import recording(s): each picked audio file becomes its own transcribed note.
+                val importPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+                    if (uris.isNotEmpty()) context.startForegroundService(RecordingService.importUrisIntent(context, uris))
+                }
+                IconButton(onClick = { importPicker.launch(arrayOf("audio/*")) }) { Icon(Icons.Filled.AudioFile, "Import recordings") }
                 IconButton(onClick = { pickTask() }) { Icon(Icons.Filled.Casino, "Random task") }
             }
             // Semantic search.
@@ -886,6 +892,10 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
         )
     }
     fun stopAppend() { if (recording) context.startService(RecordingService.stopIntent(context)) }
+    // Append-by-file: picked audio file(s) transcribe in the background and append to THIS note.
+    val appendPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isNotEmpty()) context.startForegroundService(RecordingService.importUrisIntent(context, uris, appendToNoteId = id))
+    }
     // While recording into this note show the raw transcript (it grows as clips land); resync the local
     // buffers from the DB as background appends + the on-finish reformat/retag land, so the screen reflects
     // them (and Save doesn't write back stale copies).
@@ -921,6 +931,7 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
             ) {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                 Text("Note", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                IconButton(onClick = { appendPicker.launch(arrayOf("audio/*")) }) { Icon(Icons.Filled.AudioFile, "Add recording from file") }
                 IconButton(onClick = { shareShown() }) { Icon(Icons.Filled.Share, "Share") }
                 IconButton(onClick = { reformat() }, enabled = !formatting) {
                     Icon(Icons.Filled.AutoAwesome, "Reformat (AI)", tint = cs.primary)

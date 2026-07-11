@@ -2,6 +2,7 @@ package com.thoughtpocket.service
 
 import android.app.NotificationManager
 import android.app.Service
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -105,6 +106,7 @@ class RecordingService : Service() {
             ACTION_START -> startRecording(intent.getLongExtra(EXTRA_APPEND_ID, -1L))
             ACTION_STOP -> recorder?.stop()
             ACTION_IMPORT -> startImport()
+            ACTION_IMPORT_URIS -> startImportUris(intent)
             ACTION_RECOVER -> startRecovery()
         }
         return START_NOT_STICKY
@@ -470,6 +472,38 @@ class RecordingService : Service() {
         }
     }
 
+    /**
+     * Import explicit files (picker or share sheet): decode each URI, transcribe into new notes — or
+     * append every transcript to one note when [EXTRA_APPEND_ID] is set. No dedup key: the user picked
+     * these files deliberately, so importing the same file twice is on purpose.
+     */
+    private fun startImportUris(intent: Intent) {
+        Notifications.ensureChannel(this)
+        ServiceCompat.startForeground(
+            this, Notifications.ONGOING_ID, Notifications.ongoing(this, "Importing audio…"),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        )
+        ensureConsumer()
+        // URIs travel as ClipData (not extras) so the read grants propagate to this service.
+        val uris = intent.clipData?.let { cd -> (0 until cd.itemCount).mapNotNull { cd.getItemAt(it).uri } }.orEmpty()
+        val appendId = intent.getLongExtra(EXTRA_APPEND_ID, -1L)
+        scope.launch {
+            val prefs = AppPreferences(this@RecordingService)
+            val model = resolveNoteModel(prefs)
+            var failed = 0
+            for (uri in uris) {
+                val pcm = AudioFiles.decode(this@RecordingService, uri)   // → 16 kHz mono float (empty on unsupported)
+                if (pcm.isEmpty()) { failed++; continue }
+                val tmp = File.createTempFile("import", ".pcm", cacheDir) // cache → not picked up by recoverOrphans
+                AudioFiles.writePcm(tmp, pcm)
+                RecordState.setPending(pending.incrementAndGet())
+                queue.send(Clip(tmp, pcm.size, model, prefs, appendNoteId = appendId))
+            }
+            if (failed > 0) Notifications.done(this@RecordingService, "Couldn't read $failed audio file" + if (failed > 1) "s" else "")
+            settleStateAndMaybeStop()
+        }
+    }
+
     private suspend fun scanImport() {
         val prefs = AppPreferences(this)
         val folder = prefs.importFolder.ifEmpty { return }
@@ -546,6 +580,7 @@ class RecordingService : Service() {
         const val ACTION_START = "com.thoughtpocket.action.START"
         const val ACTION_STOP = "com.thoughtpocket.action.STOP"
         const val ACTION_IMPORT = "com.thoughtpocket.action.IMPORT"
+        const val ACTION_IMPORT_URIS = "com.thoughtpocket.action.IMPORT_URIS"
         const val ACTION_RECOVER = "com.thoughtpocket.action.RECOVER"
         private const val EXTRA_APPEND_ID = "append_note_id"
 
@@ -559,6 +594,21 @@ class RecordingService : Service() {
 
         /** Scan the user's import folder and turn any new audio files into transcribed notes. */
         fun importIntent(ctx: Context) = Intent(ctx, RecordingService::class.java).setAction(ACTION_IMPORT)
+
+        /**
+         * Import explicit audio files (picker or share sheet). Each becomes its own note, or with
+         * [appendToNoteId] >= 0 every transcript appends to that note. URIs ride in ClipData +
+         * grant flag so the service can read them after the picking activity is gone.
+         */
+        fun importUrisIntent(ctx: Context, uris: List<Uri>, appendToNoteId: Long = -1L) =
+            Intent(ctx, RecordingService::class.java)
+                .setAction(ACTION_IMPORT_URIS)
+                .putExtra(EXTRA_APPEND_ID, appendToNoteId)
+                .apply {
+                    clipData = ClipData.newUri(ctx.contentResolver, "audio", uris.first())
+                        .also { cd -> uris.drop(1).forEach { cd.addItem(ClipData.Item(it)) } }
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
 
         /** [appendToNoteId] >= 0 appends the recording to that note instead of creating a new one. */
         fun startIntent(ctx: Context, appendToNoteId: Long = -1L) =

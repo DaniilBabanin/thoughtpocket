@@ -1,7 +1,9 @@
 package com.thoughtpocket.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -34,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.IntentCompat
 import androidx.lifecycle.lifecycleScope
 import com.thoughtpocket.AppPreferences
 import com.thoughtpocket.NotesSyncEngine
@@ -52,6 +55,8 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // savedInstanceState != null → recreation (e.g. rotation); the share was already handled.
+        if (savedInstanceState == null) handleSharedAudio(intent)
         enableEdgeToEdge()
         setContent {
             val widthClass = calculateWindowSizeClass(this).widthSizeClass
@@ -74,6 +79,23 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         NotesSyncEngine.requestSync()   // pull any notes that synced into the folder from other devices
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)   // singleTask: a share while the app is alive lands here
+        handleSharedAudio(intent)
+    }
+
+    /** Audio shared from another app → each file becomes its own transcribed note. */
+    private fun handleSharedAudio(intent: Intent) {
+        val uris = when (intent.action) {
+            Intent.ACTION_SEND ->
+                listOfNotNull(IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java))
+            Intent.ACTION_SEND_MULTIPLE ->
+                IntentCompat.getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, Uri::class.java).orEmpty()
+            else -> return
+        }
+        if (uris.isNotEmpty()) startForegroundService(RecordingService.importUrisIntent(this, uris))
     }
 }
 
