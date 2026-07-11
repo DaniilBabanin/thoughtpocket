@@ -51,6 +51,7 @@ Run both (watch it live, keep the best), instant-only (fastest — the live tran
 - **Interact** takes free-form commands by text or voice, like "check off milk" or "add eggs." A model reads the intent, then the change is applied deterministically, so a bad guess can't corrupt the note. One tap undoes the last AI change.
 - **Ask** answers questions across your notes with RAG retrieval (query embedding, time filter, top-K notes), plus exact checklist queries like "what do I still need."
 - **Random task** picks a random open `- [ ]` for when you don't know where to start.
+- **Code this** (experimental, off by default) — a local coding model (Ornith 9B, ~5.6 GB download, or bring your own GGUF) writes a small Python script from your note and an instruction ("sum these amounts", "chart my spending"), runs it on-device in a sandboxed process, and fixes its own errors — you only see progress and the result; the script and run log sit behind a Details view. Slow by design (a task takes a few minutes on a flagship) in exchange for answers computed exactly, offline. Enable in **Settings → Experimental**.
 
 ## Sync (optional)
 
