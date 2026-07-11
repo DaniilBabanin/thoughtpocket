@@ -32,6 +32,8 @@ object CodeRunState {
         /** Final stdout when DONE; honest failure message when FAILED. */
         val result: String = "",
         val turns: List<Turn> = emptyList(),
+        /** Attempt log of a FAILED run (code to error), for the Details screen. */
+        val failedAttempts: List<Pair<String, String>> = emptyList(),
     )
 
     private val _status = MutableStateFlow(Status())

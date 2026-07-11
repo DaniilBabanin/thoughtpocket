@@ -110,7 +110,7 @@ class CoderRunService : Service() {
                     Notifications.done(this, "Result ready")
                     return
                 }
-                is Action.Fail -> { fail(action.reason); return }
+                is Action.Fail -> { fail(action.reason, attemptLog.toList()); return }
                 is Action.Generate -> {
                     val n = attempts.size + 1
                     CodeRunState.update {
@@ -232,9 +232,11 @@ class CoderRunService : Service() {
         stopSelf()
     }
 
-    private fun fail(reason: String) {
+    private fun fail(reason: String, attemptLog: List<Pair<String, String>> = emptyList()) {
         Log.w(TAG, "run failed: $reason")
-        CodeRunState.update { it.copy(phase = CodeRunState.Phase.FAILED, result = reason) }
+        CodeRunState.update {
+            it.copy(phase = CodeRunState.Phase.FAILED, result = reason, failedAttempts = attemptLog)
+        }
         Notifications.done(this, "Coding failed — $reason")
     }
 

@@ -127,12 +127,15 @@ class CoderHardBench {
     @Test
     fun hardLadder() = runBlocking<Unit> {
         check(CoderModelManager.isInstalled(ctx)) { "no coder model installed on device" }
+        // Solo re-run / post-mortem: -e rung H1 filters to one rung.
+        val only = InstrumentationRegistry.getArguments().getString("rung")
+        val rungs = if (only == null) ladder else ladder.filter { it.id.startsWith(only) }
         val dao = NotesDb.get(ctx).notes()
         val scenario = ActivityScenario.launch(MainActivity::class.java)
         var done = 0
         var pass = 0
         try {
-            for (rung in ladder) {
+            for (rung in rungs) {
                 val id = dao.insert(Note(createdAt = 1_720_000_000_000, text = rung.body, title = rung.title))
                 val t0 = System.currentTimeMillis()
                 try {
@@ -160,7 +163,13 @@ class CoderHardBench {
                             Log.i("ACCEPT2", "RESULT ${rung.id} DONE attempts=${terminal.attempt} ${secs}s $verdict")
                             Log.i("ACCEPT2", "OUTPUT ${rung.id}: ${terminal.result.take(500).replace("\n", " ⏎ ")}")
                         }
-                        else -> Log.i("ACCEPT2", "RESULT ${rung.id} FAILED after ${secs}s attempts=${terminal.attempt}: ${terminal.result.take(200)}")
+                        else -> {
+                            Log.i("ACCEPT2", "RESULT ${rung.id} FAILED after ${secs}s attempts=${terminal.attempt}: ${terminal.result.take(200)}")
+                            terminal.failedAttempts.forEachIndexed { i, (code, err) ->
+                                Log.i("ACCEPT2", "POSTMORTEM ${rung.id} attempt${i + 1} err: $err")
+                                Log.i("ACCEPT2", "POSTMORTEM ${rung.id} attempt${i + 1} code: ${code.replace("\n", " ⏎ ").take(700)}")
+                            }
+                        }
                     }
                 } finally {
                     CoderRunService.end(ctx)

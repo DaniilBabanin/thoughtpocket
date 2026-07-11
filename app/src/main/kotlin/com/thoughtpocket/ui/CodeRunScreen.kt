@@ -231,7 +231,7 @@ private fun CodeDetailsScreen(onBack: () -> Unit) {
             }
         }
 
-        val log = (status.turns.flatMap { it.attemptLog }).ifEmpty {
+        val log = (status.turns.flatMap { it.attemptLog } + status.failedAttempts).ifEmpty {
             if (status.phase == CodeRunState.Phase.FAILED) listOf("" to status.result) else emptyList()
         }
         if (log.isNotEmpty()) {

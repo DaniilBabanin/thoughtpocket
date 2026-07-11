@@ -145,6 +145,8 @@ object CoderHarness {
     private const val SYSTEM = "You write one small self-contained Python script per request. " +
         "Rules: standard library only (no pip, no network, no files, no input()); " +
         "print the final result to stdout with print(); " +
+        "if the task needs live or external data you don't have (exchange rates, prices, " +
+        "weather), the script must say so in its output instead of using a guessed value; " +
         "reply with exactly one fenced code block and nothing else."
 
     internal fun buildFirstPrompt(noteTitle: String, noteBody: String, instruction: String): String =
