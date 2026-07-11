@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.9-pre
+
+- **Reliability: GPU-crash recovery works again** — if an on-device Gemma run crashes the GPU driver, the app once more falls back to CPU on the next launch (this recovery had silently stopped working).
+- **Lighter, faster note processing:** long recordings finalize without loading the whole clip into memory, and a burst of recordings no longer reloads the multi-GB AI models between each note — Markdown formatting runs once as a batch when the queue drains.
+- **Snappier search and note screens:** semantic-search scoring and Markdown rendering are cached instead of recomputed on every UI update.
+
 ## v0.1.8-pre
 
 - **Share and copy a note:** share button on the note screen (Android share sheet) plus a copy-to-clipboard button in both views — each sends what's on screen, the formatted body or the raw transcript.
