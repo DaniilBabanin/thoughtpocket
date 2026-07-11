@@ -90,7 +90,7 @@ FetchContent_MakeAvailable(whisper)
 
 add_library(${CMAKE_PROJECT_NAME} SHARED
     src/main/cpp/whisper_jni.cpp
-    src/main/cpp/llama_probe.cpp
+    src/main/cpp/llama_jni.cpp
 )
 
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
