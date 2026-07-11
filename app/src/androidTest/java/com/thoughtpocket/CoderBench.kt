@@ -27,7 +27,10 @@ class CoderBench {
     private val ctx = InstrumentationRegistry.getInstrumentation().targetContext
 
     private fun model(): File? =
+        // Internal (emulator run-as staging) first, then the app's real external
+        // dir (hardware, tools/push-models.sh).
         File(ctx.filesDir, "coder").listFiles { f -> f.name.endsWith(".gguf") }?.firstOrNull()
+            ?: ctx.getExternalFilesDir("coder")?.listFiles { f -> f.name.endsWith(".gguf") }?.firstOrNull()
 
     private fun rssMb(): Int {
         val mi = Debug.MemoryInfo()

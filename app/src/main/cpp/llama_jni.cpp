@@ -57,6 +57,11 @@ Java_com_thoughtpocket_ai_coder_LlamaEngine_nativeInitContext(
         llama_backend_init(); // idempotent
         llama_model_params mp = llama_model_default_params();
         mp.n_gpu_layers = 0; // CPU only in v1
+        // Models live in the app's EXTERNAL files dir = FUSE on device. mmap'd
+        // weights page-fault through FUSE on every access → decode crawls
+        // (measured 2026-07-11 on Pixel 9 Pro XL). Load into RAM once instead;
+        // residency is the same 5.6 GB either way.
+        mp.use_mmap = false;
         llama_model *model = llama_model_load_from_file(path, mp);
         if (!model) {
             g_last_error = "model load failed";
