@@ -89,6 +89,9 @@ object PyRunnerClient {
     private fun failed(msg: String) =
         PyRunResult(ok = false, syntaxError = false, stdout = "", stderr = msg)
 
+    /** Kill the runner process outright (user cancel while a script runs). */
+    fun kill(context: Context) = killRunnerProcess(context)
+
     private fun killRunnerProcess(context: Context) {
         val am = context.getSystemService(android.app.ActivityManager::class.java) ?: return
         am.runningAppProcesses

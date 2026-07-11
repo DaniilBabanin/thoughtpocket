@@ -75,6 +75,13 @@
             android:exported="false"
             android:process=":coder" />
 
+        <!-- Coder session driver: generate → run → auto-fix loop with the model
+             kept warm across follow-ups. dataSync like the app's other long work. -->
+        <service
+            android:name=".service.CoderRunService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <service
             android:name=".service.RecordTileService"
             android:exported="true"

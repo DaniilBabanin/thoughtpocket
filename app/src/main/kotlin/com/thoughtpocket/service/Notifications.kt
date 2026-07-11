@@ -14,6 +14,7 @@ object Notifications {
     const val ONGOING_ID = 1
     const val DONE_ID = 2
     const val DOWNLOAD_ID = 3
+    const val CODER_ID = 4
 
     fun ensureChannel(ctx: Context) {
         val mgr = ctx.getSystemService(NotificationManager::class.java)
