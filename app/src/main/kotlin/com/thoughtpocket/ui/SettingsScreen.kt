@@ -22,6 +22,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -29,6 +30,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -46,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
+import com.thoughtpocket.CoderModelManager
 import com.thoughtpocket.service.RecordingService
 import androidx.compose.runtime.collectAsState
 import com.thoughtpocket.AppPreferences
@@ -518,6 +521,80 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
                 modifier = Modifier.padding(top = 6.dp),
             ) {
                 Text("Export ${notes.size} notes")
+            }
+        }
+
+        // Experimental: "Code this" on-device coding agent (Ornith GGUF + llama.cpp).
+        GlassCard(Modifier.fillMaxWidth()) {
+            SectionTitle("Experimental", Modifier.padding(bottom = 4.dp))
+            var coderOn by remember { mutableStateOf(prefs.experimentalCoder) }
+            var coderTick by remember { mutableStateOf(0) }
+            SwitchRow(
+                "Code this",
+                "A local coding AI writes and runs small Python scripts over a note (slow — minutes per answer, fully offline).",
+                coderOn,
+            ) { coderOn = it; prefs.experimentalCoder = it }
+            if (coderOn) {
+                val coderModels = remember(coderTick, dlDone) { CoderModelManager.installedModels(context) }
+                CoderModelManager.BuiltInCoderModel.entries.forEach { m ->
+                    val installed = coderModels.any { it.name == m.filename }
+                    val pct = dl[m.id]
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(m.displayName)
+                            Text(
+                                "${m.approxSizeMb} MB · needs ~6 GB free",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        when {
+                            pct != null -> CircularProgressIndicator(progress = { pct / 100f }, modifier = Modifier.size(24.dp))
+                            installed -> Icon(Icons.Filled.CheckCircle, "Installed", tint = MaterialTheme.colorScheme.primary)
+                            else -> IconButton(onClick = { ModelDownloads.coder(context, m) }) {
+                                Icon(Icons.Filled.Download, "Download")
+                            }
+                        }
+                    }
+                }
+                // Bring-your-own GGUF (BYO models use the same ChatML prompt — Qwen-family works best).
+                var importingCoder by remember { mutableStateOf(false) }
+                val pickCoder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+                    if (uri != null) scope.launch {
+                        importingCoder = true
+                        CoderModelManager.importFromUri(context, uri)
+                            .onFailure { aiError = it.message }
+                        importingCoder = false; coderTick++
+                    }
+                }
+                TextButton(onClick = { pickCoder.launch(arrayOf("*/*")) }, enabled = !importingCoder) {
+                    if (importingCoder) { CircularProgressIndicator(Modifier.size(16.dp)); Spacer(Modifier.width(8.dp)) }
+                    Text("Import a .gguf model…")
+                }
+                // Model choice + removal (a 5.6 GB file needs a delete affordance).
+                if (coderModels.isNotEmpty()) {
+                    val chosen = CoderModelManager.selectedModel(context)?.name
+                    coderModels.forEach { f ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(selected = f.name == chosen, onClick = {
+                                prefs.coderModelFilename = f.name; coderTick++
+                            })
+                            Column(Modifier.weight(1f)) {
+                                Text(f.name, style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    "${f.length() / 1_000_000} MB",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            IconButton(onClick = {
+                                CoderModelManager.delete(context, f)
+                                if (prefs.coderModelFilename == f.name) prefs.coderModelFilename = ""
+                                coderTick++
+                            }) { Icon(Icons.Filled.Delete, "Delete ${f.name}") }
+                        }
+                    }
+                }
             }
         }
 

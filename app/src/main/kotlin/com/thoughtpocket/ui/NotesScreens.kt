@@ -56,6 +56,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
@@ -114,6 +115,8 @@ import com.thoughtpocket.ai.setItemChecked
 import com.thoughtpocket.audio.MicRecorder
 import com.thoughtpocket.data.Note
 import com.thoughtpocket.data.NotesDb
+import com.thoughtpocket.CoderModelManager
+import com.thoughtpocket.service.CoderRunService
 import com.thoughtpocket.service.RecordState
 import com.thoughtpocket.service.RecordingService
 import com.thoughtpocket.ui.theme.GlassCard
@@ -504,7 +507,7 @@ private fun NoteCard(
 
 /** Glass snackbar with an UNDO action; auto-dismisses after a few seconds. */
 @Composable
-private fun UndoSnackbar(message: String, onUndo: () -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+internal fun UndoSnackbar(message: String, onUndo: () -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     LaunchedEffect(message) { delay(3500); onDismiss() }
     val reduce = LocalReduceMotion.current
     val enter = remember { Animatable(if (reduce) 0f else 1f) }  // 1 = below, 0 = in place
@@ -670,7 +673,7 @@ private fun calendarInsertIntent(title: String, description: String, startMillis
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
+fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit, onOpenCodeRun: (Long) -> Unit = {}) {
     val context = LocalContext.current
     val dao = remember { NotesDb.get(context).notes() }
     val note by dao.byId(id).collectAsState(initial = null)
@@ -1066,6 +1069,33 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit) {
                     }
                 }, enabled = !interacting, shape = ReachShapes.field, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Filled.AutoAwesome, null); Spacer(Modifier.width(8.dp)); Text("Suggest items (AI)")
+                }
+
+                // Code this (experimental): a local coding model writes + runs a Python
+                // script over this note. Only surfaces with the opt-in AND a model present.
+                val coderReady = remember(n.id) {
+                    prefs.experimentalCoder && CoderModelManager.isInstalled(context)
+                }
+                if (coderReady) {
+                    var codeInstruction by remember(n.id) { mutableStateOf("") }
+                    SectionTitle("Code this", Modifier.padding(top = 4.dp))
+                    GlassTextField(
+                        value = codeInstruction,
+                        onValueChange = { codeInstruction = it },
+                        placeholder = "Calculate, analyze, transform…",
+                        modifier = Modifier.fillMaxWidth(),
+                        trailing = {
+                            IconButton(
+                                onClick = {
+                                    CoderRunService.run(context, n.id, codeInstruction.trim())
+                                    codeInstruction = ""
+                                    onOpenCodeRun(n.id)
+                                },
+                                enabled = codeInstruction.isNotBlank(),
+                                modifier = Modifier.size(28.dp),
+                            ) { Icon(Icons.Filled.Code, "Code this", tint = cs.primary) }
+                        },
+                    )
                 }
 
                 // Tags.

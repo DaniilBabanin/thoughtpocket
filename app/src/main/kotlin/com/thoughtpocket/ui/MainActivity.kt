@@ -107,6 +107,7 @@ private fun AppRoot(widthClass: WindowWidthSizeClass) {
     val wide = widthClass != WindowWidthSizeClass.Compact
     var tab by remember { mutableStateOf(ReachTab.Home) }
     var detailId by remember { mutableStateOf<Long?>(null) }
+    var codeRunNoteId by remember { mutableStateOf<Long?>(null) }
     var showLicenses by remember { mutableStateOf(false) }
     var reduceMotion by remember { mutableStateOf(prefs.reduceAnimations) }
 
@@ -155,10 +156,17 @@ private fun AppRoot(widthClass: WindowWidthSizeClass) {
     ReachBackground {
         Box(Modifier.fillMaxSize()) {
             val id = detailId
+            val codeId = codeRunNoteId
             if (showLicenses) {
                 LicensesScreen(onBack = { showLicenses = false })
+            } else if (codeId != null) {
+                // CodeRunScreen owns its own BackHandlers (details subscreen + session end).
+                CodeRunScreen(noteId = codeId, onBack = { codeRunNoteId = null })
             } else if (id != null) {
-                NoteDetailScreen(id = id, onBack = { detailId = null }, onOpen = { detailId = it })
+                NoteDetailScreen(
+                    id = id, onBack = { detailId = null }, onOpen = { detailId = it },
+                    onOpenCodeRun = { codeRunNoteId = it },
+                )
             } else {
                 when (tab) {
                     ReachTab.Home -> NotesListScreen(onOpen = { detailId = it }, bottomSpace = bottomSpace)

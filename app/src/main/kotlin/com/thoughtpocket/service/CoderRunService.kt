@@ -60,6 +60,12 @@ class CoderRunService : Service() {
                     runJob = scope.launch { runOnce(noteId, instruction) }
                 }
             }
+            ACTION_RERUN_EDITED -> {
+                val code = intent.getStringExtra(EXTRA_CODE).orEmpty()
+                if (code.isNotBlank() && runJob?.isActive != true) {
+                    runJob = scope.launch { rerunEdited(code) }
+                }
+            }
             ACTION_CANCEL -> cancelRun()
             ACTION_END -> endSession()
         }
@@ -179,6 +185,35 @@ class CoderRunService : Service() {
         }
     }
 
+    /** Details screen's "run edited script": user-authored code skips generation, keeps the gates. */
+    private suspend fun rerunEdited(code: String) {
+        when (val scan = CoderHarness.scanImports(code)) {
+            is CoderHarness.ImportScan.Blocked -> { fail("Edited script uses disallowed ${scan.what}"); return }
+            CoderHarness.ImportScan.Allowed -> Unit
+        }
+        CodeRunState.update { it.copy(phase = CodeRunState.Phase.RUNNING) }
+        notify("Running edited script…")
+        val res = PyRunnerClient.exec(this, code, CoderHarness.EXEC_TIMEOUT_MS)
+        if (res.ok && res.stdout.isNotBlank()) {
+            CodeRunState.update {
+                val turns = it.turns.toMutableList()
+                val last = turns.removeLastOrNull()
+                turns += CodeRunState.Turn(
+                    last?.instruction ?: "edited script", code, res.stdout,
+                    (last?.attempts ?: 0) + 1,
+                    (last?.attemptLog ?: emptyList()) + (code to ""),
+                )
+                it.copy(phase = CodeRunState.Phase.DONE, result = res.stdout, turns = turns)
+            }
+            Notifications.done(this, "Result ready")
+        } else {
+            fail(
+                if (res.timedOut) "Edited script timed out"
+                else CoderHarness.summarizeTraceback(res.stderr).ifBlank { "Edited script produced no output" }
+            )
+        }
+    }
+
     private fun cancelRun() {
         runJob?.cancel()
         CoderEngine.cancelGeneration()
@@ -220,8 +255,10 @@ class CoderRunService : Service() {
         const val ACTION_FOLLOWUP = "com.thoughtpocket.coder.FOLLOWUP"
         const val ACTION_CANCEL = "com.thoughtpocket.coder.CANCEL"
         const val ACTION_END = "com.thoughtpocket.coder.END"
+        const val ACTION_RERUN_EDITED = "com.thoughtpocket.coder.RERUN_EDITED"
         private const val EXTRA_NOTE_ID = "noteId"
         private const val EXTRA_INSTRUCTION = "instruction"
+        private const val EXTRA_CODE = "code"
 
         fun run(context: Context, noteId: Long, instruction: String) =
             context.startForegroundService(
@@ -234,6 +271,11 @@ class CoderRunService : Service() {
                 Intent(context, CoderRunService::class.java).setAction(ACTION_FOLLOWUP)
                     .putExtra(EXTRA_INSTRUCTION, instruction)
             )
+
+        fun rerunEdited(context: Context, code: String) = context.startForegroundService(
+            Intent(context, CoderRunService::class.java).setAction(ACTION_RERUN_EDITED)
+                .putExtra(EXTRA_CODE, code)
+        )
 
         fun cancel(context: Context) = context.startForegroundService(
             Intent(context, CoderRunService::class.java).setAction(ACTION_CANCEL)
