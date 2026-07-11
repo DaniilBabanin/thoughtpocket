@@ -32,6 +32,7 @@ object ModelDownloads {
     fun moonshine(context: Context, model: ModelManager.StreamingModel) = start(context, DownloadService.KIND_MOONSHINE, model.id)
     fun gemma(context: Context, d: LlmEngine.Downloadable) = start(context, DownloadService.KIND_GEMMA, d.name)
     fun gecko(context: Context) = start(context, DownloadService.KIND_GECKO, null)
+    fun coder(context: Context, m: CoderModelManager.BuiltInCoderModel) = start(context, DownloadService.KIND_CODER, m.id)
     fun all(context: Context) = start(context, DownloadService.KIND_ALL, null)
 
     private fun start(context: Context, kind: String, id: String?) {

@@ -12,6 +12,7 @@ ADB=(adb); [ -n "$SER" ] && ADB=(adb -s "$SER")
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LLM=/sdcard/Android/data/com.thoughtpocket/files/llm
 GECKO=/sdcard/Android/data/com.thoughtpocket/files/gecko
+CODER=/sdcard/Android/data/com.thoughtpocket/files/coder
 
 push() {  # localfile remotedir
     local f="$1" dir="$2" name lsize rsize
@@ -29,5 +30,6 @@ shopt -s nullglob
 found=0
 for f in "$ROOT"/models/llm/*.litertlm; do push "$f" "$LLM"; found=1; done
 for f in "$ROOT"/models/gecko/*; do push "$f" "$GECKO"; found=1; done
+for f in "$ROOT"/models/coder/*.gguf; do push "$f" "$CODER"; found=1; done
 [ "$found" = 1 ] || { echo "No models in $ROOT/models/ — populate it first (adb pull / copy-edge-model.sh)."; exit 1; }
 echo "Done."

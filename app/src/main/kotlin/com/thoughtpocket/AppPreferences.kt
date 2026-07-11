@@ -167,6 +167,16 @@ class AppPreferences(context: Context) {
         get() = prefs.getString(KEY_ANALYSIS_MODEL, "")!!
         set(value) = prefs.edit { putString(KEY_ANALYSIS_MODEL, value) }
 
+    /** Experimental coder feature ("Code this"): opt-in via Settings. */
+    var experimentalCoder: Boolean
+        get() = prefs.getBoolean(KEY_EXPERIMENTAL_CODER, false)
+        set(value) = prefs.edit { putBoolean(KEY_EXPERIMENTAL_CODER, value) }
+
+    /** Coder model override (filename in coder/ dir); "" = first installed. */
+    var coderModelFilename: String
+        get() = prefs.getString(KEY_CODER_MODEL, "")!!
+        set(value) = prefs.edit { putString(KEY_CODER_MODEL, value) }
+
     /** Reveals advanced controls (thread slider, benchmark). Toggled by tapping the home tip. */
     var developerMode: Boolean
         get() = prefs.getBoolean(KEY_DEV_MODE, false)
@@ -220,6 +230,8 @@ class AppPreferences(context: Context) {
         private const val KEY_TAG_MODEL = "tag_model"
         private const val KEY_ANALYSIS_MODEL = "analysis_model"
         private const val KEY_DEV_MODE = "developer_mode"
+        private const val KEY_EXPERIMENTAL_CODER = "experimental_coder"
+        private const val KEY_CODER_MODEL = "coder_model"
         private const val KEY_SKIP_VERIFY = "skip_model_verification"
         private const val KEY_GPU_CRASHED = "gpu_crashed_notice"
 

@@ -7,6 +7,7 @@ import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.ServiceCompat
+import com.thoughtpocket.CoderModelManager
 import com.thoughtpocket.ModelDownloads
 import com.thoughtpocket.ModelManager
 import com.thoughtpocket.ai.Embedder
@@ -61,6 +62,12 @@ class DownloadService : Service() {
                 LlmEngine.Downloadable.entries.find { it.name == id }?.let { d -> runOne(d.name) { LlmEngine.download(this, d) } }
             }
             KIND_GECKO -> runOne("gecko") { Embedder.download(this) }
+            // Experimental coder model — deliberately absent from runAll()/needsSetup
+            // (Moonshine precedent: downloadable, but never part of "Download all").
+            KIND_CODER -> intent.getStringExtra(EXTRA_ID)?.let { id ->
+                CoderModelManager.BuiltInCoderModel.entries.find { it.id == id }
+                    ?.let { m -> runOne(m.id) { CoderModelManager.download(this, m) } }
+            }
             KIND_ALL -> runAll()
         }
         maybeStop()   // nothing launched (already installed / deduped) → don't hang foreground
@@ -148,6 +155,7 @@ class DownloadService : Service() {
         const val KIND_MOONSHINE = "moonshine"
         const val KIND_GEMMA = "gemma"
         const val KIND_GECKO = "gecko"
+        const val KIND_CODER = "coder"
         const val KIND_ALL = "all"
         private const val EXTRA_KIND = "kind"
         private const val EXTRA_ID = "id"
