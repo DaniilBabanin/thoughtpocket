@@ -55,6 +55,7 @@ class CoderHardBench {
             "H1-longweek", "Week of spending", longWeek,
             "Total per category (food, transport, fun) and the overall total.",
             expect = listOf("129.23", "69.8", "201.86", "400.89"),
+            ceilingMin = 18, // two full attempts at the 1300-token cap need >12 min
         ),
         // H2 — mixed date formats → ISO, sorted.
         Rung(
