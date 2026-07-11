@@ -67,15 +67,36 @@ if(ANDROID_ABI STREQUAL "arm64-v8a")
     add_compile_options(-march=armv8.2-a+fp16+dotprod)
 endif()
 
+# --- llama.cpp (coder feature spike) ---------------------------------------
+# Made available BEFORE whisper so llama's (newer) bundled ggml wins the
+# `if(NOT TARGET ggml)` guard both projects carry; whisper then builds against
+# llama's ggml via target propagation. If whisper transcription misbehaves,
+# that's the ggml ABI-skew failure — fall back to a vendored libllama.so
+# (sherpa-onnx precedent). b9964 ships Qwen3.5 arch (Ornith needs >= b9616).
+FetchContent_Declare(
+    llama
+    GIT_REPOSITORY https://github.com/ggml-org/llama.cpp.git
+    GIT_TAG        b9964
+    GIT_SHALLOW    TRUE
+)
+set(LLAMA_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_SERVER OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(LLAMA_CURL OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(llama)
+
 FetchContent_MakeAvailable(whisper)
 
 add_library(${CMAKE_PROJECT_NAME} SHARED
     src/main/cpp/whisper_jni.cpp
+    src/main/cpp/llama_probe.cpp
 )
 
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ${whisper_SOURCE_DIR}/include
-    ${whisper_SOURCE_DIR}/ggml/include
+    ${llama_SOURCE_DIR}/include
+    ${llama_SOURCE_DIR}/ggml/include
 )
 
 find_library(log-lib log)
@@ -83,6 +104,7 @@ find_library(android-lib android)
 
 target_link_libraries(${CMAKE_PROJECT_NAME}
     whisper
+    llama
     ${log-lib}
     ${android-lib}
 )
