@@ -40,4 +40,18 @@ class CodeFenceTest {
 
     @Test fun emptyFenceIsNull() =
         assertNull(CoderHarness.extractCodeFence("```python\n\n```"))
+
+    // ---- truncation diagnosis (H1 post-mortem: token cap cut the closing fence) ----
+
+    @Test fun unclosedFenceReportsTruncation() =
+        assertEquals(
+            "your reply was cut off before the script ended — write a shorter script",
+            CoderHarness.fenceGateError("here you go\n```python\nprint(1)\n# never closed")
+        )
+
+    @Test fun noFenceReportsNoBlock() =
+        assertEquals("reply contained no code block", CoderHarness.fenceGateError("prose only, sorry"))
+
+    @Test fun closedFenceNotFlaggedAsTruncated() =
+        assertEquals("reply contained no code block", CoderHarness.fenceGateError("```python\n\n```"))
 }

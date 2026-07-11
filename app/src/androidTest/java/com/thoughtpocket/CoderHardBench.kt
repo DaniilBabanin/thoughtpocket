@@ -129,7 +129,8 @@ class CoderHardBench {
         check(CoderModelManager.isInstalled(ctx)) { "no coder model installed on device" }
         // Solo re-run / post-mortem: -e rung H1 filters to one rung.
         val only = InstrumentationRegistry.getArguments().getString("rung")
-        val rungs = if (only == null) ladder else ladder.filter { it.id.startsWith(only) }
+        // Match "H1" to "H1-longweek" but not "H10-…".
+        val rungs = if (only == null) ladder else ladder.filter { it.id == only || it.id.startsWith("$only-") }
         val dao = NotesDb.get(ctx).notes()
         val scenario = ActivityScenario.launch(MainActivity::class.java)
         var done = 0

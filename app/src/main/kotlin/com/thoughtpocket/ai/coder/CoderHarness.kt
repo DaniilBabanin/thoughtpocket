@@ -13,7 +13,10 @@ object CoderHarness {
     /** Conservative single-attempt estimate (gen + exec) from docs/coder-throughput.md. */
     const val ATTEMPT_EST_MS = 5 * 60_000L
     const val EXEC_TIMEOUT_MS = 60_000L
-    const val MAX_GEN_TOKENS = 900
+    // 1300: H1 post-mortem (2026-07-11) — long-note prompts got truncated at 900
+    // before the closing fence, so every attempt died at the fence gate.
+    // Worst repair prompt (~2600 tok) + 1300 still fits n_ctx 4096.
+    const val MAX_GEN_TOKENS = 1300
 
     /** Python stdlib modules a generated script may import (root module names). */
     internal val IMPORT_ALLOWLIST = setOf(
@@ -90,6 +93,21 @@ object CoderHarness {
             ?: return null
         val code = m.groupValues[1].trimEnd()
         return code.ifBlank { null }
+    }
+
+    /**
+     * Distinguishes "no fence at all" from "fence opened but never closed" —
+     * the latter means the reply hit the token cap mid-script, and the retry
+     * prompt should ask for a SHORTER script rather than vaguely complain.
+     */
+    internal fun fenceGateError(raw: String): String {
+        val cleaned = raw.replace(Regex("(?is)<think>.*?(</think>|$)"), "")
+        val opens = Regex("```").findAll(cleaned).count()
+        return if (opens % 2 == 1) {
+            "your reply was cut off before the script ended — write a shorter script"
+        } else {
+            "reply contained no code block"
+        }
     }
 
     sealed interface ImportScan {

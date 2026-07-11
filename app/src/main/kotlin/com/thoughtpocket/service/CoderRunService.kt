@@ -135,8 +135,9 @@ class CoderRunService : Service() {
 
                     val code = CoderHarness.extractCodeFence(reply)
                     if (code == null) {
-                        attempts += Attempt(code = "", gateError = "reply contained no code block")
-                        attemptLog += "" to "reply contained no code block"
+                        val gate = CoderHarness.fenceGateError(reply)
+                        attempts += Attempt(code = "", gateError = gate)
+                        attemptLog += "" to gate
                         continue
                     }
                     when (val scan = CoderHarness.scanImports(code)) {
