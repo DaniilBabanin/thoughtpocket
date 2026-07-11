@@ -17,7 +17,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -36,7 +35,9 @@ import java.net.URL
  */
 object LlmEngine {
     private const val TAG = "LlmEngine"
-    private val mutex = Mutex()
+    // Shared with CoderEngine: a coder session holds it for its whole duration,
+    // which blocks tagging/analysis from re-loading Gemma mid-session (RAM).
+    private val mutex = AiMutex.mutex
 
     @Volatile private var engine: Engine? = null
     @Volatile private var loadedPath: String? = null
