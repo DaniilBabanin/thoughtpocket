@@ -177,6 +177,11 @@ class AppPreferences(context: Context) {
         get() = prefs.getString(KEY_CODER_MODEL, "")!!
         set(value) = prefs.edit { putString(KEY_CODER_MODEL, value) }
 
+    /** Show the script editor (edit/rerun/revert) on coding items. */
+    var coderShowCode: Boolean
+        get() = prefs.getBoolean(KEY_CODER_SHOW_CODE, false)
+        set(value) = prefs.edit { putBoolean(KEY_CODER_SHOW_CODE, value) }
+
     /** Reveals advanced controls (thread slider, benchmark). Toggled by tapping the home tip. */
     var developerMode: Boolean
         get() = prefs.getBoolean(KEY_DEV_MODE, false)
@@ -232,6 +237,7 @@ class AppPreferences(context: Context) {
         private const val KEY_DEV_MODE = "developer_mode"
         private const val KEY_EXPERIMENTAL_CODER = "experimental_coder"
         private const val KEY_CODER_MODEL = "coder_model"
+        private const val KEY_CODER_SHOW_CODE = "coder_show_code"
         private const val KEY_SKIP_VERIFY = "skip_model_verification"
         private const val KEY_GPU_CRASHED = "gpu_crashed_notice"
 

@@ -101,10 +101,11 @@ interface NoteDao {
     suspend fun delete(note: Note)
 }
 
-@Database(entities = [Note::class], version = 4, exportSchema = false)
+@Database(entities = [Note::class, CodeRun::class], version = 5, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class NotesDb : RoomDatabase() {
     abstract fun notes(): NoteDao
+    abstract fun codeRuns(): CodeRunDao
 
     companion object {
         @Volatile private var instance: NotesDb? = null
@@ -127,10 +128,25 @@ abstract class NotesDb : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS code_runs (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "noteId INTEGER NOT NULL, createdAt INTEGER NOT NULL, " +
+                        "instruction TEXT NOT NULL, code TEXT NOT NULL, " +
+                        "originalCode TEXT NOT NULL, output TEXT NOT NULL, " +
+                        "attempts INTEGER NOT NULL, " +
+                        "FOREIGN KEY(noteId) REFERENCES notes(id) ON UPDATE NO ACTION ON DELETE CASCADE)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_code_runs_noteId ON code_runs (noteId)")
+            }
+        }
+
         fun get(context: Context): NotesDb = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(
                 context.applicationContext, NotesDb::class.java, "notes.db"
-            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { instance = it }
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build().also { instance = it }
         }
     }
 }

@@ -535,6 +535,12 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
                 coderOn,
             ) { coderOn = it; prefs.experimentalCoder = it }
             if (coderOn) {
+                var showCode by remember { mutableStateOf(prefs.coderShowCode) }
+                SwitchRow(
+                    "Show code details",
+                    "Coding items show their script: view, edit, rerun, revert.",
+                    showCode,
+                ) { showCode = it; prefs.coderShowCode = it }
                 val coderModels = remember(coderTick, dlDone) { CoderModelManager.installedModels(context) }
                 CoderModelManager.BuiltInCoderModel.entries.forEach { m ->
                     val installed = coderModels.any { it.name == m.filename }

@@ -12,27 +12,18 @@ import kotlinx.coroutines.flow.StateFlow
 object CodeRunState {
     enum class Phase { IDLE, STARTING, GENERATING, RUNNING, FIXING, DONE, FAILED }
 
-    /** One completed run (initial or follow-up) — feeds the Details screen + follow-up prompts. */
-    data class Turn(
-        val instruction: String,
-        val code: String,
-        val output: String,
-        val attempts: Int,
-        /** Per-attempt log for the Details screen: code, error summary. */
-        val attemptLog: List<Pair<String, String>>,
-    )
-
     data class Status(
         val phase: Phase = Phase.IDLE,
         val noteId: Long = -1,
+        /** The code_runs row this run belongs to (-1 while a new item is still running). */
+        val activeRunId: Long = -1,
         val attempt: Int = 0,
         /** Streamed model text for the current generation (progress display). */
         val streamed: String = "",
         val tokenCount: Int = 0,
         /** Final stdout when DONE; honest failure message when FAILED. */
         val result: String = "",
-        val turns: List<Turn> = emptyList(),
-        /** Attempt log of a FAILED run (code to error), for the Details screen. */
+        /** Attempt log of a FAILED run (code to error), for the details view. */
         val failedAttempts: List<Pair<String, String>> = emptyList(),
     )
 

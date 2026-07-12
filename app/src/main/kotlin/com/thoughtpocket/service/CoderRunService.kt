@@ -12,6 +12,7 @@ import com.thoughtpocket.ai.coder.CoderHarness
 import com.thoughtpocket.ai.coder.CoderHarness.Action
 import com.thoughtpocket.ai.coder.CoderHarness.Attempt
 import com.thoughtpocket.coder.PyRunnerClient
+import com.thoughtpocket.data.CodeRun
 import com.thoughtpocket.data.NotesDb
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -50,20 +51,22 @@ class CoderRunService : Service() {
                 val noteId = intent.getLongExtra(EXTRA_NOTE_ID, -1)
                 val instruction = intent.getStringExtra(EXTRA_INSTRUCTION).orEmpty()
                 if (noteId >= 0 && instruction.isNotBlank() && runJob?.isActive != true) {
-                    runJob = scope.launch { runOnce(noteId, instruction) }
+                    runJob = scope.launch { runOnce(noteId, instruction, iterateRunId = null) }
                 }
             }
             ACTION_FOLLOWUP -> {
                 val instruction = intent.getStringExtra(EXTRA_INSTRUCTION).orEmpty()
+                val runId = intent.getLongExtra(EXTRA_RUN_ID, -1)
                 val noteId = CodeRunState.status.value.noteId
-                if (noteId >= 0 && instruction.isNotBlank() && runJob?.isActive != true) {
-                    runJob = scope.launch { runOnce(noteId, instruction) }
+                if (noteId >= 0 && runId >= 0 && instruction.isNotBlank() && runJob?.isActive != true) {
+                    runJob = scope.launch { runOnce(noteId, instruction, iterateRunId = runId) }
                 }
             }
             ACTION_RERUN_EDITED -> {
                 val code = intent.getStringExtra(EXTRA_CODE).orEmpty()
-                if (code.isNotBlank() && runJob?.isActive != true) {
-                    runJob = scope.launch { rerunEdited(code) }
+                val runId = intent.getLongExtra(EXTRA_RUN_ID, -1)
+                if (code.isNotBlank() && runId >= 0 && runJob?.isActive != true) {
+                    runJob = scope.launch { rerunEdited(runId, code) }
                 }
             }
             ACTION_CANCEL -> cancelRun()
@@ -72,15 +75,19 @@ class CoderRunService : Service() {
         return START_NOT_STICKY
     }
 
-    private suspend fun runOnce(noteId: Long, instruction: String) {
+    /** [iterateRunId] null = new coding item; set = follow-up updating that item in place. */
+    private suspend fun runOnce(noteId: Long, instruction: String, iterateRunId: Long?) {
         val startMs = SystemClock.elapsedRealtime()
         fun elapsed() = SystemClock.elapsedRealtime() - startMs
 
         val note = NotesDb.get(this).notes().getById(noteId) ?: run {
             fail("Note not found"); return
         }
+        val runsDao = NotesDb.get(this).codeRuns()
+        val baseRun = iterateRunId?.let { runsDao.getById(it) }
         CodeRunState.update {
-            it.copy(phase = CodeRunState.Phase.STARTING, noteId = noteId, attempt = 0,
+            it.copy(phase = CodeRunState.Phase.STARTING, noteId = noteId,
+                activeRunId = iterateRunId ?: -1, attempt = 0,
                 streamed = "", tokenCount = 0, result = "")
         }
 
@@ -91,7 +98,6 @@ class CoderRunService : Service() {
             }
         }
 
-        val turns = CodeRunState.status.value.turns
         val attempts = mutableListOf<Attempt>()
         val attemptLog = mutableListOf<Pair<String, String>>()
 
@@ -99,13 +105,26 @@ class CoderRunService : Service() {
             when (val action = CoderHarness.decide(attempts, elapsed())) {
                 is Action.Done -> {
                     val code = attempts.last().code
+                    // Persist: iterate updates its row (originalCode moves with the
+                    // model's fresh script — revert targets model output, not history);
+                    // a new prompt inserts a new item.
+                    val savedId = if (baseRun != null) {
+                        runsDao.update(baseRun.copy(
+                            instruction = "${baseRun.instruction} → $instruction",
+                            code = code, originalCode = code,
+                            output = action.output,
+                            attempts = baseRun.attempts + attempts.size,
+                        ))
+                        baseRun.id
+                    } else {
+                        runsDao.insert(CodeRun(
+                            noteId = noteId, createdAt = System.currentTimeMillis(),
+                            instruction = instruction, code = code, originalCode = code,
+                            output = action.output, attempts = attempts.size,
+                        ))
+                    }
                     CodeRunState.update {
-                        it.copy(
-                            phase = CodeRunState.Phase.DONE, result = action.output,
-                            turns = it.turns + CodeRunState.Turn(
-                                instruction, code, action.output, attempts.size, attemptLog.toList()
-                            ),
-                        )
+                        it.copy(phase = CodeRunState.Phase.DONE, result = action.output, activeRunId = savedId)
                     }
                     Notifications.done(this, "Result ready")
                     return
@@ -123,7 +142,7 @@ class CoderRunService : Service() {
 
                     // Prefer the formatted body; fall back to the raw transcript.
                     val body = note.markdown.ifBlank { note.text }
-                    val prompt = buildPrompt(note.title, body, instruction, attempts, turns)
+                    val prompt = buildPrompt(note.title, body, instruction, attempts, baseRun)
                     val reply = CoderEngine.generate(prompt, CoderHarness.MAX_GEN_TOKENS) { piece ->
                         CodeRunState.update {
                             it.copy(streamed = it.streamed + piece, tokenCount = it.tokenCount + 1)
@@ -169,43 +188,40 @@ class CoderRunService : Service() {
         }
     }
 
-    /** Repair rounds use the note+task with last code+error; follow-ups thread the prior turn. */
+    /** Repair rounds use the note+task with last code+error; iterating threads the base item. */
     private fun buildPrompt(
         title: String, body: String, instruction: String,
-        attempts: List<Attempt>, priorTurns: List<CodeRunState.Turn>,
+        attempts: List<Attempt>, baseRun: CodeRun?,
     ): String {
         val last = attempts.lastOrNull()
         return when {
             last != null -> CoderHarness.buildRepairPrompt(
                 title, body, instruction, last.code, CoderHarness.errorKey(last)
             )
-            priorTurns.isNotEmpty() -> priorTurns.last().let { t ->
-                CoderHarness.buildFollowUpPrompt(title, body, t.instruction, t.code, t.output, instruction)
-            }
+            baseRun != null -> CoderHarness.buildFollowUpPrompt(
+                title, body, baseRun.instruction, baseRun.code, baseRun.output, instruction
+            )
             else -> CoderHarness.buildFirstPrompt(title, body, instruction)
         }
     }
 
-    /** Details screen's "run edited script": user-authored code skips generation, keeps the gates. */
-    private suspend fun rerunEdited(code: String) {
+    /** "Run edited script": user-authored code skips generation, keeps the gates; updates its item. */
+    private suspend fun rerunEdited(runId: Long, code: String) {
+        val runsDao = NotesDb.get(this).codeRuns()
+        val run = runsDao.getById(runId) ?: run { fail("Coding item not found"); return }
         when (val scan = CoderHarness.scanImports(code)) {
             is CoderHarness.ImportScan.Blocked -> { fail("Edited script uses disallowed ${scan.what}"); return }
             CoderHarness.ImportScan.Allowed -> Unit
         }
-        CodeRunState.update { it.copy(phase = CodeRunState.Phase.RUNNING) }
+        CodeRunState.update {
+            it.copy(phase = CodeRunState.Phase.RUNNING, noteId = run.noteId, activeRunId = runId, result = "")
+        }
         notify("Running edited script…")
         val res = PyRunnerClient.exec(this, code, CoderHarness.EXEC_TIMEOUT_MS)
         if (res.ok && res.stdout.isNotBlank()) {
-            CodeRunState.update {
-                val turns = it.turns.toMutableList()
-                val last = turns.removeLastOrNull()
-                turns += CodeRunState.Turn(
-                    last?.instruction ?: "edited script", code, res.stdout,
-                    (last?.attempts ?: 0) + 1,
-                    (last?.attemptLog ?: emptyList()) + (code to ""),
-                )
-                it.copy(phase = CodeRunState.Phase.DONE, result = res.stdout, turns = turns)
-            }
+            // originalCode untouched — that's what "revert" restores.
+            runsDao.update(run.copy(code = code, output = res.stdout, attempts = run.attempts + 1))
+            CodeRunState.update { it.copy(phase = CodeRunState.Phase.DONE, result = res.stdout) }
             Notifications.done(this, "Result ready")
         } else {
             fail(
@@ -262,6 +278,7 @@ class CoderRunService : Service() {
         private const val EXTRA_NOTE_ID = "noteId"
         private const val EXTRA_INSTRUCTION = "instruction"
         private const val EXTRA_CODE = "code"
+        private const val EXTRA_RUN_ID = "runId"
 
         fun run(context: Context, noteId: Long, instruction: String) =
             context.startForegroundService(
@@ -269,15 +286,15 @@ class CoderRunService : Service() {
                     .putExtra(EXTRA_NOTE_ID, noteId).putExtra(EXTRA_INSTRUCTION, instruction)
             )
 
-        fun followUp(context: Context, instruction: String) =
+        fun followUp(context: Context, runId: Long, instruction: String) =
             context.startForegroundService(
                 Intent(context, CoderRunService::class.java).setAction(ACTION_FOLLOWUP)
-                    .putExtra(EXTRA_INSTRUCTION, instruction)
+                    .putExtra(EXTRA_RUN_ID, runId).putExtra(EXTRA_INSTRUCTION, instruction)
             )
 
-        fun rerunEdited(context: Context, code: String) = context.startForegroundService(
+        fun rerunEdited(context: Context, runId: Long, code: String) = context.startForegroundService(
             Intent(context, CoderRunService::class.java).setAction(ACTION_RERUN_EDITED)
-                .putExtra(EXTRA_CODE, code)
+                .putExtra(EXTRA_RUN_ID, runId).putExtra(EXTRA_CODE, code)
         )
 
         fun cancel(context: Context) = context.startForegroundService(
