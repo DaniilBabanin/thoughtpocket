@@ -108,6 +108,7 @@ private fun AppRoot(widthClass: WindowWidthSizeClass) {
     var tab by remember { mutableStateOf(ReachTab.Home) }
     var detailId by remember { mutableStateOf<Long?>(null) }
     var codeRunNoteId by remember { mutableStateOf<Long?>(null) }
+    var codeRunFocusId by remember { mutableStateOf(-1L) }
     var showLicenses by remember { mutableStateOf(false) }
     var reduceMotion by remember { mutableStateOf(prefs.reduceAnimations) }
 
@@ -160,12 +161,11 @@ private fun AppRoot(widthClass: WindowWidthSizeClass) {
             if (showLicenses) {
                 LicensesScreen(onBack = { showLicenses = false })
             } else if (codeId != null) {
-                // CodeRunScreen owns its own BackHandlers (details subscreen + session end).
-                CodeRunScreen(noteId = codeId, onBack = { codeRunNoteId = null })
+                CodeRunScreen(noteId = codeId, focusRunId = codeRunFocusId, onBack = { codeRunNoteId = null })
             } else if (id != null) {
                 NoteDetailScreen(
                     id = id, onBack = { detailId = null }, onOpen = { detailId = it },
-                    onOpenCodeRun = { codeRunNoteId = it },
+                    onOpenCodeRun = { noteId, runId -> codeRunFocusId = runId; codeRunNoteId = noteId },
                 )
             } else {
                 when (tab) {

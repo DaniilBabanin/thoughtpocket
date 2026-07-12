@@ -85,6 +85,9 @@ interface NoteDao {
     @Query("SELECT * FROM notes ORDER BY createdAt DESC")
     fun all(): Flow<List<Note>>
 
+    @Query("SELECT * FROM notes ORDER BY createdAt DESC")
+    suspend fun allOnce(): List<Note>
+
     @Query("SELECT * FROM notes WHERE id = :id")
     fun byId(id: Long): Flow<Note?>
 

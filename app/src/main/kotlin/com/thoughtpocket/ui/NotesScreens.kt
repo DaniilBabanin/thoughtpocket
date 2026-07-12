@@ -673,7 +673,7 @@ private fun calendarInsertIntent(title: String, description: String, startMillis
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit, onOpenCodeRun: (Long) -> Unit = {}) {
+fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit, onOpenCodeRun: (noteId: Long, runId: Long) -> Unit = { _, _ -> }) {
     val context = LocalContext.current
     val dao = remember { NotesDb.get(context).notes() }
     val note by dao.byId(id).collectAsState(initial = null)
@@ -719,6 +719,7 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit, onOpe
     // Interact (AI commands on the checklist) + single-level undo for AI changes.
     val prefs = remember { AppPreferences(context) }
     var undo by remember(n.id) { mutableStateOf<Note?>(null) }
+    var codeRunDeleted by remember(n.id) { mutableStateOf<com.thoughtpocket.data.CodeRun?>(null) }
     var command by remember(n.id) { mutableStateOf("") }
     var interacting by remember(n.id) { mutableStateOf(false) }
     var listening by remember(n.id) { mutableStateOf(false) }
@@ -1071,32 +1072,6 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit, onOpe
                     Icon(Icons.Filled.AutoAwesome, null); Spacer(Modifier.width(8.dp)); Text("Suggest items (AI)")
                 }
 
-                // Code this (experimental): a local coding model writes + runs a Python
-                // script over this note. Only surfaces with the opt-in AND a model present.
-                val coderReady = remember(n.id) {
-                    prefs.experimentalCoder && CoderModelManager.isInstalled(context)
-                }
-                if (coderReady) {
-                    var codeInstruction by remember(n.id) { mutableStateOf("") }
-                    SectionTitle("Code this", Modifier.padding(top = 4.dp))
-                    GlassTextField(
-                        value = codeInstruction,
-                        onValueChange = { codeInstruction = it },
-                        placeholder = "Calculate, analyze, transform…",
-                        modifier = Modifier.fillMaxWidth(),
-                        trailing = {
-                            IconButton(
-                                onClick = {
-                                    CoderRunService.run(context, n.id, codeInstruction.trim())
-                                    codeInstruction = ""
-                                    onOpenCodeRun(n.id)
-                                },
-                                enabled = codeInstruction.isNotBlank(),
-                                modifier = Modifier.size(28.dp),
-                            ) { Icon(Icons.Filled.Code, "Code this", tint = cs.primary) }
-                        },
-                    )
-                }
 
                 // Tags.
                 if (tags.isNotEmpty()) {
@@ -1147,6 +1122,18 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit, onOpe
                     }
                 }
                 aiError?.let { Text(it, color = cs.error, style = MaterialTheme.typography.bodySmall) }
+
+                // Code this (experimental): local coding model writes + runs Python over
+                // this note — or, for "meta" notes, across all notes. Bottom of the note,
+                // gated on the opt-in + an installed coder model.
+                if (remember(n.id) { prefs.experimentalCoder && CoderModelManager.isInstalled(context) }) {
+                    NoteCodeSection(
+                        noteId = n.id,
+                        onOpen = { runId -> onOpenCodeRun(n.id, runId) },
+                        onDeleted = { codeRunDeleted = it },
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
 
                 // Related notes.
                 if (related.isNotEmpty()) {
@@ -1208,6 +1195,17 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit, onOpe
                 message = "AI change applied",
                 onUndo = { doUndo() },
                 onDismiss = { undo = null },
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 80.dp),
+            )
+        }
+        codeRunDeleted?.let { d ->
+            UndoSnackbar(
+                message = "Coding task deleted",
+                onUndo = {
+                    scope.launch { NotesDb.get(context).codeRuns().insert(d.copy(id = 0)) }
+                    codeRunDeleted = null
+                },
+                onDismiss = { codeRunDeleted = null },
                 modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 80.dp),
             )
         }

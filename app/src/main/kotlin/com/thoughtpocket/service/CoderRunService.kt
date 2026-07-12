@@ -21,6 +21,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import android.os.SystemClock
+import java.io.File
+import org.json.JSONArray
+import org.json.JSONObject
 
 /**
  * Drives one coder session (dataSync foreground, main process): begin session →
@@ -98,6 +101,7 @@ class CoderRunService : Service() {
             }
         }
 
+        val notesPath = writeNotesSnapshot()
         val attempts = mutableListOf<Attempt>()
         val attemptLog = mutableListOf<Pair<String, String>>()
 
@@ -170,7 +174,7 @@ class CoderRunService : Service() {
 
                     CodeRunState.update { it.copy(phase = CodeRunState.Phase.RUNNING) }
                     notify("Running script…")
-                    val res = PyRunnerClient.exec(this, code, CoderHarness.EXEC_TIMEOUT_MS)
+                    val res = PyRunnerClient.exec(this, code, CoderHarness.EXEC_TIMEOUT_MS, notesPath)
                     val emptyOk = res.ok && res.stdout.isBlank()
                     attempts += Attempt(
                         code = code, stdout = res.stdout, stderr = res.stderr,
@@ -217,7 +221,7 @@ class CoderRunService : Service() {
             it.copy(phase = CodeRunState.Phase.RUNNING, noteId = run.noteId, activeRunId = runId, result = "")
         }
         notify("Running edited script…")
-        val res = PyRunnerClient.exec(this, code, CoderHarness.EXEC_TIMEOUT_MS)
+        val res = PyRunnerClient.exec(this, code, CoderHarness.EXEC_TIMEOUT_MS, writeNotesSnapshot())
         if (res.ok && res.stdout.isNotBlank()) {
             // originalCode untouched — that's what "revert" restores.
             runsDao.update(run.copy(code = code, output = res.stdout, attempts = run.attempts + 1))
@@ -229,6 +233,30 @@ class CoderRunService : Service() {
                 else CoderHarness.summarizeTraceback(res.stderr).ifBlank { "Edited script produced no output" }
             )
         }
+    }
+
+    /**
+     * Serialize every note to a private cache file the runner loads into a
+     * `notes` global — enables "meta" tasks spanning all notes (count TODOs
+     * across notes, etc.). Via a file, not the IPC Bundle, so a big library
+     * can't blow the Binder transaction limit. The script can't open files
+     * (gate), only read the injected global.
+     */
+    private suspend fun writeNotesSnapshot(): String {
+        val arr = JSONArray()
+        for (n in NotesDb.get(this).notes().allOnce()) {
+            arr.put(JSONObject().apply {
+                put("id", n.id)
+                put("title", n.title)
+                put("text", n.text)
+                put("markdown", n.markdown)
+                put("tags", JSONArray(n.tags))
+                put("created", n.createdAt)
+            })
+        }
+        val f = File(cacheDir, "coder_notes.json")
+        f.writeText(arr.toString())
+        return f.absolutePath
     }
 
     private fun cancelRun() {

@@ -32,7 +32,7 @@ data class PyRunResult(
  */
 object PyRunnerClient {
 
-    suspend fun exec(context: Context, code: String, timeoutMs: Long): PyRunResult {
+    suspend fun exec(context: Context, code: String, timeoutMs: Long, notesPath: String = ""): PyRunResult {
         var conn: ServiceConnection? = null
         try {
             return withTimeout(timeoutMs) {
@@ -48,6 +48,7 @@ object PyRunnerClient {
                         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
                             val msg = Message.obtain(null, PyRunnerService.MSG_RUN)
                             msg.data.putString(PyRunnerService.KEY_CODE, code)
+                            msg.data.putString(PyRunnerService.KEY_NOTES_PATH, notesPath)
                             msg.replyTo = Messenger(replyHandler)
                             runCatching { Messenger(binder).send(msg) }
                                 .onFailure { if (cont.isActive) cont.resume(failed("bind send failed: $it")) }

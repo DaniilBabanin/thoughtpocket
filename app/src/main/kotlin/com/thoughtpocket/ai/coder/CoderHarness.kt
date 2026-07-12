@@ -165,7 +165,11 @@ object CoderHarness {
         "print the final result to stdout with print(); " +
         "if the task needs live or external data you don't have (exchange rates, prices, " +
         "weather), the script must say so in its output instead of using a guessed value; " +
-        "reply with exactly one fenced code block and nothing else."
+        "reply with exactly one fenced code block and nothing else. " +
+        "A global variable `notes` is already defined: a list of every saved note, each a dict " +
+        "with keys 'title', 'text' (raw), 'markdown' (formatted, may be ''), 'tags' (list of str), " +
+        "'created' (epoch ms). Use `notes` for tasks that span multiple notes (e.g. searching all " +
+        "notes); for a task about only the note shown below, just use that text. Do not redefine `notes`."
 
     internal fun buildFirstPrompt(noteTitle: String, noteBody: String, instruction: String): String =
         chatml(

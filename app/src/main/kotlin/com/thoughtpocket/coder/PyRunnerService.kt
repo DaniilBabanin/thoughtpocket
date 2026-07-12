@@ -25,6 +25,7 @@ class PyRunnerService : Service() {
         const val MSG_RUN = 1
         const val MSG_RESULT = 2
         const val KEY_CODE = "code"
+        const val KEY_NOTES_PATH = "notesPath"
         const val KEY_RESULT = "result"
         private const val TAG = "PyRunner"
     }
@@ -40,10 +41,11 @@ class PyRunnerService : Service() {
             override fun handleMessage(msg: Message) {
                 if (msg.what != MSG_RUN) return
                 val code = msg.data.getString(KEY_CODE) ?: return
+                val notesPath = msg.data.getString(KEY_NOTES_PATH).orEmpty()
                 val replyTo = msg.replyTo ?: return
                 val result = runCatching {
                     if (!Python.isStarted()) Python.start(AndroidPlatform(this@PyRunnerService))
-                    Python.getInstance().getModule("runner").callAttr("run", code).toString()
+                    Python.getInstance().getModule("runner").callAttr("run", code, notesPath).toString()
                 }.getOrElse { e ->
                     Log.e(TAG, "runner failed", e)
                     """{"ok":false,"syntax":false,"stdout":"","stderr":${jsonQuote(e.toString())}}"""
