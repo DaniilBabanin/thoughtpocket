@@ -563,19 +563,24 @@ fun SettingsScreen(bottomSpace: Dp, reduceMotion: Boolean, onReduceMotion: (Bool
                         }
                     }
                 }
-                // Bring-your-own GGUF (BYO models use the same ChatML prompt — Qwen-family works best).
+                // Bring-your-own GGUF (prompted via the model's own chat template
+                // when the GGUF ships one; ChatML fallback otherwise).
                 var importingCoder by remember { mutableStateOf(false) }
+                var importPct by remember { mutableStateOf(-1) }
                 val pickCoder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
                     if (uri != null) scope.launch {
-                        importingCoder = true
-                        CoderModelManager.importFromUri(context, uri)
+                        importingCoder = true; importPct = -1
+                        CoderModelManager.importFromUri(context, uri) { pct -> importPct = pct }
                             .onFailure { aiError = it.message }
                         importingCoder = false; coderTick++
                     }
                 }
                 TextButton(onClick = { pickCoder.launch(arrayOf("*/*")) }, enabled = !importingCoder) {
                     if (importingCoder) { CircularProgressIndicator(Modifier.size(16.dp)); Spacer(Modifier.width(8.dp)) }
-                    Text("Import a .gguf model…")
+                    Text(
+                        if (importingCoder && importPct >= 0) "Importing… $importPct%"
+                        else "Import a .gguf model…"
+                    )
                 }
                 // Model choice + removal (a 5.6 GB file needs a delete affordance).
                 if (coderModels.isNotEmpty()) {

@@ -88,13 +88,22 @@ fun CodeRunScreen(noteId: Long, focusRunId: Long, onBack: () -> Unit) {
     val currentId = if (status.activeRunId >= 0 && status.noteId == noteId) status.activeRunId else focusRunId
     val item = runs.firstOrNull { it.id == currentId }
 
-    fun exit() { CoderRunService.end(context); onBack() }
-    BackHandler { exit() }
-
-    val working = status.phase in listOf(
+    // anyWorking gates starting new work (one model, one run at a time,
+    // whatever the note); mine gates what this screen DISPLAYS.
+    val anyWorking = status.phase in listOf(
         CodeRunState.Phase.STARTING, CodeRunState.Phase.GENERATING,
         CodeRunState.Phase.RUNNING, CodeRunState.Phase.FIXING,
     )
+    val mine = status.noteId == noteId
+    val working = anyWorking && mine
+
+    // Leaving mid-run must NOT kill a multi-minute run — it finishes in the
+    // service and the session ends on its idle timer. End eagerly only when idle.
+    fun exit() {
+        if (!anyWorking) CoderRunService.end(context)
+        onBack()
+    }
+    BackHandler { exit() }
 
     Box(Modifier.fillMaxSize()) {
         Column(
@@ -128,10 +137,20 @@ fun CodeRunScreen(noteId: Long, focusRunId: Long, onBack: () -> Unit) {
                             Icon(Icons.Filled.Close, "Cancel", tint = cs.error)
                         }
                     }
+                    // Live script stream — turns a minutes-long spinner into progress.
+                    if (prefs.coderShowCode && status.streamed.isNotBlank()) {
+                        Text(
+                            status.streamed.lines().takeLast(10).joinToString("\n"),
+                            fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = cs.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
                 }
             }
 
-            if (status.phase == CodeRunState.Phase.FAILED) {
+            if (status.phase == CodeRunState.Phase.FAILED && mine) {
                 GlassCard(Modifier.fillMaxWidth()) {
                     Text("Couldn't finish", color = cs.error)
                     Text(status.result, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
@@ -173,7 +192,7 @@ fun CodeRunScreen(noteId: Long, focusRunId: Long, onBack: () -> Unit) {
                     trailing = {
                         IconButton(
                             onClick = { CoderRunService.followUp(context, item.id, followUp.trim()); followUp = ""; inserted = false },
-                            enabled = followUp.isNotBlank() && !working, modifier = Modifier.size(28.dp),
+                            enabled = followUp.isNotBlank() && !anyWorking, modifier = Modifier.size(28.dp),
                         ) { Icon(Icons.AutoMirrored.Filled.Send, "Iterate", tint = cs.primary) }
                     },
                 )
@@ -188,7 +207,7 @@ fun CodeRunScreen(noteId: Long, focusRunId: Long, onBack: () -> Unit) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilledTonalButton(
                             onClick = { CoderRunService.rerunEdited(context, item.id, editedCode) },
-                            enabled = editedCode.isNotBlank() && !working,
+                            enabled = editedCode.isNotBlank() && !anyWorking,
                             shape = ReachShapes.field, modifier = Modifier.weight(1f),
                         ) { Text("Run script") }
                         if (item.code != item.originalCode) {
@@ -234,10 +253,13 @@ fun NoteCodeSection(
     val cs = MaterialTheme.colorScheme
     var task by remember { mutableStateOf("") }
     var actionsOpenId by remember { mutableStateOf<Long?>(null) }
-    val running = status.noteId == noteId && status.phase in listOf(
+    // One model, one run at a time — a run on ANY note blocks starting another
+    // (the service would silently drop it); spinner only for this note's run.
+    val anyWorking = status.phase in listOf(
         CodeRunState.Phase.STARTING, CodeRunState.Phase.GENERATING,
         CodeRunState.Phase.RUNNING, CodeRunState.Phase.FIXING,
     )
+    val running = status.noteId == noteId && anyWorking
 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SectionTitle("Code this", Modifier.padding(top = 4.dp))
@@ -250,7 +272,7 @@ fun NoteCodeSection(
                 if (running) CircularProgressIndicator(Modifier.size(22.dp))
                 else IconButton(
                     onClick = { CoderRunService.run(context, noteId, task.trim()); task = ""; onOpen(-1L) },
-                    enabled = task.isNotBlank(), modifier = Modifier.size(28.dp),
+                    enabled = task.isNotBlank() && !anyWorking, modifier = Modifier.size(28.dp),
                 ) { Icon(Icons.AutoMirrored.Filled.Send, "Run", tint = cs.primary) }
             },
         )
@@ -280,7 +302,7 @@ fun NoteCodeSection(
                     Box(
                         Modifier.align(Alignment.CenterStart).padding(start = 8.dp).size(40.dp)
                             .clip(CircleShape).background(cs.secondaryContainer)
-                            .clickable {
+                            .clickable(enabled = !anyWorking) {
                                 actionsOpenId = null
                                 CoderRunService.rerunEdited(context, run.id, run.code)
                                 onOpen(run.id)

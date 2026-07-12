@@ -25,7 +25,11 @@ object CoderEngine {
     // A520s and per-op sync drags decode (4.6 vs 3.8 tok/s, llama-bench
     // 2026-07-11). Tab S11 loses ~11% vs 6 threads; the Pixel gain outweighs it.
     private const val N_THREADS = 4
-    private const val N_CTX = 4096
+    // 8192: review 2026-07-12 — the harness' generous prompt caps (8k-char note
+    // + prior code + output on follow-ups) can exceed 4096 with MAX_GEN_TOKENS.
+    // Cost is KV cache only (~150 KB/token fp16 on a 9B Qwen-family ≈ +0.6 GB
+    // over 4096); verified loading + worst-case prompt on Pixel 9 Pro XL.
+    private const val N_CTX = 8192
 
     private val active = AtomicBoolean(false)
 
@@ -53,12 +57,17 @@ object CoderEngine {
     /** Only valid inside a session (the session already holds [AiMutex]). */
     suspend fun generate(
         prompt: String,
-        maxTokens: Int = 1024,
+        maxTokens: Int,
+        temperature: Float = 0f,
         onToken: LlamaEngine.TokenCallback? = null,
     ): Result<String> {
         if (!active.get()) return Result.failure(IllegalStateException("No coder session"))
-        return LlamaEngine.generate(prompt, maxTokens, onToken)
+        return LlamaEngine.generate(prompt, maxTokens, temperature, onToken)
     }
+
+    /** Model's own chat template, or null (no session / no template) → ChatML fallback. */
+    fun formatPrompt(system: String, user: String): String? =
+        if (active.get()) LlamaEngine.formatPrompt(system, user) else null
 
     fun cancelGeneration() = LlamaEngine.cancel()
 

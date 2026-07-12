@@ -4,16 +4,22 @@ import com.thoughtpocket.ai.coder.CoderHarness
 import com.thoughtpocket.ai.coder.CoderHarness.Action
 import com.thoughtpocket.ai.coder.CoderHarness.Attempt
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** The loop's brain: attempts cap, stuck-error dedupe, pre-flight wall budget. */
+/** The loop's brain: attempts cap, stuck-error escalation, pre-flight wall budget. */
 class HarnessDecideTest {
 
     private fun fail(stderr: String) = Attempt(code = "x", stderr = stderr, ok = false)
 
     @Test fun freshRunGenerates() =
         assertTrue(CoderHarness.decide(emptyList(), elapsedMs = 0) is Action.Generate)
+
+    @Test fun firstGenerationIsGreedy() {
+        val a = CoderHarness.decide(emptyList(), elapsedMs = 0) as Action.Generate
+        assertFalse(a.sampled)
+    }
 
     @Test fun successIsDone() {
         val a = CoderHarness.decide(listOf(Attempt(code = "x", stdout = "42\n", ok = true)), 60_000)
@@ -25,43 +31,70 @@ class HarnessDecideTest {
         assertTrue(CoderHarness.decide(attempts, 60_000) is Action.Done)
     }
 
-    @Test fun failureRetries() =
-        assertTrue(CoderHarness.decide(listOf(fail("ValueError: nope")), 60_000) is Action.Generate)
+    @Test fun failureRetriesGreedy() {
+        val a = CoderHarness.decide(listOf(fail("ValueError: nope")), 60_000)
+        assertFalse((a as Action.Generate).sampled)
+    }
 
     @Test fun maxAttemptsAborts() {
         val attempts = listOf(fail("A"), fail("B"), fail("C"))
         assertTrue(CoderHarness.decide(attempts, 60_000) is Action.Fail)
     }
 
-    @Test fun identicalConsecutiveErrorsAbortEarly() {
+    @Test fun identicalConsecutiveErrorsEscalateToSampledRetry() {
+        // Greedy is deterministic — two identical failures mean it's stuck, so
+        // the third (last) attempt runs sampled instead of failing outright.
         val same = "File \"<coder>\", line 2, in <module>\nKeyError: 'total'"
         val a = CoderHarness.decide(listOf(fail(same), fail(same)), 60_000)
-        assertTrue("expected early abort, got $a", a is Action.Fail)
+        assertTrue("expected sampled retry, got $a", (a as Action.Generate).sampled)
     }
 
-    @Test fun differentErrorsKeepGoing() {
+    @Test fun thirdIdenticalFailureHitsAttemptCap() {
+        val same = "KeyError: 'total'"
+        val a = CoderHarness.decide(listOf(fail(same), fail(same), fail(same)), 60_000)
+        assertTrue(a is Action.Fail)
+    }
+
+    @Test fun differentErrorsKeepGoingGreedy() {
         val a = CoderHarness.decide(listOf(fail("KeyError: 'a'"), fail("ValueError: b")), 60_000)
-        assertTrue(a is Action.Generate)
+        assertFalse((a as Action.Generate).sampled)
     }
 
-    @Test fun gateErrorsCountTowardDedupe() {
+    @Test fun gateErrorsCountTowardStuckDetection() {
         val g = Attempt(code = "", gateError = "import os")
-        assertTrue(CoderHarness.decide(listOf(g, g), 60_000) is Action.Fail)
+        val a = CoderHarness.decide(listOf(g, g), 60_000)
+        assertTrue((a as Action.Generate).sampled)
     }
 
     @Test fun wallBudgetCheckedBeforeGenerating() {
         // 17 min elapsed + 5 min estimate > 20 min cap → refuse to start another round.
-        val a = CoderHarness.decide(listOf(fail("A")), elapsedMs = 17 * 60_000L)
+        val a = CoderHarness.decide(
+            listOf(fail("A")), elapsedMs = 17 * 60_000L,
+            wallCapMs = 20 * 60_000L, estAttemptMs = 5 * 60_000L,
+        )
         assertTrue(a is Action.Fail)
     }
 
     @Test fun budgetFitsOneMoreRound() {
-        val a = CoderHarness.decide(listOf(fail("A")), elapsedMs = 10 * 60_000L)
+        val a = CoderHarness.decide(
+            listOf(fail("A")), elapsedMs = 10 * 60_000L,
+            wallCapMs = 20 * 60_000L, estAttemptMs = 5 * 60_000L,
+        )
         assertTrue(a is Action.Generate)
+    }
+
+    @Test fun stuckPairOverBudgetStillFails() {
+        // Budget outranks the sampled escape hatch — a sampled attempt costs
+        // the same wall-clock as any other.
+        val a = CoderHarness.decide(
+            listOf(fail("A"), fail("A")), elapsedMs = 17 * 60_000L,
+            wallCapMs = 20 * 60_000L, estAttemptMs = 5 * 60_000L,
+        )
+        assertTrue(a is Action.Fail)
     }
 
     @Test fun successBeatsExhaustedBudget() {
         val attempts = listOf(Attempt(code = "x", stdout = "done", ok = true))
-        assertTrue(CoderHarness.decide(attempts, elapsedMs = 25 * 60_000L) is Action.Done)
+        assertTrue(CoderHarness.decide(attempts, elapsedMs = 45 * 60_000L) is Action.Done)
     }
 }

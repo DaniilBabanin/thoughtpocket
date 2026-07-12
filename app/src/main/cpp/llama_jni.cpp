@@ -1,7 +1,10 @@
 // llama.cpp JNI bridge for the coder feature (ai/coder/LlamaEngine.kt).
 // Follows whisper_jni.cpp conventions: jlong handle, g_last_error stash,
 // cached-jmethodID upcalls, no C++ exceptions across JNI. New vs whisper:
-// a cancel flag checked every token — generations run minutes, users cancel.
+// a cancel flag — checked every token AND wired into ggml's abort callback,
+// so cancel lands mid-decode too (a long-prompt prefill is ONE llama_decode
+// call that can run tens of seconds on CPU; the per-token check alone left
+// Cancel inert for that whole stretch — found in review 2026-07-12).
 #include <jni.h>
 #include <atomic>
 #include <string>
@@ -68,7 +71,12 @@ Java_com_thoughtpocket_ai_coder_LlamaEngine_nativeInitContext(
         } else {
             llama_context_params cp = llama_context_default_params();
             cp.n_ctx = nCtx;
-            cp.n_batch = 512;
+            // n_batch is the LOGICAL per-decode cap — a full long prompt must
+            // fit or llama_decode hard-aborts (GGML_ASSERT, llama-context.cpp:
+            // n_tokens_all <= n_batch; hit on-device 2026-07-12 with a ~4k-token
+            // prompt). n_ubatch stays small — it alone sizes the compute buffer.
+            cp.n_batch = nCtx;
+            cp.n_ubatch = 512;
             cp.n_threads = nThreads;
             cp.n_threads_batch = nThreads;
             llama_context *ctx = llama_init_from_model(model, cp);
@@ -76,6 +84,8 @@ Java_com_thoughtpocket_ai_coder_LlamaEngine_nativeInitContext(
                 g_last_error = "context init failed";
                 llama_model_free(model);
             } else {
+                // Abort mid-decode when cancelled (decode returns 2 = aborted).
+                llama_set_abort_callback(ctx, [](void *) { return g_cancel.load(); }, nullptr);
                 h = new LlamaHandle{model, ctx, llama_model_get_vocab(model)};
             }
         }
@@ -91,7 +101,7 @@ Java_com_thoughtpocket_ai_coder_LlamaEngine_nativeInitContext(
 JNIEXPORT jstring JNICALL
 Java_com_thoughtpocket_ai_coder_LlamaEngine_nativeGenerate(
         JNIEnv *env, jobject /*thiz*/, jlong handle, jstring jprompt,
-        jint maxTokens, jobject callback) {
+        jint maxTokens, jfloat temperature, jobject callback) {
     auto *h = reinterpret_cast<LlamaHandle *>(handle);
     if (!h) { g_last_error = "null handle"; return nullptr; }
 
@@ -117,20 +127,36 @@ Java_com_thoughtpocket_ai_coder_LlamaEngine_nativeGenerate(
                                    /*add_special=*/true, /*parse_special=*/true);
         if (n_tok <= 0) {
             g_last_error = "tokenize failed";
-        } else if (n_tok + maxTokens >= (int) llama_n_ctx(h->ctx)) {
+        } else if (n_tok >= (int) llama_n_ctx(h->ctx) - 8) {
             g_last_error = "prompt too long for context (" + std::to_string(n_tok) + " tokens)";
         } else {
+            // Clamp the generation budget to what fits instead of refusing the
+            // whole run — a shorter reply beats a hard "prompt too long".
+            int max_gen = maxTokens;
+            int room = (int) llama_n_ctx(h->ctx) - n_tok - 4;
+            if (max_gen > room) { max_gen = room; LOGI("gen budget clamped to %d (prompt %d tok)", max_gen, n_tok); }
+
             tokens.resize(n_tok);
             llama_sampler *smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
-            llama_sampler_chain_add(smpl, llama_sampler_init_greedy());
+            if (temperature > 0.0f) {
+                // Stuck-retry escalation (CoderHarness.decide): one sampled
+                // attempt after two identical failures. Fixed seed — reproducible.
+                llama_sampler_chain_add(smpl, llama_sampler_init_top_p(0.9f, 1));
+                llama_sampler_chain_add(smpl, llama_sampler_init_temp(temperature));
+                llama_sampler_chain_add(smpl, llama_sampler_init_dist(0xC0DE5EEDu));
+            } else {
+                llama_sampler_chain_add(smpl, llama_sampler_init_greedy());
+            }
 
             std::string pending; // UTF-8 buffer, see is_valid_utf8
             llama_batch batch = llama_batch_get_one(tokens.data(), (int32_t) tokens.size());
             ok = true;
-            for (int i = 0; i < maxTokens; i++) {
+            for (int i = 0; i < max_gen; i++) {
                 if (g_cancel.load()) { LOGI("generate cancelled at token %d", i); break; }
-                if (llama_decode(h->ctx, batch) != 0) {
-                    g_last_error = "decode failed at token " + std::to_string(i);
+                int ret = llama_decode(h->ctx, batch);
+                if (ret != 0) {
+                    if (g_cancel.load()) { LOGI("generate aborted mid-decode at token %d", i); break; }
+                    g_last_error = "decode failed (" + std::to_string(ret) + ") at token " + std::to_string(i);
                     ok = false;
                     break;
                 }
@@ -179,6 +205,40 @@ Java_com_thoughtpocket_ai_coder_LlamaEngine_nativeFreeContext(
     if (h->ctx) llama_free(h->ctx);
     if (h->model) llama_model_free(h->model);
     delete h;
+}
+
+// Format system+user through the model's embedded chat template (GGUF
+// metadata). Returns null when the model ships no template (or it's one
+// llama.cpp can't apply) — Kotlin falls back to hardcoded ChatML.
+JNIEXPORT jstring JNICALL
+Java_com_thoughtpocket_ai_coder_LlamaEngine_nativeFormatPrompt(
+        JNIEnv *env, jobject /*thiz*/, jlong handle, jstring jsystem, jstring juser) {
+    auto *h = reinterpret_cast<LlamaHandle *>(handle);
+    if (!h) return nullptr;
+    const char *tmpl = llama_model_chat_template(h->model, nullptr);
+    if (!tmpl) return nullptr;
+    const char *sys = env->GetStringUTFChars(jsystem, nullptr);
+    const char *usr = env->GetStringUTFChars(juser, nullptr);
+    jstring result = nullptr;
+    try {
+        llama_chat_message msgs[2] = {{"system", sys}, {"user", usr}};
+        std::vector<char> buf(strlen(sys) + strlen(usr) + 1024);
+        int32_t n = llama_chat_apply_template(tmpl, msgs, 2, /*add_ass=*/true,
+                                              buf.data(), (int32_t) buf.size());
+        if (n > (int32_t) buf.size()) {
+            buf.resize(n);
+            n = llama_chat_apply_template(tmpl, msgs, 2, true, buf.data(), (int32_t) buf.size());
+        }
+        if (n > 0) {
+            std::string out(buf.data(), (size_t) n);
+            result = env->NewStringUTF(out.c_str());
+        }
+    } catch (...) {
+        result = nullptr; // unsupported template → ChatML fallback upstream
+    }
+    env->ReleaseStringUTFChars(jsystem, sys);
+    env->ReleaseStringUTFChars(juser, usr);
+    return result;
 }
 
 JNIEXPORT jstring JNICALL

@@ -14,12 +14,16 @@ import com.thoughtpocket.ai.coder.CoderHarness.Attempt
 import com.thoughtpocket.coder.PyRunnerClient
 import com.thoughtpocket.data.CodeRun
 import com.thoughtpocket.data.NotesDb
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import android.os.SystemClock
 import java.io.File
 import org.json.JSONArray
@@ -30,7 +34,9 @@ import org.json.JSONObject
  * generate → gate → execute in the :coder process → diagnose → repair → repeat,
  * publishing progress through [CodeRunState] only — the UI never touches this
  * service (RecordState convention). The session (and the 5.6 GB model) stays
- * warm across follow-ups until ACTION_END from the screen's exit.
+ * warm across follow-ups; it ends via ACTION_END (screen exited while idle)
+ * or the idle timer (run finished but nobody came back — back/home mid-run
+ * intentionally does NOT kill the run, it finishes in the background).
  *
  * dataSync vs specialUse: dataSync is the type this app already uses for long
  * background work and a run's ~20 min cap stays under Android 15's cumulative
@@ -40,6 +46,7 @@ class CoderRunService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var runJob: Job? = null
+    private var idleJob: Job? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -54,21 +61,29 @@ class CoderRunService : Service() {
                 val noteId = intent.getLongExtra(EXTRA_NOTE_ID, -1)
                 val instruction = intent.getStringExtra(EXTRA_INSTRUCTION).orEmpty()
                 if (noteId >= 0 && instruction.isNotBlank() && runJob?.isActive != true) {
+                    idleJob?.cancel()
                     runJob = scope.launch { runOnce(noteId, instruction, iterateRunId = null) }
                 }
             }
             ACTION_FOLLOWUP -> {
                 val instruction = intent.getStringExtra(EXTRA_INSTRUCTION).orEmpty()
                 val runId = intent.getLongExtra(EXTRA_RUN_ID, -1)
-                val noteId = CodeRunState.status.value.noteId
-                if (noteId >= 0 && runId >= 0 && instruction.isNotBlank() && runJob?.isActive != true) {
-                    runJob = scope.launch { runOnce(noteId, instruction, iterateRunId = runId) }
+                if (runId >= 0 && instruction.isNotBlank() && runJob?.isActive != true) {
+                    idleJob?.cancel()
+                    runJob = scope.launch {
+                        // The run row is the durable source of its note — the
+                        // in-memory state may have been reset since the last run.
+                        val base = NotesDb.get(this@CoderRunService).codeRuns().getById(runId)
+                        if (base == null) { fail("Coding item not found"); scheduleIdleEnd() }
+                        else runOnce(base.noteId, instruction, iterateRunId = runId)
+                    }
                 }
             }
             ACTION_RERUN_EDITED -> {
                 val code = intent.getStringExtra(EXTRA_CODE).orEmpty()
                 val runId = intent.getLongExtra(EXTRA_RUN_ID, -1)
                 if (code.isNotBlank() && runId >= 0 && runJob?.isActive != true) {
+                    idleJob?.cancel()
                     runJob = scope.launch { rerunEdited(runId, code) }
                 }
             }
@@ -78,8 +93,36 @@ class CoderRunService : Service() {
         return START_NOT_STICKY
     }
 
+    /**
+     * The model stays warm between runs (loading 5.6 GB takes ~a minute), but
+     * nothing may pin it forever — the screen only ends the session when idle,
+     * and if the user walked away mid-run (back/home) nobody ends it at all.
+     * So: every run completion arms this timer; every new run disarms it.
+     */
+    private fun scheduleIdleEnd() {
+        idleJob?.cancel()
+        idleJob = scope.launch {
+            delay(IDLE_TIMEOUT_MS)
+            endSession()
+        }
+    }
+
     /** [iterateRunId] null = new coding item; set = follow-up updating that item in place. */
     private suspend fun runOnce(noteId: Long, instruction: String, iterateRunId: Long?) {
+        try {
+            runLoop(noteId, instruction, iterateRunId)
+        } catch (e: CancellationException) {
+            throw e // endSession/cancel owns the teardown — don't arm the idle timer
+        } catch (e: Exception) {
+            // e.g. the note was deleted mid-run (FK on insert) — a failed run,
+            // not an app crash.
+            Log.e(TAG, "run crashed", e)
+            fail(e.message ?: "Unexpected error")
+        }
+        scheduleIdleEnd()
+    }
+
+    private suspend fun runLoop(noteId: Long, instruction: String, iterateRunId: Long?) {
         val startMs = SystemClock.elapsedRealtime()
         fun elapsed() = SystemClock.elapsedRealtime() - startMs
 
@@ -147,7 +190,9 @@ class CoderRunService : Service() {
                     // Prefer the formatted body; fall back to the raw transcript.
                     val body = note.markdown.ifBlank { note.text }
                     val prompt = buildPrompt(note.title, body, instruction, attempts, baseRun)
-                    val reply = CoderEngine.generate(prompt, CoderHarness.MAX_GEN_TOKENS) { piece ->
+                    // Stuck pair → one sampled attempt; greedy otherwise.
+                    val temperature = if (action.sampled) 0.6f else 0f
+                    val reply = CoderEngine.generate(prompt, CoderHarness.MAX_GEN_TOKENS, temperature) { piece ->
                         CodeRunState.update {
                             it.copy(streamed = it.streamed + piece, tokenCount = it.tokenCount + 1)
                         }
@@ -198,19 +243,34 @@ class CoderRunService : Service() {
         attempts: List<Attempt>, baseRun: CodeRun?,
     ): String {
         val last = attempts.lastOrNull()
-        return when {
-            last != null -> CoderHarness.buildRepairPrompt(
+        val user = when {
+            last != null -> CoderHarness.repairUser(
                 title, body, instruction, last.code, CoderHarness.errorKey(last)
             )
-            baseRun != null -> CoderHarness.buildFollowUpPrompt(
+            baseRun != null -> CoderHarness.followUpUser(
                 title, body, baseRun.instruction, baseRun.code, baseRun.output, instruction
             )
-            else -> CoderHarness.buildFirstPrompt(title, body, instruction)
+            else -> CoderHarness.firstUser(title, body, instruction)
         }
+        // Model's own chat template (BYO models get their native format);
+        // ChatML fallback for GGUFs that ship none.
+        return CoderEngine.formatPrompt(CoderHarness.SYSTEM, user) ?: CoderHarness.chatml(user)
     }
 
     /** "Run edited script": user-authored code skips generation, keeps the gates; updates its item. */
     private suspend fun rerunEdited(runId: Long, code: String) {
+        try {
+            rerunEditedInner(runId, code)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "rerun crashed", e)
+            fail(e.message ?: "Unexpected error")
+        }
+        scheduleIdleEnd()
+    }
+
+    private suspend fun rerunEditedInner(runId: Long, code: String) {
         val runsDao = NotesDb.get(this).codeRuns()
         val run = runsDao.getById(runId) ?: run { fail("Coding item not found"); return }
         when (val scan = CoderHarness.scanImports(code)) {
@@ -265,16 +325,24 @@ class CoderRunService : Service() {
         PyRunnerClient.kill(this)
         CodeRunState.update { it.copy(phase = CodeRunState.Phase.FAILED, result = "Cancelled") }
         notify("Cancelled")
+        scheduleIdleEnd() // session stays warm for a retry, but never forever
     }
 
     private fun endSession() {
-        runJob?.cancel()
+        idleJob?.cancel()
         CoderEngine.cancelGeneration()
         PyRunnerClient.kill(this)
-        CoderEngine.endSession()
-        CodeRunState.reset()
-        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        val job = runJob
+        scope.launch {
+            // Free the model only after the in-flight generate has returned —
+            // releasing under a live llama_decode is a use-after-free. The
+            // abort callback bounds this join to milliseconds.
+            job?.cancelAndJoin()
+            CoderEngine.endSession()
+            CodeRunState.reset()
+            ServiceCompat.stopForeground(this@CoderRunService, ServiceCompat.STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
     }
 
     private fun fail(reason: String, attemptLog: List<Pair<String, String>> = emptyList()) {
@@ -291,6 +359,11 @@ class CoderRunService : Service() {
     }
 
     override fun onDestroy() {
+        idleJob?.cancel()
+        CoderEngine.cancelGeneration()
+        // System-initiated destroy can land mid-generation; same UAF rule as
+        // endSession. The abort callback keeps this join to milliseconds.
+        runBlocking { runJob?.cancelAndJoin() }
         CoderEngine.endSession()
         scope.cancel()
         super.onDestroy()
@@ -298,6 +371,8 @@ class CoderRunService : Service() {
 
     companion object {
         private const val TAG = "CoderRunService"
+        /** Warm-model grace after a run; reload costs ~a minute, RAM costs ~6 GB. */
+        private const val IDLE_TIMEOUT_MS = 10 * 60_000L
         const val ACTION_RUN = "com.thoughtpocket.coder.RUN"
         const val ACTION_FOLLOWUP = "com.thoughtpocket.coder.FOLLOWUP"
         const val ACTION_CANCEL = "com.thoughtpocket.coder.CANCEL"

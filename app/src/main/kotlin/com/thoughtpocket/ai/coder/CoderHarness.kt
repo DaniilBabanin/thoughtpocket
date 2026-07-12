@@ -9,14 +9,22 @@ package com.thoughtpocket.ai.coder
 object CoderHarness {
 
     const val MAX_ATTEMPTS = 3
-    const val WALL_CAP_MS = 20 * 60_000L
-    /** Conservative single-attempt estimate (gen + exec) from docs/coder-throughput.md. */
-    const val ATTEMPT_EST_MS = 5 * 60_000L
+    // 30 min / 6 min: raised 2026-07-12 with the generous caps below — a worst-
+    // case attempt (long prefill + 2000-token gen at ~4.25 tok/s) runs ~9 min.
+    // Long runs are fine now that leaving the screen no longer kills them.
+    const val WALL_CAP_MS = 30 * 60_000L
+    /** Conservative single-attempt estimate (gen + exec), docs/coder-throughput.md. */
+    const val ATTEMPT_EST_MS = 6 * 60_000L
     const val EXEC_TIMEOUT_MS = 60_000L
-    // 1300: H1 post-mortem (2026-07-11) — long-note prompts got truncated at 900
-    // before the closing fence, so every attempt died at the fence gate.
-    // Worst repair prompt (~2600 tok) + 1300 still fits n_ctx 4096.
-    const val MAX_GEN_TOKENS = 1300
+    // 2000 @ n_ctx 8192 (was 1300 @ 4096 — H1 post-mortem 2026-07-11: truncated
+    // replies die at the fence gate). Worst follow-up prompt with the caps
+    // below ≈ 4.5k tok + 2000 gen ≈ 6.5k < 8192; the JNI side additionally
+    // clamps the gen budget to the remaining context instead of refusing.
+    const val MAX_GEN_TOKENS = 2000
+    /** Char caps for prompt building — generous; budget math above. */
+    internal const val NOTE_CAP = 8000
+    internal const val CODE_CAP = 4000
+    internal const val OUTPUT_CAP = 2000
 
     /** Python stdlib modules a generated script may import (root module names). */
     internal val IMPORT_ALLOWLIST = setOf(
@@ -39,18 +47,24 @@ object CoderHarness {
     )
 
     sealed interface Action {
-        /** Generate attempt N+1 (first, or a repair round with error context). */
-        data object Generate : Action
+        /**
+         * Generate attempt N+1 (first, or a repair round with error context).
+         * [sampled] = the last two attempts failed identically, so greedy
+         * decoding is provably stuck — escalate to one temperature-sampled try
+         * instead of failing outright (review 2026-07-12).
+         */
+        data class Generate(val sampled: Boolean = false) : Action
         data class Done(val output: String) : Action
         data class Fail(val reason: String) : Action
     }
 
     /**
      * The loop's brain, consulted after every attempt (and before the first).
-     * Ordering matters: success wins, then attempt/robustness caps, then the
-     * wall-clock check — never start a generation that can't fit its estimate
-     * in the remaining budget (thermal throttling makes late attempts slower,
-     * so the estimate is checked every round, not once).
+     * Ordering matters: success wins, then attempt cap, then the wall-clock
+     * check — never start a generation that can't fit its estimate in the
+     * remaining budget (thermal throttling makes late attempts slower, so the
+     * estimate is checked every round, not once). A stuck pair only changes
+     * HOW the next attempt generates, never whether it may start.
      */
     internal fun decide(
         attempts: List<Attempt>,
@@ -64,16 +78,16 @@ object CoderHarness {
         if (attempts.size >= maxAttempts) {
             return Action.Fail("Couldn't produce a working script after $maxAttempts attempts")
         }
-        if (attempts.size >= 2) {
-            val (a, b) = attempts.takeLast(2)
-            if (errorKey(a) == errorKey(b) && errorKey(a).isNotEmpty()) {
-                return Action.Fail("The same error kept coming back — stopping early")
-            }
-        }
         if (elapsedMs + estAttemptMs > wallCapMs) {
             return Action.Fail("Ran out of time budget (${wallCapMs / 60_000} min)")
         }
-        return Action.Generate
+        if (attempts.size >= 2) {
+            val (a, b) = attempts.takeLast(2)
+            if (errorKey(a) == errorKey(b) && errorKey(a).isNotEmpty()) {
+                return Action.Generate(sampled = true)
+            }
+        }
+        return Action.Generate()
     }
 
     /** Two attempts failing identically ⇒ the model is stuck, not converging. */
@@ -158,9 +172,12 @@ object CoderHarness {
             .joinToString("\n").take(600)
     }
 
-    // ---- prompts (ChatML — Ornith/Qwen family; BYO models are on their own template-wise) ----
+    // ---- prompts ----
+    // Builders return the USER message content; the caller wraps it with the
+    // model's own chat template (LlamaEngine.formatPrompt, GGUF metadata) and
+    // falls back to [chatml] for models that ship none.
 
-    private const val SYSTEM = "You write one small self-contained Python script per request. " +
+    internal const val SYSTEM = "You write one small self-contained Python script per request. " +
         "Rules: standard library only (no pip, no network, no files, no input()); " +
         "print the final result to stdout with print(); " +
         "if the task needs live or external data you don't have (exchange rates, prices, " +
@@ -171,30 +188,35 @@ object CoderHarness {
         "'created' (epoch ms). Use `notes` for tasks that span multiple notes (e.g. searching all " +
         "notes); for a task about only the note shown below, just use that text. Do not redefine `notes`."
 
-    internal fun buildFirstPrompt(noteTitle: String, noteBody: String, instruction: String): String =
-        chatml(
-            "Note: ${noteTitle.take(200)}\n\"\"\"\n${noteBody.take(6000)}\n\"\"\"\n\nTask: $instruction"
-        )
+    internal fun firstUser(noteTitle: String, noteBody: String, instruction: String): String =
+        "Note: ${noteTitle.take(200)}\n\"\"\"\n${noteBody.take(NOTE_CAP)}\n\"\"\"\n\nTask: $instruction"
 
-    internal fun buildRepairPrompt(
+    internal fun repairUser(
         noteTitle: String, noteBody: String, instruction: String,
         lastCode: String, errorSummary: String,
-    ): String = chatml(
-        "Note: ${noteTitle.take(200)}\n\"\"\"\n${noteBody.take(6000)}\n\"\"\"\n\nTask: $instruction\n\n" +
-            "Your previous script:\n```python\n${lastCode.take(4000)}\n```\n" +
-            "It failed with:\n$errorSummary\n\nFix it and reply with the corrected script only."
-    )
+    ): String {
+        val base = "Note: ${noteTitle.take(200)}\n\"\"\"\n${noteBody.take(NOTE_CAP)}\n\"\"\"\n\nTask: $instruction\n\n"
+        // A gate failure before any code was extracted (no fence / cut off)
+        // has no script to show — an empty ```python block would only confuse.
+        return if (lastCode.isBlank()) {
+            base + "Your previous reply was rejected: $errorSummary\n" +
+                "Reply with exactly one complete fenced Python code block and nothing else."
+        } else {
+            base + "Your previous script:\n```python\n${lastCode.take(CODE_CAP)}\n```\n" +
+                "It failed with:\n$errorSummary\n\nFix it and reply with the corrected script only."
+        }
+    }
 
-    internal fun buildFollowUpPrompt(
+    internal fun followUpUser(
         noteTitle: String, noteBody: String,
         priorInstruction: String, priorCode: String, priorOutput: String,
         newInstruction: String,
-    ): String = chatml(
-        "Note: ${noteTitle.take(200)}\n\"\"\"\n${noteBody.take(6000)}\n\"\"\"\n\n" +
-            "Earlier task: $priorInstruction\nYour working script:\n```python\n${priorCode.take(4000)}\n```\n" +
-            "Its output:\n\"\"\"\n${priorOutput.take(2000)}\n\"\"\"\n\nNew task: $newInstruction"
-    )
+    ): String =
+        "Note: ${noteTitle.take(200)}\n\"\"\"\n${noteBody.take(NOTE_CAP)}\n\"\"\"\n\n" +
+            "Earlier task: $priorInstruction\nYour working script:\n```python\n${priorCode.take(CODE_CAP)}\n```\n" +
+            "Its output:\n\"\"\"\n${priorOutput.take(OUTPUT_CAP)}\n\"\"\"\n\nNew task: $newInstruction"
 
-    private fun chatml(user: String): String =
+    /** Fallback wrapper for models without an embedded chat template. */
+    internal fun chatml(user: String): String =
         "<|im_start|>system\n$SYSTEM<|im_end|>\n<|im_start|>user\n$user<|im_end|>\n<|im_start|>assistant\n"
 }

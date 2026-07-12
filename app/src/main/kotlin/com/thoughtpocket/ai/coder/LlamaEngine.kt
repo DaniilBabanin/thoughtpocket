@@ -12,7 +12,12 @@ import java.util.concurrent.atomic.AtomicLong
  * guards its own handle.
  *
  * Cancellation is new relative to the whisper bridge: [cancel] flips a native
- * flag checked every token, so a minutes-long generation returns promptly.
+ * flag checked every token and wired into ggml's abort callback, so it lands
+ * even mid-prefill (one decode call that can run tens of seconds on CPU).
+ *
+ * NOTE [release] while a generation is in flight is a use-after-free — the
+ * caller must cancel AND wait for the generate call to return first
+ * (CoderRunService joins the run job before ending the session).
  */
 object LlamaEngine {
 
@@ -44,13 +49,24 @@ object LlamaEngine {
     suspend fun generate(
         prompt: String,
         maxTokens: Int = 1024,
+        temperature: Float = 0f,
         onToken: TokenCallback? = null,
     ): Result<String> = withContext(Dispatchers.Default) {
         val h = handle.get()
         if (h == 0L) return@withContext Result.failure(IllegalStateException("model not loaded"))
-        val out = nativeGenerate(h, prompt, maxTokens, onToken)
+        val out = nativeGenerate(h, prompt, maxTokens, temperature, onToken)
             ?: return@withContext Result.failure(IllegalStateException(lastError()))
         Result.success(out)
+    }
+
+    /**
+     * Wrap system+user in the model's own chat template (GGUF metadata) so BYO
+     * models get their native format; null when the model has none → caller
+     * falls back to ChatML.
+     */
+    fun formatPrompt(system: String, user: String): String? {
+        val h = handle.get()
+        return if (h == 0L) null else nativeFormatPrompt(h, system, user)
     }
 
     fun cancel() = nativeCancel()
@@ -64,7 +80,8 @@ object LlamaEngine {
     fun lastError(): String = nativeLastError()
 
     private external fun nativeInitContext(modelPath: String, nCtx: Int, nThreads: Int): Long
-    private external fun nativeGenerate(handle: Long, prompt: String, maxTokens: Int, callback: TokenCallback?): String?
+    private external fun nativeGenerate(handle: Long, prompt: String, maxTokens: Int, temperature: Float, callback: TokenCallback?): String?
+    private external fun nativeFormatPrompt(handle: Long, system: String, user: String): String?
     private external fun nativeCancel()
     private external fun nativeFreeContext(handle: Long)
     private external fun nativeLastError(): String

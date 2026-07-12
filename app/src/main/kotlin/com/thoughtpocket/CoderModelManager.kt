@@ -70,13 +70,17 @@ object CoderModelManager {
     }
 
     /**
-     * Same strict contract as [ModelManager.download]: identity encoding,
+     * Same strict contract as [ModelManager.download] (identity encoding,
      * required Content-Length, .part + completeness + sha256 gate, atomic
-     * rename. Emits 0..99, 100, then -1.
+     * rename), plus Range resume: a 5.6 GB file must not restart from zero
+     * after one flaky moment, so a failed transfer KEEPS its .part and the
+     * next attempt continues from there (HF serves 206). Only a checksum
+     * mismatch discards it. Emits 0..99, 100, then -1.
      */
     fun download(context: Context, model: BuiltInCoderModel): Flow<Int> = flow {
         val target = File(coderDir(context), model.filename)
         val tmp = File(target.absolutePath + ".part")
+        val offset = if (tmp.exists()) tmp.length() else 0L
         val conn = (URL(model.url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 15_000
             readTimeout = 60_000
@@ -84,15 +88,22 @@ object CoderModelManager {
             requestMethod = "GET"
             // Gzip would drop the Content-Length the completeness guard needs.
             setRequestProperty("Accept-Encoding", "identity")
+            if (offset > 0) setRequestProperty("Range", "bytes=$offset-")
         }
         try {
             conn.connect()
-            val total = conn.contentLengthLong
-            if (total <= 0) throw IllegalStateException("Missing Content-Length for ${model.filename}")
-            var downloaded = 0L
+            val resumed = conn.responseCode == 206 && offset > 0
+            if (conn.responseCode !in 200..299) {
+                throw IllegalStateException("HTTP ${conn.responseCode} for ${model.filename}")
+            }
+            if (!resumed && offset > 0) tmp.delete() // server ignored Range → fresh start
+            val body = conn.contentLengthLong
+            if (body <= 0) throw IllegalStateException("Missing Content-Length for ${model.filename}")
+            val total = if (resumed) offset + body else body
+            var downloaded = if (resumed) offset else 0L
             var last = -1
             conn.inputStream.use { input ->
-                FileOutputStream(tmp).use { out ->
+                FileOutputStream(tmp, resumed).use { out ->
                     val buf = ByteArray(64 * 1024)
                     while (true) {
                         val n = input.read(buf)
@@ -105,7 +116,7 @@ object CoderModelManager {
                 }
             }
             if (downloaded != total) {
-                tmp.delete()
+                // Keep tmp — the next attempt resumes from here.
                 throw IllegalStateException("Incomplete download: $downloaded/$total bytes")
             }
             val actual = sha256(tmp)
@@ -120,27 +131,49 @@ object CoderModelManager {
             emit(-1)
         } finally {
             conn.disconnect()
-            if (tmp.exists()) tmp.delete()
         }
     }.flowOn(Dispatchers.IO)
 
     /**
      * Import a user-picked GGUF. Rejects files without the GGUF magic or under
      * 100 MB (an accidental non-model pick, not a real quantized LLM).
+     * [onProgress] gets 0..100 when the picker exposes the file size (multi-GB
+     * copies otherwise look hung).
      */
-    suspend fun importFromUri(context: Context, uri: Uri): Result<File> = withContext(Dispatchers.IO) {
+    suspend fun importFromUri(
+        context: Context, uri: Uri, onProgress: (Int) -> Unit = {},
+    ): Result<File> = withContext(Dispatchers.IO) {
         runCatching {
             val resolver = context.contentResolver
+            var size = -1L
             val displayName = resolver.query(uri, null, null, null, null)?.use { c ->
                 val i = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                if (c.moveToFirst() && i >= 0) c.getString(i) else null
+                val s = c.getColumnIndex(OpenableColumns.SIZE)
+                if (c.moveToFirst()) {
+                    if (s >= 0 && !c.isNull(s)) size = c.getLong(s)
+                    if (i >= 0) c.getString(i) else null
+                } else null
             } ?: "imported.gguf"
             require(displayName.endsWith(".gguf", ignoreCase = true)) { "Not a .gguf file: $displayName" }
 
             val target = File(coderDir(context), sanitizeFilename(displayName))
             val tmp = File(target.absolutePath + ".part")
             resolver.openInputStream(uri)?.use { input ->
-                FileOutputStream(tmp).use { out -> input.copyTo(out, 1 shl 20) }
+                FileOutputStream(tmp).use { out ->
+                    val buf = ByteArray(1 shl 20)
+                    var copied = 0L
+                    var last = -1
+                    while (true) {
+                        val n = input.read(buf)
+                        if (n <= 0) break
+                        out.write(buf, 0, n)
+                        copied += n
+                        if (size > 0) {
+                            val pct = ((copied * 100) / size).toInt().coerceIn(0, 100)
+                            if (pct != last) { last = pct; onProgress(pct) }
+                        }
+                    }
+                }
             } ?: throw IllegalStateException("Cannot open $uri")
 
             val head = ByteArray(4)
