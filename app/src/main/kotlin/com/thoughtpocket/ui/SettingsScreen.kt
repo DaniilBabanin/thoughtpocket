@@ -657,18 +657,26 @@ fun LicensesScreen(onBack: () -> Unit) {
             GlassCard(Modifier.fillMaxWidth()) {
                 SectionTitle("MIT License")
                 LicenseItem("whisper.cpp (incl. ggml)", "© Georgi Gerganov and the ggml-org contributors")
+                LicenseItem("llama.cpp", "© Georgi Gerganov and the ggml-org contributors")
                 LicenseItem("ONNX Runtime", "© Microsoft Corporation")
                 LicenseItem("Silero VAD", "© Silero Team")
+                LicenseItem("Chaquopy", "© Chaquo Ltd")
+            }
+            GlassCard(Modifier.fillMaxWidth()) {
+                SectionTitle("Python Software Foundation License")
+                LicenseItem("CPython & the Python standard library (embedded via Chaquopy)", "© Python Software Foundation")
             }
             GlassCard(Modifier.fillMaxWidth()) {
                 SectionTitle("On-device AI models")
                 LicenseItem("Gemma", "© Google — Gemma Terms of Use")
                 LicenseItem("Gecko / Universal Sentence Encoder embeddings", "© Google — Apache License 2.0")
                 LicenseItem("Moonshine (English models)", "© Useful Sensors, Inc. (Moonshine AI) — MIT License")
+                LicenseItem("Ornith 1.0 (coding model, experimental)", "© DeepReinforce — MIT License")
             }
             ExpandableLicense("Apache License 2.0 — full text", APACHE_2_0)
             ExpandableLicense("BSD 3-Clause — full text", BSD_3_CLAUSE)
             ExpandableLicense("MIT License — full text", MIT_LICENSE)
+            ExpandableLicense("Python Software Foundation License — full text", PSF_LICENSE)
         }
     }
 }
@@ -829,6 +837,24 @@ You may add Your own copyright statement to Your modifications and may provide a
 9. Accepting Warranty or Additional Liability. While redistributing the Work or Derivative Works thereof, You may choose to offer, and charge a fee for, acceptance of support, warranty, indemnity, or other liability obligations and/or rights consistent with this License. However, in accepting such obligations, You may act only on Your own behalf and on Your sole responsibility, not on behalf of any other Contributor, and only if You agree to indemnify, defend, and hold each Contributor harmless for any liability incurred by, or claims asserted against, such Contributor by reason of your accepting any such warranty or additional liability.
 
 END OF TERMS AND CONDITIONS"""
+
+private const val PSF_LICENSE = """PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2
+
+1. This LICENSE AGREEMENT is between the Python Software Foundation ("PSF"), and the Individual or Organization ("Licensee") accessing and otherwise using this software ("Python") in source or binary form and its associated documentation.
+
+2. Subject to the terms and conditions of this License Agreement, PSF hereby grants Licensee a nonexclusive, royalty-free, world-wide license to reproduce, analyze, test, perform and/or display publicly, prepare derivative works, distribute, and otherwise use Python alone or in any derivative version, provided, however, that PSF's License Agreement and PSF's notice of copyright, i.e., "Copyright (c) 2001-2024 Python Software Foundation; All Rights Reserved" are retained in Python alone or in any derivative version prepared by Licensee.
+
+3. In the event Licensee prepares a derivative work that is based on or incorporates Python or any part thereof, and wants to make the derivative work available to others as provided herein, then Licensee hereby agrees to include in any such work a brief summary of the changes made to Python.
+
+4. PSF is making Python available to Licensee on an "AS IS" basis. PSF MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR IMPLIED. BY WAY OF EXAMPLE, BUT NOT LIMITATION, PSF MAKES NO AND DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF PYTHON WILL NOT INFRINGE ANY THIRD PARTY RIGHTS.
+
+5. PSF SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF PYTHON FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES OR LOSS AS A RESULT OF MODIFYING, DISTRIBUTING, OR OTHERWISE USING PYTHON, OR ANY DERIVATIVE THEREOF, EVEN IF ADVISED OF THE POSSIBILITY THEREOF.
+
+6. This License Agreement will automatically terminate upon a material breach of its terms and conditions.
+
+7. Nothing in this License Agreement shall be deemed to create any relationship of agency, partnership, or joint venture between PSF and Licensee.
+
+8. By copying, installing or otherwise using Python, Licensee agrees to be bound by the terms and conditions of this License Agreement."""
 
 private const val BSD_3_CLAUSE = """BSD 3-Clause License
 
