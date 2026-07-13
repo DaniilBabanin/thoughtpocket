@@ -158,6 +158,10 @@ static jstring transcribe_pcm(
         params.beam_search.beam_size = 5;
     }
 
+    // No ISO code from Settings → auto-detect. whisper_full_default_params
+    // defaults language to "en", which silently ENGLISHES non-English audio on
+    // multilingual models (German import came back translated, 2026-07-13).
+    params.language = "auto";
     const char *lang = nullptr;
     if (language != nullptr) {
         lang = env->GetStringUTFChars(language, nullptr);
