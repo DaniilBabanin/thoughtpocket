@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -116,7 +118,7 @@ fun CodeRunScreen(noteId: Long, focusRunId: Long, onBack: () -> Unit) {
 
     Box(Modifier.fillMaxSize()) {
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -310,7 +312,7 @@ fun CodeRunScreen(noteId: Long, focusRunId: Long, onBack: () -> Unit) {
                 message = "Result added to note",
                 onUndo = { noteUndo?.let { s -> scope.launch { NotesDb.get(context).notes().update(s) } }; noteUndo = null; inserted = false },
                 onDismiss = { noteUndo = null },
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 24.dp),
             )
         }
         deletedRun?.let { d ->
@@ -321,7 +323,7 @@ fun CodeRunScreen(noteId: Long, focusRunId: Long, onBack: () -> Unit) {
                     deletedRun = null
                 },
                 onDismiss = { deletedRun = null },
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 24.dp),
             )
         }
     }

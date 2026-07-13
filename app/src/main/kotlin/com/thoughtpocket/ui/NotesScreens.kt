@@ -1257,7 +1257,10 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit, onOpe
                         }
                     }
                 }
-                Spacer(Modifier.height(96.dp)) // clear the sticky action bar
+                // Clear the sticky action bar AND the record orb floating above
+                // it (58dp orb at bottom offset 92dp + nav inset) so the last
+                // element can scroll fully into view.
+                Spacer(Modifier.navigationBarsPadding().height(158.dp))
             }
         }
 
