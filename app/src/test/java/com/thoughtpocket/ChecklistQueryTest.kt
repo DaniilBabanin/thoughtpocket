@@ -2,7 +2,9 @@ package com.thoughtpocket
 
 import com.thoughtpocket.ai.ChecklistQuery
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -27,5 +29,24 @@ class ChecklistQueryTest {
     @Test fun normalizesCaseAndWhitespace() {
         // The LLM doesn't always echo the enum verbatim.
         assertEquals(7, ChecklistQuery.windowDays(" Last_Week "))
+    }
+
+    @Test fun gateAcceptsChecklistQuestions() {
+        assertTrue(ChecklistQuery.looksLikeChecklistQuestion("what do I still need to buy?"))
+        assertTrue(ChecklistQuery.looksLikeChecklistQuestion("what's still open from last week"))
+    }
+
+    @Test fun gateSkipsQuestionsWithoutHintWords() {
+        assertFalse(ChecklistQuery.looksLikeChecklistQuestion("what did I promise Sam?"))
+        assertFalse(ChecklistQuery.looksLikeChecklistQuestion("Summarize these notes into a concise digest of the key points."))
+    }
+
+    @Test fun gateSkipsSummaryAsksEvenWithHintWords() {
+        // "done"/"need"/"open" are hint words, but a summary/analysis ask must fall
+        // through to the general LLM path, not return a checkbox dump.
+        assertFalse(ChecklistQuery.looksLikeChecklistQuestion("summarize what I got done this week"))
+        assertFalse(ChecklistQuery.looksLikeChecklistQuestion("give me an overview of what I need to do"))
+        assertFalse(ChecklistQuery.looksLikeChecklistQuestion("what are the main themes in my open projects?"))
+        assertFalse(ChecklistQuery.looksLikeChecklistQuestion("recap what got done"))
     }
 }

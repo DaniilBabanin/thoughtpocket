@@ -25,8 +25,10 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -46,9 +48,56 @@ import com.thoughtpocket.ui.theme.GlassTextField
 import com.thoughtpocket.ui.theme.ReachChip
 import com.thoughtpocket.ui.theme.ReachShapes
 import com.thoughtpocket.ui.theme.SectionTitle
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val DAY = 86_400_000L
+
+// Status quips shown while the model works — friendlier than a bare "Thinking…". One per run.
+// Short ones riff on Claude Code's spinner verbs (Booping, Wibbling, Reticulating…), plus a few
+// invented on-brand ones (Pocketing, Thoughtling).
+private val QUIPS = listOf(
+    "Pondering…",
+    "Rummaging through your notes…",
+    "Connecting dots…",
+    "Dusting off memories…",
+    "Consulting the pocket brain…",
+    "Untangling thoughts…",
+    "Sifting the archive…",
+    "Warming up neurons…",
+    "Herding tokens…",
+    "Squinting at the details…",
+    "Noodling…",
+    "Percolating…",
+    "Marinating…",
+    "Cogitating…",
+    "Ruminating…",
+    "Mulling…",
+    "Brewing…",
+    "Simmering…",
+    "Booping…",
+    "Wibbling…",
+    "Finagling…",
+    "Combobulating…",
+    "Reticulating…",
+    "Canoodling…",
+    "Whirring…",
+    "Wrangling…",
+    "Whisking…",
+    "Osmosing…",
+    "Moonwalking…",
+    "Lollygagging…",
+    "Skedaddling…",
+    "Puzzling…",
+    "Hatching…",
+    "Doodling…",
+    "Pocketing…",
+    "Thoughtling…",
+    "Notefishing…",
+    "Snurfling…",
+    "Squibbling…",
+    "Ponderfying…",
+)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -64,6 +113,18 @@ fun AnalyzeScreen(bottomSpace: Dp, wide: Boolean) {
     var prompt by remember { mutableStateOf("") }
     var running by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<String?>(null) }
+
+    val askProgress by NotesAnalysis.progress.collectAsState()
+    var quip by remember { mutableStateOf(QUIPS.random()) }
+    var elapsed by remember { mutableIntStateOf(0) }
+    LaunchedEffect(running) {
+        if (!running) return@LaunchedEffect
+        // Random pick, but never the same quip twice in a row — repeats read as a glitch.
+        quip = (QUIPS - quip).random(); elapsed = 0
+        while (true) {
+            delay(1000); elapsed++
+        }
+    }
 
     val now = System.currentTimeMillis()
     val scoped = when {
@@ -135,7 +196,20 @@ fun AnalyzeScreen(bottomSpace: Dp, wide: Boolean) {
             if (running) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = LocalContentColor.current)
             else Icon(Icons.Filled.AutoAwesome, null)
             Spacer(Modifier.width(8.dp))
-            Text(if (running) "Thinking…" else "Ask")
+            Text(if (running) quip else "Ask")
+        }
+        if (running) {
+            val p = askProgress
+            Text(
+                listOfNotNull(
+                    p?.takeIf { it.parts > 1 }?.let { "part ${it.part}/${it.parts}" },
+                    "${elapsed}s",
+                    p?.takeIf { it.tokens > 0 }?.let { "${it.tokens} tokens" },
+                ).joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            )
         }
 
         result?.let {

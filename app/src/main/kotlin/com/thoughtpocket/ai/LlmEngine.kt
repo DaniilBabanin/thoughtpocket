@@ -15,6 +15,7 @@ import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.sync.withLock
@@ -133,8 +134,12 @@ object LlmEngine {
         }
     }.flowOn(Dispatchers.IO)
 
-    /** Run the model on [prompt]; [model] picks a specific bundle (else the default). */
-    suspend fun generate(context: Context, prompt: String, model: File? = null): Result<String> =
+    /**
+     * Run the model on [prompt]; [model] picks a specific bundle (else the default).
+     * With [onToken] set, decoding streams and the callback fires once per emitted chunk
+     * (≈ one decode step/token) — nothing fires during prefill, which the API doesn't report.
+     */
+    suspend fun generate(context: Context, prompt: String, model: File? = null, onToken: (() -> Unit)? = null): Result<String> =
         withContext(Dispatchers.Default) {
             val model = model ?: modelFile(context)
                 ?: return@withContext Result.failure(IllegalStateException("No AI model — download one in Settings."))
@@ -148,7 +153,18 @@ object LlmEngine {
                         File(context.filesDir, ThoughtPocketApp.GPU_CRUMB_FILE).also { it.createNewFile() }
                     else null
                     try {
-                        eng.createConversation().use { conv -> conv.sendMessage(prompt).plainText() }
+                        eng.createConversation().use { conv ->
+                            if (onToken == null) conv.sendMessage(prompt).plainText()
+                            else {
+                                val sb = StringBuilder()
+                                var chunks = 0
+                                conv.sendMessageAsync(prompt).collect { msg ->
+                                    sb.append(msg.deltaText()); chunks++; onToken()
+                                }
+                                Log.i(TAG, "streamed $chunks chunks, ${sb.length} chars")
+                                sb.toString().trim()
+                            }
+                        }
                     } finally {
                         crumb?.delete()
                     }
@@ -191,6 +207,10 @@ object LlmEngine {
         runCatching { engine?.close() }
         engine = null; loadedPath = null
     }
+
+    /** Text of one streamed delta chunk — no trim/space-join, so chunk boundaries stay intact. */
+    private fun Message.deltaText(): String =
+        contents.contents.filterIsInstance<Content.Text>().joinToString("") { it.text }
 
     /** Extract the plain text from a model reply (Content.Text parts; channels as fallback). */
     private fun Message.plainText(): String {
@@ -275,11 +295,25 @@ object TitleEngine {
  */
 object NotesAnalysis {
     // Default analysis model = Gemma 4 E4B (deeper reasoning). User-overridable.
-    private const val MAX_CHARS = 16000   // context budget for the notes block
+    private const val MAX_CHARS = 16000   // context budget for one LLM call
     private const val MAX_NOTES = 50      // keep retrieval focused even when more would fit
+    // Fit-or-split cap: up to this many map batches still get FULL coverage via LlmHarness
+    // map-reduce (~10 extract passes worst case on-device); a scope even bigger than that
+    // is RAG-trimmed by select() first so latency stays bounded.
+    private const val MAX_BATCHES = 10
     private val df = SimpleDateFormat("MMM d", Locale.getDefault())
 
-    suspend fun ask(context: Context, notes: List<Note>, question: String): Result<String> {
+    /** Live decode progress of the current ask() — part i of n plus tokens so far; null when idle. */
+    data class AskProgress(val part: Int, val parts: Int, val tokens: Int)
+    val progress = MutableStateFlow<AskProgress?>(null)
+
+    suspend fun ask(context: Context, notes: List<Note>, question: String): Result<String> = try {
+        askInner(context, notes, question)
+    } finally {
+        progress.value = null
+    }
+
+    private suspend fun askInner(context: Context, notes: List<Note>, question: String): Result<String> {
         if (notes.isEmpty()) return Result.success("No notes in this scope.")
         if (question.isBlank()) return Result.success("")
         // Checklist-aggregation questions ("what did I buy last week", "what's still open") are
@@ -295,38 +329,99 @@ object NotesAnalysis {
         val win = TimeWindow.parse(question, now)?.takeIf { TimeWindow.isRetrospective(it, now) }
         val scoped = if (win != null) notes.filter { it.createdAt >= win.start && it.createdAt < win.endExclusive } else notes
         if (win != null && scoped.isEmpty()) return Result.success("No notes from ${win.label}.")
-        val selected = select(context, scoped, question)
-        // Feed the Markdown when present so checklist state ("- [x]" done / "- [ ]" still to do) is visible.
-        val joined = selected.joinToString("\n\n") {
-            "- (${df.format(Date(it.createdAt))}) ${it.markdown.ifBlank { it.text }}"
-        }
-        val coverage = if (selected.size < scoped.size)
-            "\n\n(These are the ${selected.size} most relevant of ${scoped.size} notes in scope.)" else ""
+        val model = LlmEngine.resolve(context, AppPreferences(context).analysisModelFilename, "4b")
         val today = df.format(Date(now))
         val window = win?.let { "The question is about ${it.label}, so only notes from then are included. " } ?: ""
-        val prompt = "You are analysing the user's personal voice notes. Today is $today. $window" +
+        // Bound the worst case: a scope too big even for map-reduce is RAG-trimmed to the
+        // most relevant MAX_BATCHES budgets' worth before splitting.
+        val capped = select(context, scoped, question, MAX_BATCHES * MAX_NOTES, MAX_BATCHES * MAX_CHARS)
+        val coverage = if (capped.size < scoped.size)
+            "\n\n(These are the ${capped.size} most relevant of ${scoped.size} notes in scope.)" else ""
+        val batches = LlmHarness.pack(renderLines(capped, MAX_CHARS), MAX_CHARS).map { it.joinToString("\n\n") }
+
+        var tokens = 0
+        if (batches.size <= 1) {
+            val prompt = singlePrompt(question, batches.firstOrNull().orEmpty(), today, window, coverage)
+            return LlmEngine.generate(context, prompt, model, onToken = {
+                progress.value = AskProgress(1, 1, ++tokens)
+            }).map { strip(it) }
+        }
+        // Doesn't fit one context: one "subagent" extract pass per batch, then the extracts are
+        // combined in a fresh reduce context — full coverage instead of silently dropping notes.
+        val perExtract = MAX_CHARS / batches.size
+        return LlmHarness.mapReduce(
+            context, model, batches,
+            mapPrompt = { mapPrompt(question, it, today) },
+            reducePrompt = { reducePrompt(question, it, today, window, coverage) },
+            clean = { raw ->
+                strip(raw).takeUnless { it.lowercase().startsWith("nothing relevant") }?.take(perExtract)
+            },
+            onToken = { part -> progress.value = AskProgress(part, batches.size + 1, ++tokens) },
+        ).map { strip(it).ifBlank { "Nothing about that in these notes." } }
+    }
+
+    // ---------- prompts ----------
+
+    // General-purpose prompt: answer in whatever form the question asks (summary, themes,
+    // direct answer). The exhaustive-enumeration instruction is scoped to which-items
+    // questions only — unconditional, it made the model dump items instead of summarising.
+    private fun singlePrompt(question: String, joined: String, today: String, window: String, coverage: String): String =
+        "You are the user's personal notes assistant. Today is $today. $window" +
+            "Answer the question below using the notes, in whatever form it asks for — a summary, " +
+            "themes, a direct answer. " +
             "In checklists, \"- [x]\" means done or bought and \"- [ ] \" means still to do. " +
-            "When the question asks which items, scan EVERY relevant note in the time window and list " +
-            "ALL matching items across all of them — do not stop after the first note or summarise. " +
-            "${question.trim()}\n\n" +
-            "Notes:\n\"\"\"\n$joined\n\"\"\"$coverage"
-        val model = LlmEngine.resolve(context, AppPreferences(context).analysisModelFilename, "4b")
-        return LlmEngine.generate(context, prompt, model).map { strip(it) }
+            "Only when the question asks which items match, scan EVERY relevant note in the time " +
+            "window and list ALL matching items across all of them — do not stop after the first note.\n\n" +
+            "Notes:\n\"\"\"\n$joined\n\"\"\"$coverage\n\n" +
+            "Question: ${question.trim()}"
+
+    private fun mapPrompt(question: String, joined: String, today: String): String =
+        "You are reading one slice of the user's voice notes; other slices are handled separately. " +
+            "Today is $today. " +
+            "In checklists, \"- [x]\" means done or bought and \"- [ ] \" means still to do. " +
+            "Extract everything in these notes relevant to the question as concise bullets with " +
+            "their dates — do not answer the question itself. " +
+            "If nothing here is relevant, reply exactly: nothing relevant.\n\n" +
+            "Notes:\n\"\"\"\n$joined\n\"\"\"\n\n" +
+            "Question: ${question.trim()}"
+
+    private fun reducePrompt(question: String, extracts: List<String>, today: String, window: String, coverage: String): String =
+        "You are the user's personal notes assistant. Today is $today. $window" +
+            "The notes did not fit in one pass, so they were read in ${extracts.size} slices; below " +
+            "are the relevant extracts from each slice. Combine them into ONE answer to the question, " +
+            "in whatever form it asks for — a summary, themes, a direct answer.\n\n" +
+            "Extracts:\n\"\"\"\n${extracts.joinToString("\n\n---\n\n")}\n\"\"\"$coverage\n\n" +
+            "Question: ${question.trim()}"
+
+    // ---------- selection & rendering ----------
+
+    private fun bodyLen(n: Note) = (if (n.markdown.isNotBlank()) n.markdown.length else n.text.length) + 24
+
+    /**
+     * Each note as its "- (date) body" prompt line — Markdown when present so checklist state
+     * ("- [x]" done / "- [ ]" still to do) is visible. Bodies over [maxChars] split into
+     * "(date, contd.)" parts so every line fits one batch.
+     */
+    internal fun renderLines(notes: List<Note>, maxChars: Int): List<String> = notes.flatMap { n ->
+        val head = "- (${df.format(Date(n.createdAt))}) "
+        val contd = "- (${df.format(Date(n.createdAt))}, contd.) "
+        val body = n.markdown.ifBlank { n.text }
+        if (head.length + body.length <= maxChars) listOf(head + body)
+        else body.chunked(maxChars - contd.length).mapIndexed { i, part -> (if (i == 0) head else contd) + part }
     }
 
     /**
-     * Pick which notes go into the prompt. If the whole scope fits the budget, use it all;
-     * otherwise retrieve (RAG) the notes most relevant to [question] by centered embedding
-     * cosine, up to the char budget / note cap. Returned in chronological order.
+     * Pick which notes are considered at all. If the whole scope fits [maxNotes]/[maxChars],
+     * use it all; otherwise retrieve (RAG) the notes most relevant to [question] by centered
+     * embedding cosine, up to the budget. Returned newest-first.
      */
-    private suspend fun select(context: Context, notes: List<Note>, question: String): List<Note> {
-        fun bodyLen(n: Note) = (if (n.markdown.isNotBlank()) n.markdown.length else n.text.length) + 24
+    private suspend fun select(context: Context, notes: List<Note>, question: String, maxNotes: Int, maxChars: Int): List<Note> {
         val totalChars = notes.sumOf { bodyLen(it) }
-        if (notes.size <= MAX_NOTES && totalChars <= MAX_CHARS) return notes
+        if (notes.size <= maxNotes && totalChars <= maxChars) return notes
 
         val qv = Embedder.embed(context, question, query = true)
         val withVec = notes.filter { it.embedding != null }
-        if (qv == null || withVec.isEmpty()) return notes.sortedByDescending { it.createdAt }.take(MAX_NOTES)
+        if (qv == null || withVec.isEmpty()) return notes.sortedByDescending { it.createdAt }.take(maxNotes)
 
         val mean = Embedder.mean(withVec.mapNotNull { it.embedding })
         val ranked = withVec.sortedByDescending {
@@ -336,9 +431,9 @@ object NotesAnalysis {
         val out = ArrayList<Note>()
         var chars = 0
         for (n in ranked) {
-            if (out.size >= MAX_NOTES) break
+            if (out.size >= maxNotes) break
             val len = bodyLen(n)
-            if (chars + len > MAX_CHARS && out.isNotEmpty()) break
+            if (chars + len > maxChars && out.isNotEmpty()) break
             out.add(n); chars += len
         }
         return out.sortedByDescending { it.createdAt }

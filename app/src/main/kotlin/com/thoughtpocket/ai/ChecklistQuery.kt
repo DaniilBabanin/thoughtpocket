@@ -22,8 +22,15 @@ object ChecklistQuery {
             "left|complete|completed|finish|finished|shopping|grocer|check(ed)?|outstanding|pending)"
     )
 
+    // Summary/analysis asks ("summarize what I got done") often contain hint words but want a
+    // composed answer, not a checkbox dump — always fall through to the general LLM path.
+    private val GENERAL = Regex("(?i)(summar|overview|digest|recap|theme|analy[sz])")
+
+    internal fun looksLikeChecklistQuestion(question: String): Boolean =
+        HINTS.containsMatchIn(question) && !GENERAL.containsMatchIn(question)
+
     suspend fun tryAnswer(context: Context, notes: List<Note>, question: String, now: Long): String? {
-        if (!HINTS.containsMatchIn(question)) return null
+        if (!looksLikeChecklistQuestion(question)) return null
         if (notes.none { it.markdown.contains("- [") }) return null
         val intent = classify(context, question)?.takeIf { it.checklist } ?: return null
 
@@ -73,7 +80,8 @@ object ChecklistQuery {
         "Classify a question about the user's notes. Reply with ONLY JSON like " +
             "{\"checklist\":true,\"state\":\"done\",\"window\":\"last_week\",\"topic\":\"groceries\"}.\n" +
             "checklist = true ONLY if it asks which checklist items were done/bought or are still to do " +
-            "(e.g. \"what did I buy\", \"what's still open\", \"what do I still need\"); false otherwise.\n" +
+            "(e.g. \"what did I buy\", \"what's still open\", \"what do I still need\"); false otherwise. " +
+            "A request for a summary, overview or analysis is NOT a checklist question.\n" +
             "state = \"done\" (bought/done/completed) or \"todo\" (still needed/open/not done yet).\n" +
             "window = one of: today, yesterday, this_week, last_week, this_month, last_month, all.\n" +
             "topic = the subject noun if the question names one (e.g. groceries, chores), else empty.\n" +

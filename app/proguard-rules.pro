@@ -17,6 +17,12 @@
 # optional helper lib (R8 used to strip the class unseen); the app never calls that path.
 -dontwarn com.bihe0832.android.lib.audio.AudioUtils
 
+# liblitertlm_jni.so resolves the streaming-callback methods with GetMethodID inside
+# nativeSendMessageAsync; the AAR's consumer rules don't cover that async path, so under R8
+# the lookup aborts the whole process with NoSuchMethodError (seen on-device 2026-07-13).
+# The blocking sendMessage path survived shrinking — only keeping the package fixes async.
+-keep class com.google.ai.edge.litertlm.** { *; }
+
 # AI Edge RAG SDK (Gecko) references compile-only annotations (AutoValue) and
 # protobuf-lite internal annotation classes that aren't on the runtime classpath.
 # They're build-time only, so silence the R8 missing-class errors.
