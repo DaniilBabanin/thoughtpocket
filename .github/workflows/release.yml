@@ -45,12 +45,12 @@ jobs:
 
       # Signed automatically by the committed app/release.keystore (see
       # app/build.gradle.kts signingConfigs — public keystore, no secrets).
-      # Universal APK (no -PabiSplits): Chaquopy requires ndk.abiFilters, which
-      # the splits path leaves empty — no documented Chaquopy+splits combo as of
-      # 17.0 (2026-07-11). Sideloaders pay the foreign-ABI megabytes for now;
-      # the AAB is unaffected — Play does its own splitting.
+      # arm64-only (-Parm64Only): x86_64 exists solely for a desktop emulator,
+      # which only local builds use — shipping it cost sideloaders ~82 MB
+      # (universal APK was 220 MB, 2026-07-13). Unlike -PabiSplits this keeps
+      # ndk.abiFilters set, so Chaquopy still works.
       - name: Build release APK + AAB
-        run: ./gradlew assembleRelease bundleRelease --stacktrace
+        run: ./gradlew assembleRelease bundleRelease -Parm64Only --stacktrace
 
       # Assert the signed APK's certificate matches the value pinned in
       # tools/release/expected-signing-cert.sha256. Any keystore swap
@@ -103,8 +103,8 @@ jobs:
           body: |
             ### Which file?
 
-            Sideloading on a phone or tablet: install `app-release.apk`.
-            The `x86_64` APK is for desktop emulators only.
+            Sideloading on a phone or tablet: install `app-release.apk` (arm64-only —
+            covers every modern Android device; emulators need a local build).
 
             ### Build integrity
 

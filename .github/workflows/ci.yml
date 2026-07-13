@@ -41,9 +41,11 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      # arm64-only: the CI artifact is sideloaded on real devices; x86_64 (desktop
+      # emulator) stays available in local builds, which don't pass the flag.
       - name: Build debug APK
         run: |
-          ./gradlew assembleDebug --stacktrace 2>&1 | tee /tmp/build.log
+          ./gradlew assembleDebug -Parm64Only --stacktrace 2>&1 | tee /tmp/build.log
           build_exit=${PIPESTATUS[0]}
           if [ $build_exit -ne 0 ]; then
             echo ""
@@ -105,11 +107,11 @@ jobs:
       # Exercises the minified (R8 + shrinkResources) path release.yml ships, so a
       # keep-rule gap (e.g. JNI classes resolved by name) fails here, not on a
       # sideloaded -pre. Signing uses the committed app/release.keystore.
-      # Universal APK, matching release.yml (Chaquopy requires ndk.abiFilters,
-      # which the -PabiSplits path leaves empty — see release.yml).
+      # arm64-only, matching release.yml (x86_64 is desktop-emulator-only and
+      # stays available in local builds, which don't pass the flag).
       - name: Build release APK
         run: |
-          ./gradlew assembleRelease --stacktrace 2>&1 | tee /tmp/build.log
+          ./gradlew assembleRelease -Parm64Only --stacktrace 2>&1 | tee /tmp/build.log
           build_exit=${PIPESTATUS[0]}
           if [ $build_exit -ne 0 ]; then
             echo ""

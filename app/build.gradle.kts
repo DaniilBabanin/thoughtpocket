@@ -21,6 +21,11 @@ chaquopy {
 val useVulkan = project.findProperty("whispershare.vulkan")?.toString()?.toBoolean() ?: false
 // Per-ABI APKs (see splits block). Opt-in because splits rename every variant's outputs.
 val abiSplits = project.hasProperty("abiSplits")
+// arm64-only build (CI + release pass this): x86_64 exists solely for a desktop emulator,
+// which only local builds use — dropping it cuts ~82 MB of foreign-ABI native libs
+// (measured 2026-07-13: universal release APK 220 MB → ~138 MB). Unlike -PabiSplits this
+// keeps ndk.abiFilters set, so it composes with Chaquopy.
+val arm64Only = project.hasProperty("arm64Only")
 
 // The AI Edge RAG SDK (Gecko spike) needs Guava >= 28 (Futures.submit), but a transitive
 // dep pins guava strictly to 27.0.1. Force a modern Guava so the SDK resolves at runtime.
@@ -44,9 +49,11 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
-            // arm64 for devices; x86_64 so it also runs on a desktop emulator. With
-            // -PabiSplits the same set comes from splits.abi (AGP forbids setting both).
-            if (!abiSplits) abiFilters += listOf("arm64-v8a", "x86_64")
+            // arm64 for devices; x86_64 so it also runs on a desktop emulator (local
+            // builds only — CI/release pass -Parm64Only). With -PabiSplits the same
+            // set comes from splits.abi (AGP forbids setting both).
+            if (!abiSplits) abiFilters +=
+                if (arm64Only) listOf("arm64-v8a") else listOf("arm64-v8a", "x86_64")
         }
 
         externalNativeBuild {
@@ -101,10 +108,10 @@ android {
         }
     }
 
-    // Per-ABI APKs so arm64 phones don't sideload the ~35 MB x86_64 onnxruntime/sherpa libs.
-    // Opt-in via -PabiSplits (release.yml + CI's release job) because splits rename every
-    // variant's outputs — the plain app-debug.apk path used by local installs must survive.
-    // The AAB is unaffected (Play does its own splitting).
+    // Per-ABI APKs. Unused by the workflows since 2026-07-13 (they build arm64-only via
+    // -Parm64Only instead — splits leave ndk.abiFilters empty, which breaks Chaquopy).
+    // Kept opt-in because splits rename every variant's outputs — the plain app-debug.apk
+    // path used by local installs must survive. The AAB is unaffected.
     splits {
         abi {
             isEnable = abiSplits
@@ -160,6 +167,15 @@ android {
             useLegacyPackaging = false
             // whisper.cpp and MediaPipe both ship libc++_shared.so — keep one.
             pickFirsts += "**/libc++_shared.so"
+            // The AI Edge RAG SDK bundles a JNI lib per feature class; we only use
+            // GeckoEmbeddingModel (each class loads exactly its own lib — verified in
+            // the 0.3.0 bytecode, 2026-07-13). Dropping the three unused ones saves
+            // ~34 MB. Remove an exclude here if its class is ever adopted.
+            excludes += setOf(
+                "**/libgemma_embedding_model_jni.so",
+                "**/libtext_chunker_jni.so",
+                "**/libsqlite_vector_store_jni.so",
+            )
         }
     }
 }
