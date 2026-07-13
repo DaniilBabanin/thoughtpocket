@@ -39,8 +39,8 @@ android {
         applicationId = "com.thoughtpocket"
         minSdk = 31
         targetSdk = 35
-        versionCode = 16
-        versionName = "0.2.0"
+        versionCode = 17
+        versionName = "0.2.1-pre"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
