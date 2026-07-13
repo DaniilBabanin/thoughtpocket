@@ -54,6 +54,8 @@ interface TranscriptionEngine {
         highQuality: Boolean,
         useVad: Boolean = false,
         onSegment: ((String) -> Unit)? = null,
+        /** 0..1, whisper only — Moonshine has no progress hook and never fires it. */
+        onProgress: ((Float) -> Unit)? = null,
         startSample: Long = 0,
         endSample: Long = -1,
     ): String = transcribe(
@@ -143,6 +145,7 @@ object WhisperTranscriber : TranscriptionEngine {
         highQuality: Boolean,
         useVad: Boolean,
         onSegment: ((String) -> Unit)?,
+        onProgress: ((Float) -> Unit)?,
         startSample: Long,
         endSample: Long,
     ): String = lock.withLock {
@@ -163,6 +166,7 @@ object WhisperTranscriber : TranscriptionEngine {
                 highQuality = highQuality,
                 vadModelPath = if (useVad) WhisperEngine.ensureVadModel(context) else null,
                 onSegment = onSegment,
+                onProgress = onProgress,
             )
         )
     }

@@ -14,6 +14,7 @@ import androidx.core.app.ServiceCompat
 import com.thoughtpocket.AppPreferences
 import com.thoughtpocket.ModelManager
 import com.thoughtpocket.Transcription
+import com.thoughtpocket.WhisperEngine
 import com.thoughtpocket.ai.Embedder
 import com.thoughtpocket.ai.LlmEngine
 import com.thoughtpocket.ai.MarkdownEngine
@@ -74,6 +75,8 @@ class RecordingService : Service() {
         val samples: Int,
         val model: ModelManager.ModelEntry?,
         val prefs: AppPreferences,
+        /** Identity in [RecordState.queue] (optimistic Recent card) + cancel target. */
+        val queueId: Long = 0L,
         val appendNoteId: Long = -1L,
         val createdAt: Long? = null,   // imported files carry the source file's date; null = now
         val importKey: String? = null, // imported files: mark this key done in prefs only AFTER the note saves
@@ -83,6 +86,17 @@ class RecordingService : Service() {
         val firstPassText: String? = null,
         val firstPassSamples: Int = 0,
     )
+
+    private val clipIds = java.util.concurrent.atomic.AtomicLong(0)
+    /** Clips the user cancelled (long-press on the queue card); consumer skips/discards them. */
+    private val cancelledClips = java.util.concurrent.ConcurrentHashMap.newKeySet<Long>()
+
+    /** Register a clip in the optimistic Recent list; returns its queue id. */
+    private fun trackClip(label: String): Long {
+        val id = clipIds.incrementAndGet()
+        RecordState.queueAdd(RecordState.QueueItem(id, label))
+        return id
+    }
 
     /** Live first-pass transcript built during recording; in first-only it becomes the saved note. */
     private class LivePass {
@@ -108,8 +122,27 @@ class RecordingService : Service() {
             ACTION_IMPORT -> startImport()
             ACTION_IMPORT_URIS -> startImportUris(intent)
             ACTION_RECOVER -> startRecovery()
+            ACTION_CANCEL_CLIP -> cancelClip(intent.getLongExtra(EXTRA_CLIP_ID, -1L))
         }
         return START_NOT_STICKY
+    }
+
+    /**
+     * Long-press-delete on a queue card. Queued → vanishes now, consumer skips
+     * it later. Active → abort whisper mid-run (the "" result is discarded via
+     * [cancelledClips], never saved as a note); Moonshine has no abort, so its
+     * result is simply discarded when it finishes.
+     */
+    private fun cancelClip(id: Long) {
+        if (id < 0) return
+        cancelledClips.add(id)
+        val item = RecordState.queue.value.firstOrNull { it.id == id } ?: return
+        if (item.active) {
+            RecordState.queueUpdate(id) { it.copy(cancelling = true) }
+            WhisperEngine.cancelCurrent()
+        } else {
+            RecordState.queueRemove(id)
+        }
     }
 
     private fun startRecording(appendNoteId: Long = -1L) {
@@ -170,14 +203,15 @@ class RecordingService : Service() {
                 // Save a playable WAV copy to the user's folder (survives uninstall) BEFORE the .pcm is consumed.
                 if (prefs.saveAudio && prefs.saveAudioFolder.isNotEmpty()) runCatching { saveWav(file, prefs.saveAudioFolder) }
                 RecordState.setPending(pending.incrementAndGet())
+                val qid = trackClip("Recording ${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())}")
                 // First-pass-only: the note IS the live accumulator (+ tail finalize), not a re-decode. Only
                 // when the live pass actually ran — its model equals the note model in first-only.
                 val firstOnly = liveJob != null && !prefs.finalPassEnabled
                 queue.send(
                     if (firstOnly)
-                        Clip(file, n, noteModel, prefs, appendNoteId,
+                        Clip(file, n, noteModel, prefs, queueId = qid, appendNoteId = appendNoteId,
                             firstPassText = livePass.committed.toString(), firstPassSamples = livePass.committedSamples)
-                    else Clip(file, n, noteModel, prefs, appendNoteId)
+                    else Clip(file, n, noteModel, prefs, queueId = qid, appendNoteId = appendNoteId)
                 )
             } else rec.discard()
             settleStateAndMaybeStop()
@@ -189,14 +223,28 @@ class RecordingService : Service() {
         if (consumer?.isActive == true) return
         consumer = scope.launch {
             for (clip in queue) {
-                getSystemService(NotificationManager::class.java)
-                    .notify(Notifications.ONGOING_ID, Notifications.ongoing(this@RecordingService, "Transcribing…"))
-                runCatching { transcribeAndSave(clip) }.onFailure {
-                    Log.e(TAG, "transcribe failed", it)
-                    // The .pcm is deleted only once the transcript is saved, so on any failure the audio
-                    // is still on disk — tell the user, and recoverOrphans re-queues it on next launch.
-                    Notifications.done(this@RecordingService, "Couldn't transcribe — audio kept, will retry on next launch")
+                if (clip.queueId in cancelledClips) {
+                    // Cancelled while still queued — the audio is deliberately discarded.
+                    clip.file.delete()
+                    cancelledClips.remove(clip.queueId)
+                } else {
+                    RecordState.queueUpdate(clip.queueId) { it.copy(active = true) }
+                    getSystemService(NotificationManager::class.java)
+                        .notify(Notifications.ONGOING_ID, Notifications.ongoing(this@RecordingService, "Transcribing…"))
+                    runCatching { transcribeAndSave(clip) }.onFailure {
+                        if (clip.queueId in cancelledClips) {
+                            // Whisper abort surfaces as a failure — user asked for it, discard silently.
+                            clip.file.delete()
+                        } else {
+                            Log.e(TAG, "transcribe failed", it)
+                            // The .pcm is deleted only once the transcript is saved, so on any failure the audio
+                            // is still on disk — tell the user, and recoverOrphans re-queues it on next launch.
+                            Notifications.done(this@RecordingService, "Couldn't transcribe — audio kept, will retry on next launch")
+                        }
+                    }
+                    cancelledClips.remove(clip.queueId)
                 }
+                RecordState.queueRemove(clip.queueId)
                 val left = pending.decrementAndGet().coerceAtLeast(0)
                 RecordState.setPending(left)
                 // Queue drained → reformat/retag any notes we appended to, in one pass (still foreground).
@@ -261,8 +309,15 @@ class RecordingService : Service() {
      * lazy load and applies [stripNonSpeech]; VAD/highQuality are honoured by Whisper and ignored by
      * Moonshine. File-based so a long recording streams disk→native instead of landing on the Kotlin heap.
      */
-    private suspend fun transcribeForNote(file: File, prefs: AppPreferences, model: ModelManager.ModelEntry): String =
-        Transcription.engineFor(model).transcribeFile(this, model, file, prefs, highQuality = prefs.highQuality, useVad = true)
+    private suspend fun transcribeForNote(file: File, prefs: AppPreferences, model: ModelManager.ModelEntry, queueId: Long): String =
+        Transcription.engineFor(model).transcribeFile(
+            this, model, file, prefs, highQuality = prefs.highQuality, useVad = true,
+            // Stream progress + text-so-far into the optimistic Recent card.
+            onSegment = { seg ->
+                RecordState.queueUpdate(queueId) { it.copy(partial = (it.partial + " " + seg.trim()).trim().takeLast(600)) }
+            },
+            onProgress = { p -> RecordState.queueUpdate(queueId) { it.copy(progress = p) } },
+        )
 
     /**
      * The transcript that becomes the note. First-pass-only ([Clip.firstPassText] non-null): reuse the live
@@ -273,7 +328,7 @@ class RecordingService : Service() {
      */
     private suspend fun noteTranscript(clip: Clip): String {
         val model = clip.model!!
-        val committed = clip.firstPassText ?: return transcribeForNote(clip.file, clip.prefs, model)
+        val committed = clip.firstPassText ?: return transcribeForNote(clip.file, clip.prefs, model, clip.queueId)
         val tail = MicRecorder.readPcmRange(clip.file, clip.firstPassSamples, clip.samples)
         // A tail-decode failure must PROPAGATE (like the batch path): swallowing it would silently drop
         // the last chunk and then delete the audio. On throw the consumer keeps the .pcm for retry.
@@ -296,6 +351,9 @@ class RecordingService : Service() {
     private suspend fun saveAsNewNote(clip: Clip) {
         val prefs = clip.prefs
         val text = noteTranscript(clip)
+        // Cancelled mid-transcription (whisper abort returns "", Moonshine runs to completion) —
+        // the user asked for this clip to die: no note, audio discarded, import key NOT marked.
+        if (clip.queueId in cancelledClips) { clip.file.delete(); return }
         val body = text.ifBlank { "(no speech detected)" }
         val dao = NotesDb.get(this).notes()
         val note = Note(createdAt = clip.createdAt ?: System.currentTimeMillis(), text = body)
@@ -346,6 +404,8 @@ class RecordingService : Service() {
             return false
         }
         val text = noteTranscript(clip)
+        // Same cancelled-discard contract as saveAsNewNote.
+        if (clip.queueId in cancelledClips) { clip.file.delete(); return true }
         val add = text.ifBlank { "(no speech detected)" }
         val combined = if (note.text.isBlank()) add else note.text.trimEnd() + "\n\n" + add
         val emb = Embedder.embed(this, combined) ?: note.embedding
@@ -437,6 +497,13 @@ class RecordingService : Service() {
     private fun audioDir(): File = File(filesDir, "audio").apply { mkdirs() }
     private fun audioFile(): File = File.createTempFile("rec", ".pcm", audioDir())
 
+    /** Source filename for an imported URI (Recent-card label); null when the provider won't say. */
+    private fun displayName(uri: Uri): String? = runCatching {
+        contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+            if (c.moveToFirst()) c.getString(0) else null
+        }
+    }.getOrNull() ?: uri.lastPathSegment?.substringAfterLast('/')
+
     /** Write a recording's int16 PCM as a WAV into the user's picked save folder. */
     private fun saveWav(pcm: File, treeUriStr: String) {
         val name = "ThoughtPocket_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())}.wav"
@@ -492,12 +559,13 @@ class RecordingService : Service() {
             val model = resolveNoteModel(prefs)
             var failed = 0
             for (uri in uris) {
-                val pcm = AudioFiles.decode(this@RecordingService, uri)   // → 16 kHz mono float (empty on unsupported)
-                if (pcm.isEmpty()) { failed++; continue }
                 val tmp = File.createTempFile("import", ".pcm", cacheDir) // cache → not picked up by recoverOrphans
-                AudioFiles.writePcm(tmp, pcm)
+                // Streaming decode → bounded RAM however big the source file (0 = unsupported/failure).
+                val samples = AudioFiles.decodeToFile(this@RecordingService, uri, tmp)
+                if (samples <= 0) { tmp.delete(); failed++; continue }
                 RecordState.setPending(pending.incrementAndGet())
-                queue.send(Clip(tmp, pcm.size, model, prefs, appendNoteId = appendId))
+                val qid = trackClip(displayName(uri) ?: "Imported audio")
+                queue.send(Clip(tmp, samples.toInt(), model, prefs, queueId = qid, appendNoteId = appendId))
             }
             if (failed > 0) Notifications.done(this@RecordingService, "Couldn't read $failed audio file" + if (failed > 1) "s" else "")
             settleStateAndMaybeStop()
@@ -509,18 +577,19 @@ class RecordingService : Service() {
         val folder = prefs.importFolder.ifEmpty { return }
         val model = resolveNoteModel(prefs)
         val done = prefs.importedAudio.toMutableSet()
-        for ((uri, _, modified) in AudioFiles.listAudio(this, Uri.parse(folder))) {
+        for ((uri, name, modified) in AudioFiles.listAudio(this, Uri.parse(folder))) {
             val key = uri.toString()
             if (key in done) continue
-            val pcm = AudioFiles.decode(this, uri)            // → 16 kHz mono float (empty on unsupported)
-            if (pcm.isEmpty()) continue                       // leave unmarked so a fixed/retried file imports later
             val tmp = File.createTempFile("import", ".pcm", cacheDir)   // cache → not picked up by recoverOrphans
-            AudioFiles.writePcm(tmp, pcm)
+            // Streaming decode → bounded RAM however big the source file (0 = unsupported/failure).
+            val samples = AudioFiles.decodeToFile(this, uri, tmp)
+            if (samples <= 0) { tmp.delete(); continue }      // leave unmarked so a fixed/retried file imports later
             // In-scan dedup only; the key is persisted by the consumer AFTER the note saves, so a failed
             // transcription (whose temp .pcm in cache isn't recovered) is re-imported on a later scan.
             done.add(key)
             RecordState.setPending(pending.incrementAndGet())
-            queue.send(Clip(tmp, pcm.size, model, prefs, createdAt = modified, importKey = key))
+            val qid = trackClip(name)
+            queue.send(Clip(tmp, samples.toInt(), model, prefs, queueId = qid, createdAt = modified, importKey = key))
         }
     }
 
@@ -540,7 +609,7 @@ class RecordingService : Service() {
             RecordState.setPending(pending.incrementAndGet())
             // Always a new note (appendNoteId=-1): a clip that died mid-append recovers as its own note —
             // the thought is preserved, just not re-attached to the original.
-            queue.trySend(Clip(f, n, model, prefs))
+            queue.trySend(Clip(f, n, model, prefs, queueId = trackClip("Recovered recording")))
         }
     }
 
@@ -582,7 +651,9 @@ class RecordingService : Service() {
         const val ACTION_IMPORT = "com.thoughtpocket.action.IMPORT"
         const val ACTION_IMPORT_URIS = "com.thoughtpocket.action.IMPORT_URIS"
         const val ACTION_RECOVER = "com.thoughtpocket.action.RECOVER"
+        const val ACTION_CANCEL_CLIP = "com.thoughtpocket.action.CANCEL_CLIP"
         private const val EXTRA_APPEND_ID = "append_note_id"
+        private const val EXTRA_CLIP_ID = "clip_id"
 
         /** Cheap disk check (call off the main thread): did a killed session leave un-transcribed audio? */
         fun hasOrphanRecordings(ctx: Context): Boolean =
@@ -618,6 +689,18 @@ class RecordingService : Service() {
 
         fun stopIntent(ctx: Context) =
             Intent(ctx, RecordingService::class.java).setAction(ACTION_STOP)
+
+        /**
+         * Cancel a queued/active clip (long-press-delete on its Recent card).
+         * Plain startService: only reachable from the visible UI, and the
+         * service is already foreground whenever the queue is non-empty.
+         */
+        fun cancelClip(ctx: Context, queueId: Long) {
+            ctx.startService(
+                Intent(ctx, RecordingService::class.java)
+                    .setAction(ACTION_CANCEL_CLIP).putExtra(EXTRA_CLIP_ID, queueId)
+            )
+        }
     }
 }
 

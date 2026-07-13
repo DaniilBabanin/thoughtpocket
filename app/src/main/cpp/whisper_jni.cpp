@@ -1,4 +1,5 @@
 #include <jni.h>
+#include <atomic>
 #include <string>
 #include <vector>
 #include <exception>
@@ -18,6 +19,12 @@ namespace {
 // Last native error stash — Kotlin polls this after any failure.
 // Most useful case: Vulkan vk::DeviceLostError (Mali drivers).
 std::string g_last_error;
+
+// User-cancel for a queued-clip transcription (llama_jni convention): cleared
+// on entry of every whisper_full run, set by nativeCancelTranscribe, checked
+// by ggml's abort callback so it lands mid-decode. Whisper calls are
+// serialized on the Kotlin side, so one global flag is unambiguous.
+std::atomic<bool> g_cancel_transcribe{false};
 
 struct CallbackCtx {
     JNIEnv  *env;
@@ -132,8 +139,11 @@ static jstring transcribe_pcm(
         jobject callback,
         jstring vadModelPath) {
 
+    g_cancel_transcribe.store(false);
+
     whisper_full_params params = whisper_full_default_params(
             useBeam ? WHISPER_SAMPLING_BEAM_SEARCH : WHISPER_SAMPLING_GREEDY);
+    params.abort_callback = [](void *) { return g_cancel_transcribe.load(); };
     params.print_progress  = false;
     params.print_special   = false;
     params.print_realtime  = false;
@@ -322,6 +332,14 @@ JNIEXPORT jstring JNICALL
 Java_com_thoughtpocket_WhisperEngine_nativeLastError(
         JNIEnv *env, jobject /*thiz*/) {
     return env->NewStringUTF(g_last_error.c_str());
+}
+
+// Abort the in-flight whisper_full run (user cancelled the queued clip).
+// The aborted run returns rc != 0 → "" upstream; the caller decides discard.
+JNIEXPORT void JNICALL
+Java_com_thoughtpocket_WhisperEngine_nativeCancelTranscribe(
+        JNIEnv * /*env*/, jobject /*thiz*/) {
+    g_cancel_transcribe.store(true);
 }
 
 } // extern "C"

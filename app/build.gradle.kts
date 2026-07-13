@@ -215,6 +215,9 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.7.0")
     // UI smoke tests + scroll-perf driving (300-note list jank regression).
+    // NOTE: compose-rule tests (ui-test-junit4) are broken on this Android 17
+    // device — transitive espresso 3.5's InputManager.getInstance is gone and
+    // newer espresso isn't in the offline cache. Prefer UiDevice-based tests.
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
 

@@ -38,7 +38,9 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -59,6 +61,7 @@ import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
@@ -210,7 +213,8 @@ fun NotesListScreen(onOpen: (Long) -> Unit, bottomSpace: Dp) {
     LaunchedEffect(Unit) { Embedder.backfillMissing(context, dao) }
     val status by RecordState.status.collectAsState()
     val partial by RecordState.partial.collectAsState()
-    val pending by RecordState.pending.collectAsState()
+    // Optimistic cards for clips still transcribing — one per queued recording/import.
+    val queueItems by RecordState.queue.collectAsState()
     var filter by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
     var queryVec by remember { mutableStateOf<FloatArray?>(null) }
@@ -278,9 +282,10 @@ fun NotesListScreen(onOpen: (Long) -> Unit, bottomSpace: Dp) {
 
     // Long-press a card → reveal Delete; delete is undoable via the snackbar.
     var actionsOpenId by remember { mutableStateOf<Long?>(null) }
+    // Separate from actionsOpenId — queue ids and note ids are unrelated Long spaces.
+    var queueActionsId by remember { mutableStateOf<Long?>(null) }
     var deleted by remember { mutableStateOf<Note?>(null) }
     val recording = status.state == RecordState.State.RECORDING
-    val transcribing = status.state == RecordState.State.TRANSCRIBING
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -319,36 +324,29 @@ fun NotesListScreen(onOpen: (Long) -> Unit, bottomSpace: Dp) {
                     }
                 },
             )
-            // Live "listening" card while recording/transcribing (design `.listening`: accent-tinted text).
-            if (recording || transcribing) {
+            // Live "listening" card while recording (design `.listening`: accent-tinted text).
+            // Transcription no longer takes over this card — each queued clip is an optimistic
+            // item under Recent instead, with its own progress + long-press cancel.
+            if (recording) {
                 val accent = MaterialTheme.colorScheme.primary
                 GlassCard(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (recording) {
-                            WaveBars()
-                            Spacer(Modifier.width(13.dp))
-                        }
+                        WaveBars()
+                        Spacer(Modifier.width(13.dp))
                         Column {
                             Text(
-                                if (recording) "LISTENING…" else "TRANSCRIBING…",
+                                "LISTENING…",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.6.sp,
                                 color = accent,
                             )
-                            if (recording && partial.isNotBlank()) {
+                            if (partial.isNotBlank()) {
                                 Text(
                                     partial,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = lerp(MaterialTheme.colorScheme.onSurface, accent, 0.5f),
                                     maxLines = 3, overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.padding(top = 2.dp),
-                                )
-                            } else if (!recording && pending > 0) {
-                                Text(
-                                    "$pending recording${if (pending == 1) "" else "s"} finishing up…",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(top = 2.dp),
                                 )
                             }
@@ -369,7 +367,7 @@ fun NotesListScreen(onOpen: (Long) -> Unit, bottomSpace: Dp) {
                     }
                 }
             }
-            if (shown.isEmpty()) {
+            if (shown.isEmpty() && queueItems.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         if (q.isEmpty()) "No notes yet. Tap the orb to record." else "No matches.",
@@ -377,16 +375,41 @@ fun NotesListScreen(onOpen: (Long) -> Unit, bottomSpace: Dp) {
                     )
                 }
             } else {
-                SectionLabel("Recent", Modifier.padding(start = 18.dp, top = 6.dp, bottom = 8.dp))
+                SectionLabel(
+                    if (queueItems.isEmpty()) "Recent" else "Recent · ${queueItems.size} transcribing",
+                    Modifier.padding(start = 18.dp, top = 6.dp, bottom = 8.dp),
+                )
                 val reveal = rememberReveal()
+                val gridState = rememberLazyStaggeredGridState()
+                // Prepending items to a lazy grid keeps the OLD first item anchored — a fresh
+                // queue card would land above the viewport and never even compose. A new clip
+                // means the user just acted (stopped recording / imported), so jump to top.
+                LaunchedEffect(queueItems.size) {
+                    if (queueItems.isNotEmpty()) gridState.animateScrollToItem(0)
+                }
                 // Single column on phone (Adaptive → 1 col at phone width), multi-column on tablet.
                 LazyVerticalStaggeredGrid(
                     columns = StaggeredGridCells.Adaptive(280.dp),
+                    state = gridState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = bottomSpace),
                     verticalItemSpacing = 12.dp,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
+                    // Optimistic transcription cards first — the note doesn't exist yet, but the
+                    // work is visible: what's active (with live text + progress) and what's queued.
+                    items(queueItems, key = { "q${it.id}" }) { qi ->
+                        TranscribingCard(
+                            item = qi,
+                            actionsOpen = queueActionsId == qi.id,
+                            onLongClick = { queueActionsId = qi.id },
+                            onDismissActions = { queueActionsId = null },
+                            onCancel = {
+                                queueActionsId = null
+                                RecordingService.cancelClip(context, qi.id)
+                            },
+                        )
+                    }
                     itemsIndexed(shown, key = { _, it -> it.id }) { index, note ->
                         NoteCard(
                             note = note,
@@ -452,6 +475,89 @@ fun NotesListScreen(onOpen: (Long) -> Unit, bottomSpace: Dp) {
                 }
             },
         )
+    }
+}
+
+/**
+ * Optimistic Recent card for a clip still in the transcription queue: label
+ * (middle-ellipsized filename for imports), queued/active status with whisper
+ * progress, live transcript-so-far (tap to expand), long-press → cancel —
+ * mirroring NoteCard's long-press-delete gesture.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun TranscribingCard(
+    item: RecordState.QueueItem,
+    actionsOpen: Boolean,
+    onLongClick: () -> Unit,
+    onDismissActions: () -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by remember(item.id) { mutableStateOf(false) }
+    val cs = MaterialTheme.colorScheme
+    Box(
+        modifier
+            .fillMaxWidth()
+            .glass(ReachShapes.card)
+            .combinedClickable(
+                onClick = { if (actionsOpen) onDismissActions() else expanded = !expanded },
+                onLongClick = onLongClick,
+            ),
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (item.active && item.progress > 0f) {
+                    CircularProgressIndicator(progress = { item.progress }, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else if (item.active) {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Icon(Icons.Filled.Schedule, null, tint = cs.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                }
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    item.label,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1, overflow = TextOverflow.MiddleEllipsis,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Text(
+                when {
+                    item.cancelling -> "Cancelling…"
+                    !item.active -> "Queued"
+                    item.progress > 0f -> "Transcribing… ${(item.progress * 100).toInt()}%"
+                    else -> "Transcribing…"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = cs.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            if (item.active && item.partial.isNotBlank()) {
+                Text(
+                    item.partial,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = lerp(cs.onSurface, cs.primary, 0.4f),
+                    maxLines = if (expanded) 14 else 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+        }
+        if (actionsOpen) {
+            Box(
+                Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 12.dp)
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(cs.errorContainer)
+                    .clickable(onClick = onCancel),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Delete, "Cancel", tint = cs.onErrorContainer, modifier = Modifier.size(20.dp))
+            }
+        }
     }
 }
 

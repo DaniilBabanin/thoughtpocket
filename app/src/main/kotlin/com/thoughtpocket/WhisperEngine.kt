@@ -140,7 +140,15 @@ object WhisperEngine {
         transcribe(pcm16k = pcm16k, language = language, translate = false, threads = threads)
     }
 
+    /**
+     * Abort the in-flight transcription (user cancelled a queued clip). The
+     * aborted run comes back as "" — the caller must know it cancelled and
+     * discard, not save. The flag auto-clears on the next run's entry.
+     */
+    fun cancelCurrent() = nativeCancelTranscribe()
+
     // ---------- native ----------
+    private external fun nativeCancelTranscribe()
     private external fun nativeInitContext(modelPath: String, useGpu: Boolean): Long
     private external fun nativeFreeContext(ctxPtr: Long)
     private external fun nativeTranscribe(
