@@ -10,6 +10,7 @@ Privacy-first Android voice-notes app: record → Whisper transcribes on-device 
   ```
 - Debug APK: `./gradlew assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk`
 - Install on device: `adb install -r app/build/outputs/apk/debug/app-debug.apk` (package `com.thoughtpocket`)
+- Test devices usually run **release-signed** builds (installed from GitHub Releases) — a debug APK then fails with `INSTALL_FAILED_UPDATE_INCOMPATIBLE`. Install over them with `./gradlew assembleRelease` (keystore + password are committed in `app/build.gradle.kts`). **Never uninstall to work around it** — that wipes notes, the multi-GB downloaded models, and seeded test data.
 - `minSdk 31`, `targetSdk 35`, arm64 + x86_64 (emulator). Versions/SDK/NDK/CMake pins live in `app/build.gradle.kts` (no `libs.versions.toml`). whisper.cpp is built from source via CMake/NDK (FetchContent), so the pinned NDK + CMake must be installed.
 
 ## Tests
@@ -41,6 +42,7 @@ Privacy-first Android voice-notes app: record → Whisper transcribes on-device 
 - **The Room DB is the source of truth.** Folder sync, files, and UI buffers reconcile to it.
 - **Observable state via Flow/StateFlow** (e.g. `RecordState.status`, `ModelDownloads`); UI observes passively.
 - Markdown body never carries a title heading — the note **title is a first-class `Note.title` field** (shown separately in the list card and detail screen).
+- **New full-screen composables must handle insets themselves** (the app is edge-to-edge): `statusBarsPadding()` on the root column, `navigationBarsPadding()` on bottom-anchored overlays/snackbars, and scrollable content ends with a spacer that clears the floating record orb where one is shown (note detail uses `navigationBarsPadding().height(158.dp)` — 58dp orb at 92dp bottom offset). Both 2026-07-13 inset bugs (unreachable back button, orb covering the last button) were misses of this checklist.
 - Style: match surrounding code, surgical diffs, comment the *why* not the *what*.
 
 ## On-device models
