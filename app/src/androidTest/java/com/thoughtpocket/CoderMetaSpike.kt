@@ -35,7 +35,9 @@ class CoderMetaSpike {
         val metaId = dao.insert(Note(createdAt = 1_720_000_000_001, text = "count things", title = "Meta"))
         val scenario = ActivityScenario.launch(MainActivity::class.java)
         try {
-            CoderRunService.run(ctx, metaId, "Count how many times the word TODO appears across all my notes.")
+            // allNotes = the per-task grant the UI toggle sets — without it the
+            // runner injects an empty list and this spike tests nothing.
+            CoderRunService.run(ctx, metaId, "Count how many times the word TODO appears across all my notes.", allNotes = true)
             val terminal = withTimeoutOrNull(12 * 60_000L) {
                 CodeRunState.status.first { it.phase == CodeRunState.Phase.DONE || it.phase == CodeRunState.Phase.FAILED }
             }

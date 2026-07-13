@@ -28,4 +28,13 @@ class CoderPromptTest {
         assertTrue(p.endsWith("<|im_start|>assistant\n"))
         assertTrue(p.contains("<|im_start|>user\nhello<|im_end|>"))
     }
+
+    @Test fun notesGlobalOnlyAdvertisedWithAllNotesGrant() {
+        // Without the grant the runner injects an empty `notes` list, so the
+        // system prompt must not bait the model into using it.
+        assertFalse(CoderHarness.system(allNotes = false).contains("`notes`"))
+        assertTrue(CoderHarness.system(allNotes = true).contains("`notes`"))
+        assertFalse(CoderHarness.chatml("hello").contains("`notes`"))
+        assertTrue(CoderHarness.chatml("hello", allNotes = true).contains("`notes`"))
+    }
 }

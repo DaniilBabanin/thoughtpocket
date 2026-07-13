@@ -51,9 +51,10 @@ class CoderCtxCheck {
         LlamaEngine.load(m.absolutePath, nCtx = 8192, nThreads = 4).getOrThrow()
         Log.i("BENCH", "load(8192) ${m.name}: ${SystemClock.elapsedRealtime() - t0}ms, rss=${rssMb()}MB")
 
-        val templated = LlamaEngine.formatPrompt(CoderHarness.SYSTEM, worstUser())
+        // system(allNotes = true) is the longest variant — the worst case.
+        val templated = LlamaEngine.formatPrompt(CoderHarness.system(allNotes = true), worstUser())
         Log.i("BENCH", "chat template: ${if (templated != null) "model-embedded" else "none → ChatML fallback"}")
-        val prompt = templated ?: CoderHarness.chatml(worstUser())
+        val prompt = templated ?: CoderHarness.chatml(worstUser(), allNotes = true)
         Log.i("BENCH", "worst prompt: ${prompt.length} chars")
 
         var tokens = 0
@@ -76,7 +77,7 @@ class CoderCtxCheck {
         val m = model() ?: run { Log.i("BENCH", "SKIP: no .gguf in files/coder"); return@runBlocking }
         LlamaEngine.load(m.absolutePath, nCtx = 8192, nThreads = 4).getOrThrow()
 
-        val prompt = CoderHarness.chatml(worstUser()) // multi-k-token prefill
+        val prompt = CoderHarness.chatml(worstUser(), allNotes = true) // multi-k-token prefill
         val job = async(Dispatchers.Default) { LlamaEngine.generate(prompt, maxTokens = 64) }
         delay(1_500) // solidly inside the prefill decode on CPU
         val c0 = SystemClock.elapsedRealtime()

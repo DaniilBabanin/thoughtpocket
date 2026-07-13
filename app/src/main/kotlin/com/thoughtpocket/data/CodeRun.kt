@@ -36,6 +36,8 @@ data class CodeRun(
     val originalCode: String,
     val output: String,
     val attempts: Int,
+    /** Script saw the whole library (`notes` global), not just its note — follow-ups and reruns inherit it. */
+    val allNotes: Boolean = false,
 )
 
 @Dao

@@ -182,11 +182,19 @@ object CoderHarness {
         "print the final result to stdout with print(); " +
         "if the task needs live or external data you don't have (exchange rates, prices, " +
         "weather), the script must say so in its output instead of using a guessed value; " +
-        "reply with exactly one fenced code block and nothing else. " +
+        "reply with exactly one fenced code block and nothing else."
+
+    // Only appended when the user granted this run "access all notes" — without
+    // the grant the runner injects an empty list, so advertising `notes` would
+    // just bait the model into scripts that silently see nothing.
+    internal const val SYSTEM_NOTES_GLOBAL = " " +
         "A global variable `notes` is already defined: a list of every saved note, each a dict " +
         "with keys 'title', 'text' (raw), 'markdown' (formatted, may be ''), 'tags' (list of str), " +
         "'created' (epoch ms). Use `notes` for tasks that span multiple notes (e.g. searching all " +
         "notes); for a task about only the note shown below, just use that text. Do not redefine `notes`."
+
+    internal fun system(allNotes: Boolean): String =
+        if (allNotes) SYSTEM + SYSTEM_NOTES_GLOBAL else SYSTEM
 
     internal fun firstUser(noteTitle: String, noteBody: String, instruction: String): String =
         "Note: ${noteTitle.take(200)}\n\"\"\"\n${noteBody.take(NOTE_CAP)}\n\"\"\"\n\nTask: $instruction"
@@ -217,6 +225,6 @@ object CoderHarness {
             "Its output:\n\"\"\"\n${priorOutput.take(OUTPUT_CAP)}\n\"\"\"\n\nNew task: $newInstruction"
 
     /** Fallback wrapper for models without an embedded chat template. */
-    internal fun chatml(user: String): String =
-        "<|im_start|>system\n$SYSTEM<|im_end|>\n<|im_start|>user\n$user<|im_end|>\n<|im_start|>assistant\n"
+    internal fun chatml(user: String, allNotes: Boolean = false): String =
+        "<|im_start|>system\n${system(allNotes)}<|im_end|>\n<|im_start|>user\n$user<|im_end|>\n<|im_start|>assistant\n"
 }

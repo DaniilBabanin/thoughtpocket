@@ -60,9 +60,10 @@ class CoderRunService : Service() {
             ACTION_RUN -> {
                 val noteId = intent.getLongExtra(EXTRA_NOTE_ID, -1)
                 val instruction = intent.getStringExtra(EXTRA_INSTRUCTION).orEmpty()
+                val allNotes = intent.getBooleanExtra(EXTRA_ALL_NOTES, false)
                 if (noteId >= 0 && instruction.isNotBlank() && runJob?.isActive != true) {
                     idleJob?.cancel()
-                    runJob = scope.launch { runOnce(noteId, instruction, iterateRunId = null) }
+                    runJob = scope.launch { runOnce(noteId, instruction, iterateRunId = null, allNotes) }
                 }
             }
             ACTION_FOLLOWUP -> {
@@ -107,10 +108,14 @@ class CoderRunService : Service() {
         }
     }
 
-    /** [iterateRunId] null = new coding item; set = follow-up updating that item in place. */
-    private suspend fun runOnce(noteId: Long, instruction: String, iterateRunId: Long?) {
+    /**
+     * [iterateRunId] null = new coding item; set = follow-up updating that item
+     * in place. [allNotesRequested] only applies to a NEW item — follow-ups
+     * inherit the access their item was created with.
+     */
+    private suspend fun runOnce(noteId: Long, instruction: String, iterateRunId: Long?, allNotesRequested: Boolean = false) {
         try {
-            runLoop(noteId, instruction, iterateRunId)
+            runLoop(noteId, instruction, iterateRunId, allNotesRequested)
         } catch (e: CancellationException) {
             throw e // endSession/cancel owns the teardown — don't arm the idle timer
         } catch (e: Exception) {
@@ -122,7 +127,7 @@ class CoderRunService : Service() {
         scheduleIdleEnd()
     }
 
-    private suspend fun runLoop(noteId: Long, instruction: String, iterateRunId: Long?) {
+    private suspend fun runLoop(noteId: Long, instruction: String, iterateRunId: Long?, allNotesRequested: Boolean) {
         val startMs = SystemClock.elapsedRealtime()
         fun elapsed() = SystemClock.elapsedRealtime() - startMs
 
@@ -144,7 +149,8 @@ class CoderRunService : Service() {
             }
         }
 
-        val notesPath = writeNotesSnapshot()
+        val allNotes = baseRun?.allNotes ?: allNotesRequested
+        val notesPath = if (allNotes) writeNotesSnapshot() else ""
         val attempts = mutableListOf<Attempt>()
         val attemptLog = mutableListOf<Pair<String, String>>()
 
@@ -168,6 +174,7 @@ class CoderRunService : Service() {
                             noteId = noteId, createdAt = System.currentTimeMillis(),
                             instruction = instruction, code = code, originalCode = code,
                             output = action.output, attempts = attempts.size,
+                            allNotes = allNotes,
                         ))
                     }
                     CodeRunState.update {
@@ -189,7 +196,7 @@ class CoderRunService : Service() {
 
                     // Prefer the formatted body; fall back to the raw transcript.
                     val body = note.markdown.ifBlank { note.text }
-                    val prompt = buildPrompt(note.title, body, instruction, attempts, baseRun)
+                    val prompt = buildPrompt(note.title, body, instruction, attempts, baseRun, allNotes)
                     // Stuck pair → one sampled attempt; greedy otherwise.
                     val temperature = if (action.sampled) 0.6f else 0f
                     val reply = CoderEngine.generate(prompt, CoderHarness.MAX_GEN_TOKENS, temperature) { piece ->
@@ -240,7 +247,7 @@ class CoderRunService : Service() {
     /** Repair rounds use the note+task with last code+error; iterating threads the base item. */
     private fun buildPrompt(
         title: String, body: String, instruction: String,
-        attempts: List<Attempt>, baseRun: CodeRun?,
+        attempts: List<Attempt>, baseRun: CodeRun?, allNotes: Boolean,
     ): String {
         val last = attempts.lastOrNull()
         val user = when {
@@ -254,7 +261,7 @@ class CoderRunService : Service() {
         }
         // Model's own chat template (BYO models get their native format);
         // ChatML fallback for GGUFs that ship none.
-        return CoderEngine.formatPrompt(CoderHarness.SYSTEM, user) ?: CoderHarness.chatml(user)
+        return CoderEngine.formatPrompt(CoderHarness.system(allNotes), user) ?: CoderHarness.chatml(user, allNotes)
     }
 
     /** "Run edited script": user-authored code skips generation, keeps the gates; updates its item. */
@@ -281,7 +288,10 @@ class CoderRunService : Service() {
             it.copy(phase = CodeRunState.Phase.RUNNING, noteId = run.noteId, activeRunId = runId, result = "")
         }
         notify("Running edited script…")
-        val res = PyRunnerClient.exec(this, code, CoderHarness.EXEC_TIMEOUT_MS, writeNotesSnapshot())
+        val res = PyRunnerClient.exec(
+            this, code, CoderHarness.EXEC_TIMEOUT_MS,
+            if (run.allNotes) writeNotesSnapshot() else "",
+        )
         if (res.ok && res.stdout.isNotBlank()) {
             // originalCode untouched — that's what "revert" restores.
             runsDao.update(run.copy(code = code, output = res.stdout, attempts = run.attempts + 1))
@@ -298,9 +308,11 @@ class CoderRunService : Service() {
     /**
      * Serialize every note to a private cache file the runner loads into a
      * `notes` global — enables "meta" tasks spanning all notes (count TODOs
-     * across notes, etc.). Via a file, not the IPC Bundle, so a big library
-     * can't blow the Binder transaction limit. The script can't open files
-     * (gate), only read the injected global.
+     * across notes, etc.). Only called when the item was granted "access all
+     * notes"; otherwise the runner gets no path and `notes` stays empty. Via a
+     * file, not the IPC Bundle, so a big library can't blow the Binder
+     * transaction limit. The script can't open files (gate), only read the
+     * injected global.
      */
     private suspend fun writeNotesSnapshot(): String {
         val arr = JSONArray()
@@ -382,11 +394,13 @@ class CoderRunService : Service() {
         private const val EXTRA_INSTRUCTION = "instruction"
         private const val EXTRA_CODE = "code"
         private const val EXTRA_RUN_ID = "runId"
+        private const val EXTRA_ALL_NOTES = "allNotes"
 
-        fun run(context: Context, noteId: Long, instruction: String) =
+        fun run(context: Context, noteId: Long, instruction: String, allNotes: Boolean = false) =
             context.startForegroundService(
                 Intent(context, CoderRunService::class.java).setAction(ACTION_RUN)
                     .putExtra(EXTRA_NOTE_ID, noteId).putExtra(EXTRA_INSTRUCTION, instruction)
+                    .putExtra(EXTRA_ALL_NOTES, allNotes)
             )
 
         fun followUp(context: Context, runId: Long, instruction: String) =

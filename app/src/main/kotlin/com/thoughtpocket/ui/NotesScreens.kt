@@ -825,7 +825,6 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit, onOpe
     // Interact (AI commands on the checklist) + single-level undo for AI changes.
     val prefs = remember { AppPreferences(context) }
     var undo by remember(n.id) { mutableStateOf<Note?>(null) }
-    var codeRunDeleted by remember(n.id) { mutableStateOf<com.thoughtpocket.data.CodeRun?>(null) }
     var command by remember(n.id) { mutableStateOf("") }
     var interacting by remember(n.id) { mutableStateOf(false) }
     var listening by remember(n.id) { mutableStateOf(false) }
@@ -1229,16 +1228,18 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit, onOpe
                 }
                 aiError?.let { Text(it, color = cs.error, style = MaterialTheme.typography.bodySmall) }
 
-                // Code this (experimental): local coding model writes + runs Python over
-                // this note — or, for "meta" notes, across all notes. Bottom of the note,
-                // gated on the opt-in + an installed coder model.
+                // Code this (experimental): just an entry point — task input,
+                // items, and the all-notes access grant live on the coding
+                // screen. Gated on the opt-in + an installed coder model.
                 if (remember(n.id) { prefs.experimentalCoder && CoderModelManager.isInstalled(context) }) {
-                    NoteCodeSection(
-                        noteId = n.id,
-                        onOpen = { runId -> onOpenCodeRun(n.id, runId) },
-                        onDeleted = { codeRunDeleted = it },
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
+                    FilledTonalButton(
+                        onClick = { onOpenCodeRun(n.id, -1L) },
+                        shape = ReachShapes.field,
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    ) {
+                        Icon(Icons.Filled.Code, null); Spacer(Modifier.width(8.dp))
+                        Text("Code this")
+                    }
                 }
 
                 // Related notes.
@@ -1301,17 +1302,6 @@ fun NoteDetailScreen(id: Long, onBack: () -> Unit, onOpen: (Long) -> Unit, onOpe
                 message = "AI change applied",
                 onUndo = { doUndo() },
                 onDismiss = { undo = null },
-                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 80.dp),
-            )
-        }
-        codeRunDeleted?.let { d ->
-            UndoSnackbar(
-                message = "Coding task deleted",
-                onUndo = {
-                    scope.launch { NotesDb.get(context).codeRuns().insert(d.copy(id = 0)) }
-                    codeRunDeleted = null
-                },
-                onDismiss = { codeRunDeleted = null },
                 modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 80.dp),
             )
         }

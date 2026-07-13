@@ -9,10 +9,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -33,7 +31,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,20 +53,24 @@ import com.thoughtpocket.service.CoderRunService
 import com.thoughtpocket.ui.theme.GlassCard
 import com.thoughtpocket.ui.theme.GlassTextField
 import com.thoughtpocket.ui.theme.ReachShapes
+import com.thoughtpocket.ui.theme.ReachSwitch
 import com.thoughtpocket.ui.theme.SectionTitle
 import com.thoughtpocket.ui.theme.glass
 import kotlinx.coroutines.launch
 
 /**
- * Single coding item: live progress, its result, iterate (follow-up updates
- * the item in place), and — with Settings → "Show code details" on — the
- * script editor (edit / rerun / revert to the model's code). The list of a
- * note's items lives on the note itself ([NoteCodeSection]); tapping one opens
- * this screen. Leaving ends the coder session (frees the model).
+ * A note's coding hub — the note itself only carries a "Code this" button that
+ * opens this screen. Top: start a new task, with an explicit per-task "access
+ * all notes" grant (off by default — without it the script sees only this
+ * note). Then live progress, the focused item (result, iterate, and — with
+ * Settings → "Show code details" on — the script editor), and the note's
+ * coding items (newest first; tap to focus, long-press for rerun/delete).
+ * Leaving while idle ends the coder session (frees the model).
  *
- * [focusRunId] is the tapped item, or -1 for a run just started from the note
- * (whose row id arrives via CodeRunState once it finishes).
+ * [focusRunId] is the tapped item, or -1 for none (opened from the note's
+ * button); a run started here focuses whatever item CodeRunState resolves to.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CodeRunScreen(noteId: Long, focusRunId: Long, onBack: () -> Unit) {
     val context = LocalContext.current
@@ -82,10 +83,18 @@ fun CodeRunScreen(noteId: Long, focusRunId: Long, onBack: () -> Unit) {
 
     var noteUndo by remember { mutableStateOf<Note?>(null) }
     var inserted by remember { mutableStateOf(false) }
+    var deletedRun by remember { mutableStateOf<CodeRun?>(null) }
+    var task by remember { mutableStateOf("") }
+    // Per-task grant, deliberately NOT persisted as a default — every new task
+    // starts note-only unless the user flips it again.
+    var allNotesAccess by remember { mutableStateOf(false) }
+    var actionsOpenId by remember { mutableStateOf<Long?>(null) }
 
-    // The item this screen is about: the tapped one, or whatever the active run
-    // resolved to (a fresh run from the note, or an in-place iterate).
-    val currentId = if (status.activeRunId >= 0 && status.noteId == noteId) status.activeRunId else focusRunId
+    // The focused item: an explicit tap wins; otherwise follow the active run
+    // (a task just started here, or an in-place iterate).
+    var focused by remember { mutableStateOf(focusRunId.takeIf { it >= 0 }) }
+    val currentId = focused
+        ?: if (status.noteId == noteId && status.activeRunId >= 0) status.activeRunId else -1L
     val item = runs.firstOrNull { it.id == currentId }
 
     // anyWorking gates starting new work (one model, one run at a time,
@@ -113,6 +122,32 @@ fun CodeRunScreen(noteId: Long, focusRunId: Long, onBack: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { exit() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                 SectionTitle(item?.instruction?.take(60) ?: "Code this", Modifier.weight(1f))
+            }
+
+            GlassTextField(
+                value = task,
+                onValueChange = { task = it },
+                placeholder = "Calculate, analyze, transform…",
+                modifier = Modifier.fillMaxWidth(),
+                trailing = {
+                    IconButton(
+                        onClick = {
+                            CoderRunService.run(context, noteId, task.trim(), allNotesAccess)
+                            task = ""; focused = null; inserted = false
+                        },
+                        enabled = task.isNotBlank() && !anyWorking, modifier = Modifier.size(28.dp),
+                    ) { Icon(Icons.AutoMirrored.Filled.Send, "Run", tint = cs.primary) }
+                },
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Access all notes")
+                    Text(
+                        "Lets this task read every note, not just this one",
+                        style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant,
+                    )
+                }
+                ReachSwitch(checked = allNotesAccess, onChange = { allNotesAccess = it })
             }
 
             if (working) {
@@ -218,6 +253,56 @@ fun CodeRunScreen(noteId: Long, focusRunId: Long, onBack: () -> Unit) {
                     }
                 }
             }
+
+            if (runs.isNotEmpty()) {
+                SectionTitle("Coding items", Modifier.padding(top = 4.dp))
+                runs.forEach { run ->
+                    val open = actionsOpenId == run.id
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .glass(ReachShapes.card)
+                            .combinedClickable(
+                                onClick = { if (open) actionsOpenId = null else focused = run.id },
+                                onLongClick = { actionsOpenId = run.id },
+                            ),
+                    ) {
+                        Column(Modifier.padding(14.dp).padding(horizontal = if (open) 44.dp else 0.dp)) {
+                            Text(run.instruction, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                run.output.trim().lineSequence().firstOrNull().orEmpty().take(80),
+                                maxLines = 1, overflow = TextOverflow.Ellipsis, fontFamily = FontFamily.Monospace,
+                                style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant,
+                            )
+                        }
+                        if (open) {
+                            // Left: rerun the stored script. Right: delete (with undo).
+                            Box(
+                                Modifier.align(Alignment.CenterStart).padding(start = 8.dp).size(40.dp)
+                                    .clip(CircleShape).background(cs.secondaryContainer)
+                                    .clickable(enabled = !anyWorking) {
+                                        actionsOpenId = null
+                                        CoderRunService.rerunEdited(context, run.id, run.code)
+                                        focused = run.id
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) { Icon(Icons.Filled.Refresh, "Rerun", tint = cs.onSecondaryContainer, modifier = Modifier.size(20.dp)) }
+                            Box(
+                                Modifier.align(Alignment.CenterEnd).padding(end = 8.dp).size(40.dp)
+                                    .clip(CircleShape).background(cs.errorContainer)
+                                    .clickable {
+                                        actionsOpenId = null
+                                        deletedRun = run
+                                        if (focused == run.id) focused = null
+                                        scope.launch { runsDao.delete(run.id) }
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) { Icon(Icons.Filled.Delete, "Delete", tint = cs.onErrorContainer, modifier = Modifier.size(20.dp)) }
+                        }
+                    }
+                }
+            }
         }
 
         if (noteUndo != null) {
@@ -228,99 +313,16 @@ fun CodeRunScreen(noteId: Long, focusRunId: Long, onBack: () -> Unit) {
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
             )
         }
-    }
-}
-
-/**
- * The "Code this" block shown at the bottom of a note: a prompt for a new task,
- * then the note's coding items (newest first). Tap an item to open its detail;
- * long-press reveals rerun (left) + delete (right), matching the main list's
- * note long-press. Gating (experimental flag + model installed) is the caller's.
- */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun NoteCodeSection(
-    noteId: Long,
-    onOpen: (runId: Long) -> Unit,
-    onDeleted: (CodeRun) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val context = LocalContext.current
-    val runsDao = remember { NotesDb.get(context).codeRuns() }
-    val runs by runsDao.byNote(noteId).collectAsState(initial = emptyList())
-    val status by CodeRunState.status.collectAsState()
-    val scope = rememberCoroutineScope()
-    val cs = MaterialTheme.colorScheme
-    var task by remember { mutableStateOf("") }
-    var actionsOpenId by remember { mutableStateOf<Long?>(null) }
-    // One model, one run at a time — a run on ANY note blocks starting another
-    // (the service would silently drop it); spinner only for this note's run.
-    val anyWorking = status.phase in listOf(
-        CodeRunState.Phase.STARTING, CodeRunState.Phase.GENERATING,
-        CodeRunState.Phase.RUNNING, CodeRunState.Phase.FIXING,
-    )
-    val running = status.noteId == noteId && anyWorking
-
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SectionTitle("Code this", Modifier.padding(top = 4.dp))
-        GlassTextField(
-            value = task,
-            onValueChange = { task = it },
-            placeholder = "Calculate, analyze, transform… (can span all notes)",
-            modifier = Modifier.fillMaxWidth(),
-            trailing = {
-                if (running) CircularProgressIndicator(Modifier.size(22.dp))
-                else IconButton(
-                    onClick = { CoderRunService.run(context, noteId, task.trim()); task = ""; onOpen(-1L) },
-                    enabled = task.isNotBlank() && !anyWorking, modifier = Modifier.size(28.dp),
-                ) { Icon(Icons.AutoMirrored.Filled.Send, "Run", tint = cs.primary) }
-            },
-        )
-
-        runs.forEach { run ->
-            val open = actionsOpenId == run.id
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .glass(ReachShapes.card)
-                    .combinedClickable(
-                        onClick = { if (open) actionsOpenId = null else onOpen(run.id) },
-                        onLongClick = { actionsOpenId = run.id },
-                    ),
-            ) {
-                Column(Modifier.padding(14.dp).padding(horizontal = if (open) 44.dp else 0.dp)) {
-                    Text(run.instruction, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        run.output.trim().lineSequence().firstOrNull().orEmpty().take(80),
-                        maxLines = 1, overflow = TextOverflow.Ellipsis, fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant,
-                    )
-                }
-                if (open) {
-                    // Left: rerun the stored script. Right: delete (with undo).
-                    Box(
-                        Modifier.align(Alignment.CenterStart).padding(start = 8.dp).size(40.dp)
-                            .clip(CircleShape).background(cs.secondaryContainer)
-                            .clickable(enabled = !anyWorking) {
-                                actionsOpenId = null
-                                CoderRunService.rerunEdited(context, run.id, run.code)
-                                onOpen(run.id)
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) { Icon(Icons.Filled.Refresh, "Rerun", tint = cs.onSecondaryContainer, modifier = Modifier.size(20.dp)) }
-                    Box(
-                        Modifier.align(Alignment.CenterEnd).padding(end = 8.dp).size(40.dp)
-                            .clip(CircleShape).background(cs.errorContainer)
-                            .clickable {
-                                actionsOpenId = null
-                                onDeleted(run)
-                                scope.launch { runsDao.delete(run.id) }
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) { Icon(Icons.Filled.Delete, "Delete", tint = cs.onErrorContainer, modifier = Modifier.size(20.dp)) }
-                }
-            }
+        deletedRun?.let { d ->
+            UndoSnackbar(
+                message = "Coding task deleted",
+                onUndo = {
+                    scope.launch { runsDao.insert(d.copy(id = 0)) }
+                    deletedRun = null
+                },
+                onDismiss = { deletedRun = null },
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
+            )
         }
     }
 }
