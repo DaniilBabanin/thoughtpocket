@@ -24,6 +24,7 @@ class RecordTileService : TileService() {
     private val scope = CoroutineScope(Dispatchers.Main + Job())
     private var stateJob: Job? = null
     private var timerJob: Job? = null
+    private var timerBase = 0L
 
     override fun onStartListening() {
         stateJob = scope.launch { RecordState.status.collect { updateTile(it) } }
@@ -70,6 +71,10 @@ class RecordTileService : TileService() {
             RecordState.State.RECORDING -> {
                 tile.state = Tile.STATE_ACTIVE
                 tile.icon = Icon.createWithResource(this, R.drawable.ic_stop)
+                // StateFlow conflation can skip the intermediate stop state on an instant stop→re-record,
+                // which would leave the old timer counting — rebase whenever the recording start changed.
+                if (timerBase != status.startedAtElapsedRealtime) { timerJob?.cancel(); timerJob = null }
+                timerBase = status.startedAtElapsedRealtime
                 if (timerJob == null) {
                     timerJob = scope.launch {
                         while (true) {

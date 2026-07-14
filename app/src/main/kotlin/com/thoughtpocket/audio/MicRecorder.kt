@@ -32,7 +32,7 @@ class MicRecorder(private val file: File) {
     private val flushEvery = sampleRate * 2      // flush ~every 2 s → a kill loses ≤2 s
 
     @Volatile private var totalSamples = 0
-    @Volatile private var recording = false
+    @Volatile private var stopped = false
     @Volatile private var levelValue = 0f
     private var ar: AudioRecord? = null
     private var out: BufferedOutputStream? = null
@@ -54,6 +54,7 @@ class MicRecorder(private val file: File) {
 
     @SuppressLint("MissingPermission") // caller guarantees RECORD_AUDIO is granted
     fun start() {
+        if (stopped) return   // stop raced ahead of start (instant re-tap): never touch the mic
         val min = AudioRecord.getMinBufferSize(
             sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
         )
@@ -66,19 +67,18 @@ class MicRecorder(private val file: File) {
                 sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
                 maxOf(min, frame * 2 * 4)
             ).also { check(it.state == AudioRecord.STATE_INITIALIZED) { "AudioRecord init failed" } }
-            recording = true
             ar!!.startRecording()
         } catch (t: Throwable) {
             // Mic busy is a normal failure here — release the fd + mic session instead of leaking them
             // (runUntilStopped's cleanup never runs when start throws).
-            recording = false
             runCatching { out?.close() }; out = null
             runCatching { ar?.release() }; ar = null
             throw t
         }
     }
 
-    fun stop() { recording = false }
+    /** Latched one-shot: a stop that races ahead of [start]/[runUntilStopped] is never lost. */
+    fun stop() { stopped = true }
 
     /** Blocks (on IO) reading the mic and appending int16 to [file] until [stop] is called. */
     suspend fun runUntilStopped() = withContext(Dispatchers.IO) {
@@ -88,7 +88,7 @@ class MicRecorder(private val file: File) {
         val bytes = ByteArray(frame * 2)
         var sinceFlush = 0
         try {
-            while (recording && isActive) {
+            while (!stopped && isActive) {
                 val n = a.read(buf, 0, frame)
                 if (n > 0) {
                     updateLevel(buf, n)

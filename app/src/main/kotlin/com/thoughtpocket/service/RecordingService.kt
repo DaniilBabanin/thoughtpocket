@@ -118,7 +118,9 @@ class RecordingService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> startRecording(intent.getLongExtra(EXTRA_APPEND_ID, -1L))
-            ACTION_STOP -> recorder?.stop()
+            // Null recorder → stale stop (e.g. a widget rendered before a process kill): settle instead
+            // of lingering as a started, never-foregrounded service; the refresh re-renders the widget.
+            ACTION_STOP -> recorder?.stop() ?: settleStateAndMaybeStop()
             ACTION_IMPORT -> startImport()
             ACTION_IMPORT_URIS -> startImportUris(intent)
             ACTION_RECOVER -> startRecovery()
@@ -192,18 +194,23 @@ class RecordingService : Service() {
                 }
             }
 
-            rec.runUntilStopped()      // returns once ACTION_STOP flips the flag
+            rec.runUntilStopped()      // returns once ACTION_STOP flips the flag (mic released on return)
             levelJob.cancel()
-            liveJob?.cancelAndJoin()
+            liveJob?.cancel()
             recorder = null
 
-            // Hand the recording (a file on disk) to the background queue and free the mic immediately.
+            // Settle state BEFORE waiting out the in-flight preview decode (up to ~3 s on Whisper): the
+            // orb flips instantly and the next recording can start right away. Claiming pending + the
+            // queue card first keeps the service alive under this still-finalizing clip (a drain hitting
+            // zero would otherwise stopSelf and cancel this coroutine before the clip is queued).
             val n = rec.samples
             if (n > 0) {
-                // Save a playable WAV copy to the user's folder (survives uninstall) BEFORE the .pcm is consumed.
-                if (prefs.saveAudio && prefs.saveAudioFolder.isNotEmpty()) runCatching { saveWav(file, prefs.saveAudioFolder) }
                 RecordState.setPending(pending.incrementAndGet())
                 val qid = trackClip("Recording ${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())}")
+                settleStateAndMaybeStop()
+                liveJob?.cancelAndJoin()   // firstPassText below needs the final committed prefix
+                // Save a playable WAV copy to the user's folder (survives uninstall) BEFORE the .pcm is consumed.
+                if (prefs.saveAudio && prefs.saveAudioFolder.isNotEmpty()) runCatching { saveWav(file, prefs.saveAudioFolder) }
                 // First-pass-only: the note IS the live accumulator (+ tail finalize), not a re-decode. Only
                 // when the live pass actually ran — its model equals the note model in first-only.
                 val firstOnly = liveJob != null && !prefs.finalPassEnabled
@@ -213,8 +220,11 @@ class RecordingService : Service() {
                             firstPassText = livePass.committed.toString(), firstPassSamples = livePass.committedSamples)
                     else Clip(file, n, noteModel, prefs, queueId = qid, appendNoteId = appendNoteId)
                 )
-            } else rec.discard()
-            settleStateAndMaybeStop()
+            } else {
+                liveJob?.cancelAndJoin()
+                rec.discard()
+                settleStateAndMaybeStop()
+            }
         }
     }
 
@@ -283,6 +293,11 @@ class RecordingService : Service() {
             val tailText = runCatching {
                 engine.transcribe(this, model, tail, prefs, highQuality = false, useVad = false)
             }.getOrNull()?.trim().orEmpty()
+            // Stop settles state before this decode is joined — and a cancellation swallowed by the
+            // runCatching reads as an empty decode. Bail: no stale preview after the state cleared it,
+            // and no folding a chunk whose text may be lost (the finalize tail decode re-covers
+            // everything past the last commit).
+            if (!currentCoroutineContext().isActive) return
             val full = mergeTranscript(pass.committed.toString(), tailText)
             if (full.isNotBlank()) publishPreview(prefs, full)
             // Tail grew past a chunk → fold its decode into the committed prefix and advance (reuses the
