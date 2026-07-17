@@ -1,5 +1,50 @@
 # Changelog
 
+## v0.2.4
+
+- **Instant record stop:** stopping no longer waits out the in-flight live-preview decode (up to ~3 s on Whisper) — the orb, QS tile and widget react immediately and the next recording can start right away.
+- A stop tapped a split second after start is never lost; the QS tile timer no longer carries the previous recording's time over on an instant re-record; a stale widget tap after a process kill cleans itself up instead of leaving a service running.
+- Closed a rare window where the last words of a note could be dropped when stopping mid-decode with the final pass off.
+
+## v0.2.3
+
+- **APK ~54% smaller:** release builds are arm64-only (x86_64 only ever served desktop emulators) and drop unused RAG SDK JNI libs.
+
+## v0.2.2-pre
+
+- **Ask your notes covers everything:** scopes over one context window are split into batches, answered per batch and merged (fit-or-split harness), with live part-i-of-n progress.
+- **Coder:** per-task all-notes access grant; note detail links to the coding hub.
+- Inset fixes: coding screen no longer starts under the status bar; record orb no longer covers the last button in note detail.
+
+## v0.2.1-pre
+
+- **Hi-res audio imports:** 96 kHz / 24-bit and 32-bit-int WAVs decode correctly (were read as garbage); decoding streams with bounded memory instead of OOM-ing on very large files.
+- **Visible transcription queue:** each queued clip is an optimistic card under Recent (label, progress, transcript-so-far); long-press cancels — even mid-transcription, via a new whisper abort callback.
+- **Whisper language auto-detect:** a blank language setting now auto-detects (it silently forced English before, even on multilingual models).
+
+## v0.2.0
+
+Production release of the "Code this" line — v0.1.10-pre through v0.1.13-pre below.
+
+## v0.1.13-pre
+
+- **Coder hardening:** safe engine teardown, mid-prefill cancel, 8k context, runtime guards.
+- Licenses/README: credit llama.cpp, Chaquopy, embedded CPython, Ornith.
+
+## v0.1.12-pre
+
+- **Coding tasks persist per note:** list, iterate, delete, revert; meta tasks can read all notes.
+- **Coder prompt contract:** honesty clause, attempt log kept on failure, generation cap raised to 1300 after diagnosing truncated replies.
+
+## v0.1.11-pre
+
+- **"Code this" (experimental):** on-device coding agent — Ornith 9B GGUF on llama.cpp (JNI bridge with per-token cancellation), out-of-process Python runner via Chaquopy, agentic harness loop, note-detail entry + run/results screen + Settings card, in-app Ornith download or BYO GGUF import. Pixel decode fixed 0.16 → 4.25 tok/s (SIMD flags, threads).
+- **Universal release APK** for now — Chaquopy has no ABI-splits support (slimmed back down in v0.2.3).
+
+## v0.1.10-pre
+
+- **Import audio files as notes:** picker in list and note detail, plus an Android share-sheet target.
+
 ## v0.1.9-pre
 
 - **Reliability: GPU-crash recovery works again** — if an on-device Gemma run crashes the GPU driver, the app once more falls back to CPU on the next launch (this recovery had silently stopped working).
